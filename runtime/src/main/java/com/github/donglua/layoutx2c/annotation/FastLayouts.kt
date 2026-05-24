@@ -1,19 +1,17 @@
 package com.github.donglua.layoutx2c.runtime.annotation
 
-import androidx.annotation.LayoutRes
-
 /**
  * 标记需要编译期生成代码的 layout 列表。
- * 放在 package-level 声明中。
+ * 放在配置类或接口上，layout 名不带 .xml 后缀。
  *
  * 用法：
  * ```
- * @FastLayouts(R.layout.activity_main, R.layout.fragment_home)
- * package com.example.app
+ * @FastLayouts("activity_main", "fragment_home")
+ * interface LayoutX2CConfig
  * ```
  */
-@Target(AnnotationTarget.FILE)
+@Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class FastLayouts(
-    vararg val layouts: Int
+    vararg val layouts: String
 )

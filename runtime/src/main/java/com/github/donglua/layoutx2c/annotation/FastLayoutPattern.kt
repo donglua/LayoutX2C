@@ -7,10 +7,10 @@ package com.github.donglua.layoutx2c.runtime.annotation
  * 用法：
  * ```
  * @FastLayoutPattern(rClass = R::class, layoutPrefix = "activity_")
- * package com.example.app
+ * interface LayoutX2CConfig
  * ```
  */
-@Target(AnnotationTarget.FILE)
+@Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class FastLayoutPattern(
     val rClass: kotlin.reflect.KClass<*>,

@@ -62,16 +62,17 @@ class LayoutX2CProcessor(
             val annotation = annotated.annotations.first {
                 it.annotationType.resolve().declaration.qualifiedName?.asString() == ANNOTATION_FAST_LAYOUTS
             }
-            val layouts = annotation.arguments.firstOrNull()?.value as? List<*>
-            layouts?.forEach { value ->
-                // value 是 R.layout.xxx 的 int 值，但我们需要 layout name
-                // 在 KSP 中，annotation value 如果是资源引用，实际拿到的是 KSAnnotationValue
-                // MVP 阶段：通过 option 传入 layout name 列表作为 fallback
-                logger.info("Found @FastLayouts value: $value")
+            val layouts = annotation.arguments.firstOrNull { it.name?.asString() == "layouts" }
+                ?.value as? List<*>
+
+            layouts?.filterIsInstance<String>()?.forEach { layoutName ->
+                if (layoutName.isNotBlank()) {
+                    layoutNames.add(layoutName.trim())
+                }
             }
         }
 
-        // 处理 @FastLayoutPattern 注解
+        // 处理 @FastLayoutPattern 注解 —— 字符串前缀，正常拿
         val patternAnnotated = resolver.getSymbolsWithAnnotation(ANNOTATION_FAST_LAYOUT_PATTERN)
         for (annotated in patternAnnotated) {
             val annotation = annotated.annotations.first {
@@ -82,18 +83,12 @@ class LayoutX2CProcessor(
                 ?.value as? String ?: ""
 
             if (prefix.isNotEmpty()) {
-                // 扫描 layout 目录，匹配前缀
                 layoutDir.listFiles()?.filter {
                     it.isFile && it.extension == "xml" && it.nameWithoutExtension.startsWith(prefix)
                 }?.forEach {
                     layoutNames.add(it.nameWithoutExtension)
                 }
             }
-        }
-
-        // 也支持通过 KSP option 直接传入 layout 列表（Gradle plugin 使用）
-        options["layoutx2c.layouts"]?.split(":")?.forEach { name ->
-            if (name.isNotBlank()) layoutNames.add(name.trim())
         }
 
         // 为每个 layout 生成代码

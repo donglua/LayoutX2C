@@ -60,26 +60,10 @@ class LayoutX2CPlugin : Plugin<Project> {
         androidComponents.onVariants { variant ->
             val mergedRes = variant.artifacts.get(SingleArtifact.MERGED_RES)
 
-            // 收集 layout 名（显式 + 前缀匹配）
-            val layoutListProvider = project.provider {
-                val explicit = extension.layouts.getOrElse(emptyList())
-                val prefixes = extension.prefixes.getOrElse(emptyList())
-                buildString {
-                    append(explicit.joinToString(":"))
-                    if (prefixes.isNotEmpty()) {
-                        if (isNotEmpty()) append(":")
-                        // 前缀匹配交给 processor 在 res 目录内做
-                        append("__prefix__:")
-                        append(prefixes.joinToString(":"))
-                    }
-                }
-            }
-
             project.extensions.configure(KspExtension::class.java) {
                 it.arg(LayoutX2CProcessorOptions.RES_DIR, mergedRes.get().asFile.absolutePath)
                 it.arg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
                 it.arg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
-                it.arg(LayoutX2CProcessorOptions.LAYOUTS, layoutListProvider.get())
             }
         }
     }
@@ -99,5 +83,4 @@ private object LayoutX2CProcessorOptions {
     const val RES_DIR = "layoutx2c.resDir"
     const val PACKAGE_NAME = "layoutx2c.packageName"
     const val R_PACKAGE_NAME = "layoutx2c.rPackageName"
-    const val LAYOUTS = "layoutx2c.layouts"
 }
