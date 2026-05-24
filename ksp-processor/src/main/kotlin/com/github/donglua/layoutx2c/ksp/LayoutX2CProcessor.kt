@@ -21,6 +21,7 @@ class LayoutX2CProcessor(
     companion object {
         const val OPTION_RES_DIR = "layoutx2c.resDir"
         const val OPTION_PACKAGE = "layoutx2c.packageName"
+        const val OPTION_R_PACKAGE = "layoutx2c.rPackageName"
 
         const val ANNOTATION_FAST_LAYOUTS = "com.github.donglua.layoutx2c.runtime.annotation.FastLayouts"
         const val ANNOTATION_FAST_LAYOUT_PATTERN = "com.github.donglua.layoutx2c.runtime.annotation.FastLayoutPattern"
@@ -29,8 +30,14 @@ class LayoutX2CProcessor(
     private val parser = XmlLayoutParser()
     private val analyzer = LayoutAnalyzer()
     private val reportGenerator = SupportReportGenerator()
+    private var processed = false
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
+        if (processed) {
+            return emptyList()
+        }
+        processed = true
+
         val resDir = options[OPTION_RES_DIR]
         if (resDir == null) {
             logger.error("Missing KSP option: $OPTION_RES_DIR. " +
@@ -39,6 +46,7 @@ class LayoutX2CProcessor(
         }
 
         val packageName = options[OPTION_PACKAGE] ?: "com.github.donglua.layoutx2c.generated"
+        val rPackageName = options[OPTION_R_PACKAGE] ?: packageName
         val layoutDir = File(resDir, "layout")
 
         if (!layoutDir.exists()) {
@@ -84,12 +92,12 @@ class LayoutX2CProcessor(
         }
 
         // 也支持通过 KSP option 直接传入 layout 列表（Gradle plugin 使用）
-        options["layoutx2c.layouts"]?.split(",")?.forEach { name ->
+        options["layoutx2c.layouts"]?.split(":")?.forEach { name ->
             if (name.isNotBlank()) layoutNames.add(name.trim())
         }
 
         // 为每个 layout 生成代码
-        val codeGen = LayoutCodeGenerator(packageName)
+        val codeGen = LayoutCodeGenerator(packageName, rPackageName)
 
         for (layoutName in layoutNames) {
             val xmlFile = File(layoutDir, "$layoutName.xml")

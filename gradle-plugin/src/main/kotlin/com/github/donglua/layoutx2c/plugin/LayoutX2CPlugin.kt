@@ -5,12 +5,6 @@ import com.android.build.api.variant.AndroidComponentsExtension
 import com.google.devtools.ksp.gradle.KspExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.file.Directory
-import org.gradle.api.provider.Provider
-import org.gradle.api.tasks.InputDirectory
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.process.CommandLineArgumentProvider
 
 /**
  * LayoutX2C Gradle Plugin。
@@ -71,9 +65,9 @@ class LayoutX2CPlugin : Plugin<Project> {
                 val explicit = extension.layouts.getOrElse(emptyList())
                 val prefixes = extension.prefixes.getOrElse(emptyList())
                 buildString {
-                    append(explicit.joinToString(","))
+                    append(explicit.joinToString(":"))
                     if (prefixes.isNotEmpty()) {
-                        if (isNotEmpty()) append(",")
+                        if (isNotEmpty()) append(":")
                         // 前缀匹配交给 processor 在 res 目录内做
                         append("__prefix__:")
                         append(prefixes.joinToString(":"))
@@ -82,39 +76,28 @@ class LayoutX2CPlugin : Plugin<Project> {
             }
 
             project.extensions.configure(KspExtension::class.java) {
-                it.arg(
-                    LayoutX2CArgProvider(
-                        mergedRes = mergedRes,
-                        packageName = extension.packageName,
-                        layoutsList = layoutListProvider
-                    )
-                )
+                it.arg(LayoutX2CProcessorOptions.RES_DIR, mergedRes.get().asFile.absolutePath)
+                it.arg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
+                it.arg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
+                it.arg(LayoutX2CProcessorOptions.LAYOUTS, layoutListProvider.get())
             }
         }
     }
+
+    private fun Project.androidNamespace(): String {
+        val androidExtension = extensions.findByName("android")
+        return androidExtension
+            ?.javaClass
+            ?.methods
+            ?.firstOrNull { it.name == "getNamespace" && it.parameterCount == 0 }
+            ?.invoke(androidExtension) as? String
+            ?: group.toString()
+    }
 }
 
-/**
- * KSP CommandLineArgumentProvider，把 merged res 路径和配置项 lazily 传给 processor。
- * 实现 CommandLineArgumentProvider 才能让 Gradle 正确处理 task 依赖和增量编译。
- */
-class LayoutX2CArgProvider(
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    val mergedRes: Provider<Directory>,
-
-    @get:org.gradle.api.tasks.Input
-    val packageName: org.gradle.api.provider.Property<String>,
-
-    @get:org.gradle.api.tasks.Input
-    val layoutsList: Provider<String>
-) : CommandLineArgumentProvider {
-
-    override fun asArguments(): Iterable<String> {
-        return listOf(
-            "layoutx2c.resDir=${mergedRes.get().asFile.absolutePath}",
-            "layoutx2c.packageName=${packageName.get()}",
-            "layoutx2c.layouts=${layoutsList.get()}"
-        )
-    }
+private object LayoutX2CProcessorOptions {
+    const val RES_DIR = "layoutx2c.resDir"
+    const val PACKAGE_NAME = "layoutx2c.packageName"
+    const val R_PACKAGE_NAME = "layoutx2c.rPackageName"
+    const val LAYOUTS = "layoutx2c.layouts"
 }

@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
 }
 
@@ -25,9 +24,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlinOptions {
-        jvmTarget = "11"
-    }
 }
 
 dependencies {
@@ -42,5 +38,6 @@ dependencies {
 ksp {
     arg("layoutx2c.resDir", "${project.projectDir}/src/main/res")
     arg("layoutx2c.packageName", "com.github.donglua.layoutx2c.demo.generated")
-    arg("layoutx2c.layouts", "activity_main,activity_simple")
+    arg("layoutx2c.rPackageName", "com.github.donglua.layoutx2c.demo")
+    arg("layoutx2c.layouts", "activity_main:activity_simple")
 }

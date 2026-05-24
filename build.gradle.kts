@@ -1,7 +1,7 @@
 buildscript {
-    extra["kotlinVersion"] = "1.9.22"
-    extra["agpVersion"] = "8.2.2"
-    extra["kspVersion"] = "1.9.22-1.0.17"
+    extra["kotlinVersion"] = "2.2.21"
+    extra["agpVersion"] = "9.2.1"
+    extra["kspVersion"] = "2.3.8"
     extra["minSdk"] = 21
     extra["targetSdk"] = 34
     extra["compileSdk"] = 34

@@ -9,7 +9,8 @@ import com.squareup.kotlinpoet.*
  * 生成的类实现 LayoutFactory 接口。
  */
 class LayoutCodeGenerator(
-    private val packageName: String
+    private val packageName: String,
+    private val rPackageName: String
 ) {
 
     fun generate(analyzedRoot: AnalyzedNode, layoutName: String, layoutResId: String): FileSpec {
@@ -28,6 +29,7 @@ class LayoutCodeGenerator(
             .build()
 
         return FileSpec.builder(packageName, className)
+            .addImport(rPackageName, "R")
             .addType(typeSpec)
             .build()
     }
