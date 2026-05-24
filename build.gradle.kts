@@ -2,9 +2,9 @@ buildscript {
     extra["kotlinVersion"] = "2.2.21"
     extra["agpVersion"] = "9.2.1"
     extra["kspVersion"] = "2.3.8"
-    extra["minSdk"] = 21
-    extra["targetSdk"] = 34
-    extra["compileSdk"] = 34
+    extra["minSdk"] = 23
+    extra["targetSdk"] = 36
+    extra["compileSdk"] = 36
     extra["groupId"] = "com.github.donglua.layoutx2c"
     extra["versionName"] = "0.1.0-SNAPSHOT"
 }
