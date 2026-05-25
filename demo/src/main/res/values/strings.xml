@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">LayoutX2C Demo</string>
+    <string name="demo_subtitle">XML layout to generated Kotlin code</string>
+    <string name="status_loading">Checking...</string>
+    <string name="btn_benchmark">Run Benchmark</string>
+    <string name="btn_simple_layout">Preview: activity_simple</string>
+    <string name="btn_nested_layout">Preview: activity_nested</string>
+
+    <!-- Nested layout -->
+    <string name="nested_header">Nested Layout Demo</string>
+    <string name="nested_close">Close</string>
+    <string name="nested_content">This layout uses LinearLayout weight\nand FrameLayout nesting</string>
+    <string name="nested_detail">Generated code handles LayoutParams\ncorrectly for each parent type</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_confirm">Confirm</string>
+
+    <!-- Benchmark -->
+    <string name="benchmark_title">Benchmark</string>
+    <string name="benchmark_running">Running benchmark...</string>
 </resources>

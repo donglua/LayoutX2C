@@ -2,9 +2,11 @@ package com.github.donglua.layoutx2c.demo
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -42,43 +44,40 @@ class PreviewActivity : AppCompatActivity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, 0, 0, 0)
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
         }
 
-        // Title bar
         val titleBar = TextView(this).apply {
             text = "Preview: $layoutName"
-            setPadding(24.dp, 16.dp, 24.dp, 16.dp)
-            textSize = 16f
+            textSize = 20f
+            typeface = Typeface.DEFAULT_BOLD
         }
         root.addView(titleBar, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ))
 
-        // Tab labels
-        val tabRow = LinearLayout(this).apply {
+        val buttonRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(24.dp, 0, 24.dp, 8.dp)
+            setPadding(0, 16.dp, 0, 16.dp)
         }
-        val tabGenerated = TextView(this).apply {
+        val btnGenerated = Button(this).apply {
             text = "LayoutX2C"
-            setPadding(0, 8.dp, 16.dp, 8.dp)
-            textSize = 13f
         }
-        val tabInflater = TextView(this).apply {
+        val btnInflater = Button(this).apply {
             text = "LayoutInflater"
-            setPadding(16.dp, 8.dp, 0, 8.dp)
-            textSize = 13f
         }
-        tabRow.addView(tabGenerated)
-        tabRow.addView(tabInflater)
-        root.addView(tabRow, LinearLayout.LayoutParams(
+        buttonRow.addView(btnGenerated, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            marginEnd = 8.dp
+        })
+        buttonRow.addView(btnInflater, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            marginStart = 8.dp
+        })
+        root.addView(buttonRow, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ))
 
-        // Content container
         val container = FrameLayout(this)
         root.addView(container, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
@@ -86,14 +85,13 @@ class PreviewActivity : AppCompatActivity() {
 
         setContentView(root)
 
-        // Show generated view by default
         val hasGenerated = LayoutX2CRegistry.has(layoutId)
         showView(container, layoutId, useGenerated = hasGenerated)
 
-        tabGenerated.setOnClickListener {
+        btnGenerated.setOnClickListener {
             showView(container, layoutId, useGenerated = true)
         }
-        tabInflater.setOnClickListener {
+        btnInflater.setOnClickListener {
             showView(container, layoutId, useGenerated = false)
         }
     }
