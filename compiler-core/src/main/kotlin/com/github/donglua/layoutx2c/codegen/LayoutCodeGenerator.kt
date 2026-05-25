@@ -10,7 +10,8 @@ import com.squareup.kotlinpoet.*
  */
 class LayoutCodeGenerator(
     private val packageName: String,
-    private val rPackageName: String
+    private val rPackageName: String,
+    private val layoutParamsEmitter: LayoutParamsEmitter = DefaultLayoutParamsEmitter()
 ) {
 
     fun generate(analyzedRoot: AnalyzedNode, layoutName: String, layoutResId: String): FileSpec {
@@ -79,6 +80,7 @@ class LayoutCodeGenerator(
                     childPathToCode(childPath),
                     parentVarName
                 )
+                layoutParamsEmitter.emit(builder, varName, node, parentVarName)
             }
             return
         }
@@ -96,7 +98,7 @@ class LayoutCodeGenerator(
 
         // 生成 LayoutParams
         if (!isRoot) {
-            generateLayoutParamsCode(builder, varName, node, parentVarName)
+            layoutParamsEmitter.emit(builder, varName, node, parentVarName)
         }
 
         // 递归生成子节点
@@ -179,60 +181,6 @@ class LayoutCodeGenerator(
         }
     }
 
-    private fun generateLayoutParamsCode(
-        builder: CodeBlock.Builder,
-        varName: String,
-        node: AnalyzedNode,
-        parentVarName: String
-    ) {
-        val attrs = node.node.attributes
-        val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content")
-        val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content")
-
-        builder.addStatement("%L.layoutParams = %L", varName, layoutParamsToCode(node, parentVarName, width, height))
-
-        // Margins
-        val marginLeft = attrs["android:layout_marginLeft"] ?: attrs["android:layout_marginStart"] ?: attrs["android:layout_margin"]
-        val marginTop = attrs["android:layout_marginTop"] ?: attrs["android:layout_margin"]
-        val marginRight = attrs["android:layout_marginRight"] ?: attrs["android:layout_marginEnd"] ?: attrs["android:layout_margin"]
-        val marginBottom = attrs["android:layout_marginBottom"] ?: attrs["android:layout_margin"]
-
-        if (marginLeft != null || marginTop != null || marginRight != null || marginBottom != null) {
-            builder.addStatement(
-                "(%L.layoutParams as %T).setMargins(%L, %L, %L, %L)",
-                varName,
-                ClassName("android.view", "ViewGroup.MarginLayoutParams"),
-                dimensionToCode(marginLeft ?: "0dp"),
-                dimensionToCode(marginTop ?: "0dp"),
-                dimensionToCode(marginRight ?: "0dp"),
-                dimensionToCode(marginBottom ?: "0dp")
-            )
-        }
-    }
-
-    private fun layoutParamsToCode(
-        node: AnalyzedNode,
-        parentVarName: String,
-        width: String,
-        height: String
-    ): String {
-        val attrs = node.node.attributes
-        val weight = attrs["android:layout_weight"]?.toFloatOrNull()
-        return when (node.parentTagName) {
-            "LinearLayout", "android.widget.LinearLayout" -> {
-                if (weight != null) {
-                    "android.widget.LinearLayout.LayoutParams($width, $height, ${weight}f)"
-                } else {
-                    "android.widget.LinearLayout.LayoutParams($width, $height)"
-                }
-            }
-            "FrameLayout", "android.widget.FrameLayout" ->
-                "android.widget.FrameLayout.LayoutParams($width, $height)"
-            else ->
-                "$parentVarName.generateLayoutParams(android.view.ViewGroup.MarginLayoutParams($width, $height))"
-        }
-    }
-
     private fun resolveViewClass(tagName: String): ClassName {
         return when (tagName) {
             "LinearLayout", "android.widget.LinearLayout" ->
@@ -247,16 +195,9 @@ class LayoutCodeGenerator(
         }
     }
 
-    private fun layoutDimensionToCode(value: String): String {
-        return when (value) {
-            "match_parent", "fill_parent" -> "android.view.ViewGroup.LayoutParams.MATCH_PARENT"
-            "wrap_content" -> "android.view.ViewGroup.LayoutParams.WRAP_CONTENT"
-            else -> dimensionToCode(value)
-        }
-    }
-
     private fun dimensionToCode(value: String): String {
         return when {
+            value == "0" || value == "0dp" || value == "0px" -> "0"
             value.endsWith("dp") -> {
                 val num = value.removeSuffix("dp")
                 "(${num}f * context.resources.displayMetrics.density + 0.5f).toInt()"
@@ -266,7 +207,6 @@ class LayoutCodeGenerator(
                 "(${num}f * context.resources.displayMetrics.scaledDensity + 0.5f).toInt()"
             }
             value.endsWith("px") -> value.removeSuffix("px")
-            value == "0" || value == "0dp" || value == "0px" -> "0"
             else -> "0"
         }
     }
@@ -288,6 +228,8 @@ class LayoutCodeGenerator(
     }
 
     private fun layoutNameToClassName(layoutName: String): String {
-        return "Layout_" + layoutName.split("_").joinToString("") { it.capitalize() }
+        return "Layout_" + layoutName.split("_").joinToString("") {
+            it.replaceFirstChar { char -> char.uppercaseChar() }
+        }
     }
 }

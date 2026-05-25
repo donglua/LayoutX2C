@@ -1,6 +1,5 @@
 package com.github.donglua.layoutx2c.plugin
 
-import com.android.build.api.artifact.SingleArtifact
 import com.android.build.api.variant.AndroidComponentsExtension
 import com.google.devtools.ksp.gradle.KspExtension
 import org.gradle.api.Plugin
@@ -53,17 +52,17 @@ class LayoutX2CPlugin : Plugin<Project> {
         // 自动添加 runtime 依赖
         project.dependencies.add("implementation", "$GROUP:runtime:$VERSION")
 
-        // 通过 AGP variant API 拿 merged res 路径，per-variant 配 KSP arg
+        // 传入模块 res 根目录，processor 会在其下查找 layout/。
         val androidComponents = project.extensions
             .findByType(AndroidComponentsExtension::class.java) ?: return
 
-        androidComponents.onVariants { variant ->
-            val mergedRes = variant.artifacts.get(SingleArtifact.MERGED_RES)
+        androidComponents.onVariants {
+            val resDir = project.layout.projectDirectory.dir("src/main/res")
 
             project.extensions.configure(KspExtension::class.java) {
-                it.arg(LayoutX2CProcessorOptions.RES_DIR, mergedRes.get().asFile.absolutePath)
-                it.arg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
-                it.arg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
+                this.arg(LayoutX2CProcessorOptions.RES_DIR, resDir.asFile.absolutePath)
+                this.arg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
+                this.arg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
             }
         }
     }
