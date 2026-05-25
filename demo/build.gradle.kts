@@ -46,9 +46,3 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("com.google.android.material:material:1.14.0")
 }
-
-ksp {
-    arg("layoutx2c.resDir", "${project.projectDir}/src/main/res")
-    arg("layoutx2c.packageName", "com.github.donglua.layoutx2c.demo.generated")
-    arg("layoutx2c.rPackageName", "com.github.donglua.layoutx2c.demo")
-}

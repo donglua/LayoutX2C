@@ -44,23 +44,8 @@ class LayoutX2CProcessor(
         }
         processed = true
 
-        val resDir = options[OPTION_RES_DIR]
-        if (resDir == null) {
-            logger.error("Missing KSP option: $OPTION_RES_DIR. " +
-                "Make sure the LayoutX2C Gradle plugin is applied.")
-            return emptyList()
-        }
-
-        val packageName = options[OPTION_PACKAGE] ?: "com.github.donglua.layoutx2c.generated"
-        val rPackageName = options[OPTION_R_PACKAGE] ?: packageName
-        val layoutDir = File(resDir, "layout")
-
-        if (!layoutDir.exists()) {
-            logger.warn("Layout directory not found: $layoutDir")
-            return emptyList()
-        }
-
         val layoutNames = mutableSetOf<String>()
+        val configSources = mutableListOf<LayoutX2CSource>()
 
         // 处理 @FastLayoutConfig：从配置对象源码里提取 R.layout.xxx。
         val configAnnotated = resolver.getSymbolsWithAnnotation(ANNOTATION_FAST_LAYOUT_CONFIG)
@@ -68,6 +53,10 @@ class LayoutX2CProcessor(
         for (annotated in configAnnotated) {
             val sourceFile = annotated.containingFile ?: continue
             if (!visitedConfigFiles.add(sourceFile.filePath)) continue
+            configSources += LayoutX2CSource(
+                file = File(sourceFile.filePath),
+                packageName = annotated.packageName()
+            )
 
             val sourceText = try {
                 File(sourceFile.filePath).readText()
@@ -93,10 +82,32 @@ class LayoutX2CProcessor(
                     layoutNames.add(layoutName.trim())
                 }
             }
+            annotated.containingFile?.let { sourceFile ->
+                configSources += LayoutX2CSource(
+                    file = File(sourceFile.filePath),
+                    packageName = annotated.packageName()
+                )
+            }
         }
 
         // 处理 @FastLayoutPattern 注解 —— 字符串前缀，正常拿
-        val patternAnnotated = resolver.getSymbolsWithAnnotation(ANNOTATION_FAST_LAYOUT_PATTERN)
+        val patternAnnotated = resolver.getSymbolsWithAnnotation(ANNOTATION_FAST_LAYOUT_PATTERN).toList()
+        for (annotated in patternAnnotated) {
+            annotated.containingFile?.let { sourceFile ->
+                configSources += LayoutX2CSource(
+                    file = File(sourceFile.filePath),
+                    packageName = annotated.packageName()
+                )
+            }
+        }
+        val config = resolveConfig(configSources)
+        val layoutDir = File(config.resDir, "layout")
+
+        if (!layoutDir.exists()) {
+            logger.warn("Layout directory not found: $layoutDir")
+            return emptyList()
+        }
+
         for (annotated in patternAnnotated) {
             val annotation = annotated.annotations.first {
                 it.annotationType.resolve().declaration.qualifiedName?.asString() == ANNOTATION_FAST_LAYOUT_PATTERN
@@ -114,8 +125,9 @@ class LayoutX2CProcessor(
             }
         }
 
+
         // 为每个 layout 生成代码
-        val codeGen = LayoutCodeGenerator(packageName, rPackageName)
+        val codeGen = LayoutCodeGenerator(config.packageName, config.rPackageName)
         val generatedLayouts = mutableListOf<Pair<String, String>>()
 
         for (layoutName in layoutNames) {
@@ -134,7 +146,7 @@ class LayoutX2CProcessor(
                 // 写入生成的 Kotlin 文件
                 val file = codeGenerator.createNewFile(
                     Dependencies(false),
-                    packageName,
+                    config.packageName,
                     fileSpec.name
                 )
                 file.writer().use { writer ->
@@ -145,7 +157,7 @@ class LayoutX2CProcessor(
                 val report = reportGenerator.generate(analyzed, layoutName)
                 val reportFile = codeGenerator.createNewFile(
                     Dependencies(false),
-                    packageName,
+                    config.packageName,
                     "${layoutName}_report",
                     "json"
                 )
@@ -159,10 +171,44 @@ class LayoutX2CProcessor(
         }
 
         if (generatedLayouts.isNotEmpty()) {
-            generateRegistry(packageName, rPackageName, generatedLayouts)
+            generateRegistry(config.packageName, config.rPackageName, generatedLayouts)
         }
 
         return emptyList()
+    }
+
+    private fun resolveConfig(configSources: List<LayoutX2CSource>): LayoutX2CProcessorConfig {
+        val inferredPackageName = configSources.firstNotNullOfOrNull { it.packageName }
+        val rPackageName = options[OPTION_R_PACKAGE] ?: inferredPackageName ?: "com.github.donglua.layoutx2c"
+        val packageName = options[OPTION_PACKAGE] ?: "$rPackageName.generated"
+        val resDir = options[OPTION_RES_DIR]?.let(::File)
+            ?: configSources.firstNotNullOfOrNull { inferMainResDir(it.file) }
+            ?: File("src/main/res")
+
+        return LayoutX2CProcessorConfig(
+            resDir = resDir,
+            packageName = packageName,
+            rPackageName = rPackageName
+        )
+    }
+
+    private fun inferMainResDir(sourceFile: File): File? {
+        var current: File? = sourceFile.parentFile
+        while (current != null) {
+            val resDir = current.resolve("res")
+            if (resDir.isDirectory) {
+                return resDir
+            }
+            current = current.parentFile
+        }
+        return null
+    }
+
+    private fun KSAnnotated.packageName(): String? {
+        return when (this) {
+            is KSDeclaration -> packageName.asString()
+            else -> containingFile?.packageName?.asString()
+        }
     }
 
     private fun generateRegistry(
@@ -202,3 +248,14 @@ class LayoutX2CProcessor(
         }
     }
 }
+
+private data class LayoutX2CProcessorConfig(
+    val resDir: File,
+    val packageName: String,
+    val rPackageName: String
+)
+
+private data class LayoutX2CSource(
+    val file: File,
+    val packageName: String?
+)
