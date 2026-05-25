@@ -1,6 +1,11 @@
 package com.github.donglua.layoutx2c.demo
 
-import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutPattern
+import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig
 
-@FastLayoutPattern(rClass = R::class, layoutPrefix = "activity_")
-interface LayoutX2CConfig
+@FastLayoutConfig
+object LayoutX2CConfig {
+    val layouts = intArrayOf(
+        R.layout.activity_main,
+        R.layout.activity_simple
+    )
+}

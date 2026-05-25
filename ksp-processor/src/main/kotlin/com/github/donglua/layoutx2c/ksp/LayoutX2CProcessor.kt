@@ -4,6 +4,7 @@ import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.report.SupportReportGenerator
+import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import java.io.File
@@ -23,6 +24,7 @@ class LayoutX2CProcessor(
         const val OPTION_PACKAGE = "layoutx2c.packageName"
         const val OPTION_R_PACKAGE = "layoutx2c.rPackageName"
 
+        const val ANNOTATION_FAST_LAYOUT_CONFIG = "com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig"
         const val ANNOTATION_FAST_LAYOUTS = "com.github.donglua.layoutx2c.runtime.annotation.FastLayouts"
         const val ANNOTATION_FAST_LAYOUT_PATTERN = "com.github.donglua.layoutx2c.runtime.annotation.FastLayoutPattern"
     }
@@ -55,6 +57,23 @@ class LayoutX2CProcessor(
         }
 
         val layoutNames = mutableSetOf<String>()
+
+        // 处理 @FastLayoutConfig：从配置对象源码里提取 R.layout.xxx。
+        val configAnnotated = resolver.getSymbolsWithAnnotation(ANNOTATION_FAST_LAYOUT_CONFIG)
+        val visitedConfigFiles = mutableSetOf<String>()
+        for (annotated in configAnnotated) {
+            val sourceFile = annotated.containingFile ?: continue
+            if (!visitedConfigFiles.add(sourceFile.filePath)) continue
+
+            val sourceText = try {
+                File(sourceFile.filePath).readText()
+            } catch (e: Exception) {
+                logger.warn("Cannot read LayoutX2C config source: ${sourceFile.filePath}")
+                continue
+            }
+
+            layoutNames.addAll(LayoutX2CConfigParser.extractLayoutNames(sourceText))
+        }
 
         // 处理 @FastLayouts 注解
         val fastLayoutsAnnotated = resolver.getSymbolsWithAnnotation(ANNOTATION_FAST_LAYOUTS)
