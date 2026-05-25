@@ -43,7 +43,7 @@ class LayoutCodeGenerator(
     private fun generateCreateBody(node: AnalyzedNode, layoutResId: String): CodeBlock {
         val builder = CodeBlock.builder()
 
-        generateNodeCode(builder, node, "root", "parent", layoutResId, isRoot = true)
+        generateNodeCode(builder, node, "root", "parent", layoutResId, isRoot = true, childPath = emptyList())
 
         builder.add("\n")
         builder.addStatement("return root")
@@ -57,18 +57,29 @@ class LayoutCodeGenerator(
         varName: String,
         parentVarName: String,
         layoutResId: String,
-        isRoot: Boolean
+        isRoot: Boolean,
+        childPath: List<Int>
     ) {
         if (node.supportLevel == SupportLevel.FALLBACK) {
-            // Fallback: 使用 FallbackInflater
-            builder.addStatement(
-                "val %L = %T.inflateChild(context, %L, %L, %L)",
-                varName,
-                ClassName("com.github.donglua.layoutx2c.runtime", "FallbackInflater"),
-                layoutResId,
-                node.indexInParent,
-                parentVarName
-            )
+            val fallbackInflater = ClassName("com.github.donglua.layoutx2c.runtime", "FallbackInflater")
+            if (isRoot) {
+                builder.addStatement(
+                    "val %L = %T.inflate(context, %L, %L)",
+                    varName,
+                    fallbackInflater,
+                    layoutResId,
+                    parentVarName
+                )
+            } else {
+                builder.addStatement(
+                    "val %L = %T.inflateChild(context, %L, %L, %L)",
+                    varName,
+                    fallbackInflater,
+                    layoutResId,
+                    childPathToCode(childPath),
+                    parentVarName
+                )
+            }
             return
         }
 
@@ -92,9 +103,21 @@ class LayoutCodeGenerator(
         for ((index, child) in node.children.withIndex()) {
             val childVarName = "${varName}_child$index"
             builder.add("\n")
-            generateNodeCode(builder, child, childVarName, varName, layoutResId, isRoot = false)
+            generateNodeCode(
+                builder,
+                child,
+                childVarName,
+                varName,
+                layoutResId,
+                isRoot = false,
+                childPath = childPath + index
+            )
             builder.addStatement("%L.addView(%L)", varName, childVarName)
         }
+    }
+
+    private fun childPathToCode(childPath: List<Int>): String {
+        return childPath.joinToString(prefix = "intArrayOf(", postfix = ")")
     }
 
     private fun generateAttributeCode(builder: CodeBlock.Builder, node: AnalyzedNode) {

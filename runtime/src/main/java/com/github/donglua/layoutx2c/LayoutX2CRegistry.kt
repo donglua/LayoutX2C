@@ -38,17 +38,37 @@ object LayoutX2CRegistry {
         return factories.containsKey(layoutId)
     }
 
-    private fun ensureGeneratedLayoutsRegistered(context: Context) {
+    /**
+     * 是否有对应 layout 的 generated factory，并在查询前尝试加载生成注册表。
+     */
+    fun has(context: Context, @LayoutRes layoutId: Int): Boolean {
+        ensureGeneratedLayoutsRegistered(context)
+        return has(layoutId)
+    }
+
+    /**
+     * 主动加载当前应用包名下的 generated registry。
+     */
+    fun initialize(context: Context): Boolean {
+        return ensureGeneratedLayoutsRegistered(context)
+    }
+
+    private fun ensureGeneratedLayoutsRegistered(context: Context): Boolean {
         val packageName = context.packageName
-        if (!initializedPackages.add(packageName)) {
-            return
+        if (packageName in initializedPackages) {
+            return true
         }
 
-        runCatching {
+        val registered = runCatching {
             val generated = Class.forName("$packageName.generated.LayoutX2CGenerated")
             val instance = generated.getField("INSTANCE").get(null)
             generated.getMethod("register").invoke(instance)
+        }.isSuccess
+
+        if (registered) {
+            initializedPackages.add(packageName)
         }
+        return registered
     }
 
     /**

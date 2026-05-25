@@ -42,14 +42,14 @@ class MainActivity : AppCompatActivity() {
         val layouts = listOf("activity_main", "activity_simple", "activity_nested")
         val registered = layouts.filter { name ->
             val resId = resources.getIdentifier(name, "layout", packageName)
-            resId != 0 && LayoutX2CRegistry.has(resId)
+            resId != 0 && LayoutX2CRegistry.has(this, resId)
         }
 
         val text = buildString {
             append("Registered: ${registered.size}/${layouts.size}\n")
             for (name in layouts) {
                 val resId = resources.getIdentifier(name, "layout", packageName)
-                val status = if (resId != 0 && LayoutX2CRegistry.has(resId)) "OK" else "--"
+                val status = if (resId != 0 && LayoutX2CRegistry.has(this@MainActivity, resId)) "OK" else "--"
                 append("  $status $name\n")
             }
         }

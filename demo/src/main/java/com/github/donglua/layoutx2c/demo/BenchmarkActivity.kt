@@ -66,7 +66,7 @@ class BenchmarkActivity : AppCompatActivity() {
         )
 
         for ((name, layoutId) in layouts) {
-            val hasGenerated = LayoutX2CRegistry.has(layoutId)
+            val hasGenerated = LayoutX2CRegistry.has(this, layoutId)
 
             sb.appendLine("$name")
 

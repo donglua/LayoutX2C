@@ -7,31 +7,49 @@ import android.view.ViewGroup
 import androidx.annotation.LayoutRes
 
 /**
- * 局部 fallback：对不支持的子树，使用原始 LayoutInflater inflate 整个 layout，
- * 然后从中提取指定位置的子 View。
+ * Fallback：对不支持的布局或子树，使用原始 LayoutInflater inflate 原始 layout。
  *
  * 这是 MVP 阶段的简单实现。后续可优化为 XmlPullParser seek 方式。
  */
 object FallbackInflater {
 
     /**
-     * Inflate 原始 layout 中指定 index 的子 View。
+     * Inflate 原始 layout 根节点。
+     */
+    fun inflate(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        parent: ViewGroup?
+    ): View {
+        return LayoutInflater.from(context).inflate(layoutId, parent, false)
+    }
+
+    /**
+     * Inflate 原始 layout 中指定路径的子 View。
      *
      * @param context Context
      * @param layoutId 原始 layout 资源 ID
-     * @param childIndex 需要 fallback 的 child 在 root 中的 index
+     * @param childPath 从 root 到 fallback 子树的 child index 路径
      * @param parent 目标父容器（用于生成正确的 LayoutParams）
      */
     fun inflateChild(
         context: Context,
         @LayoutRes layoutId: Int,
-        childIndex: Int,
+        childPath: IntArray,
         parent: ViewGroup?
     ): View {
         val inflater = LayoutInflater.from(context)
-        val fullTree = inflater.inflate(layoutId, parent, false) as ViewGroup
-        val child = fullTree.getChildAt(childIndex)
-        fullTree.removeView(child)
+        val fullTree = inflater.inflate(layoutId, parent, false)
+        val child = findChildByPath(fullTree, childPath)
+        (child.parent as? ViewGroup)?.removeView(child)
         return child
+    }
+
+    private fun findChildByPath(root: View, childPath: IntArray): View {
+        var current = root
+        for (index in childPath) {
+            current = (current as ViewGroup).getChildAt(index)
+        }
+        return current
     }
 }

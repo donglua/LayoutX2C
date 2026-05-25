@@ -85,7 +85,7 @@ class PreviewActivity : AppCompatActivity() {
 
         setContentView(root)
 
-        val hasGenerated = LayoutX2CRegistry.has(layoutId)
+        val hasGenerated = LayoutX2CRegistry.has(this, layoutId)
         showView(container, layoutId, useGenerated = hasGenerated)
 
         btnGenerated.setOnClickListener {
@@ -98,7 +98,7 @@ class PreviewActivity : AppCompatActivity() {
 
     private fun showView(container: FrameLayout, @LayoutRes layoutId: Int, useGenerated: Boolean) {
         container.removeAllViews()
-        val view: View = if (useGenerated && LayoutX2CRegistry.has(layoutId)) {
+        val view: View = if (useGenerated && LayoutX2CRegistry.has(this, layoutId)) {
             LayoutX2CRegistry.inflate(this, layoutId, container)
         } else {
             LayoutInflater.from(this).inflate(layoutId, container, false)
