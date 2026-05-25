@@ -18,7 +18,13 @@ class LayoutCodeGenerator(
 
         val createFun = FunSpec.builder("create")
             .addModifiers(KModifier.OVERRIDE)
-            .addParameter("parent", ClassName("android.view", "ViewGroup").copy(nullable = true))
+            .addParameter("context", ClassName("android.content", "Context"))
+            .addParameter(
+                ParameterSpec.builder(
+                    "parent",
+                    ClassName("android.view", "ViewGroup").copy(nullable = true)
+                ).build()
+            )
             .returns(ClassName("android.view", "View"))
             .addCode(generateCreateBody(analyzedRoot, layoutResId))
             .build()
@@ -36,9 +42,6 @@ class LayoutCodeGenerator(
 
     private fun generateCreateBody(node: AnalyzedNode, layoutResId: String): CodeBlock {
         val builder = CodeBlock.builder()
-
-        builder.addStatement("val context = parent?.context ?: throw IllegalArgumentException(\"parent must not be null\")")
-        builder.add("\n")
 
         generateNodeCode(builder, node, "root", "parent", layoutResId, isRoot = true)
 
@@ -163,13 +166,7 @@ class LayoutCodeGenerator(
         val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content")
         val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content")
 
-        // TODO: 根据 parent 类型生成正确的 LayoutParams 类型
-        builder.addStatement(
-            "%L.layoutParams = %T(%L, %L)",
-            varName,
-            ClassName("android.view", "ViewGroup.MarginLayoutParams"),
-            width, height
-        )
+        builder.addStatement("%L.layoutParams = %L", varName, layoutParamsToCode(node, parentVarName, width, height))
 
         // Margins
         val marginLeft = attrs["android:layout_marginLeft"] ?: attrs["android:layout_marginStart"] ?: attrs["android:layout_margin"]
@@ -187,6 +184,29 @@ class LayoutCodeGenerator(
                 dimensionToCode(marginRight ?: "0dp"),
                 dimensionToCode(marginBottom ?: "0dp")
             )
+        }
+    }
+
+    private fun layoutParamsToCode(
+        node: AnalyzedNode,
+        parentVarName: String,
+        width: String,
+        height: String
+    ): String {
+        val attrs = node.node.attributes
+        val weight = attrs["android:layout_weight"]?.toFloatOrNull()
+        return when (node.parentTagName) {
+            "LinearLayout", "android.widget.LinearLayout" -> {
+                if (weight != null) {
+                    "android.widget.LinearLayout.LayoutParams($width, $height, ${weight}f)"
+                } else {
+                    "android.widget.LinearLayout.LayoutParams($width, $height)"
+                }
+            }
+            "FrameLayout", "android.widget.FrameLayout" ->
+                "android.widget.FrameLayout.LayoutParams($width, $height)"
+            else ->
+                "$parentVarName.generateLayoutParams(android.view.ViewGroup.MarginLayoutParams($width, $height))"
         }
     }
 

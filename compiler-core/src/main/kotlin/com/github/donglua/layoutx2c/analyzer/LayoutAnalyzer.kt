@@ -39,6 +39,7 @@ class LayoutAnalyzer {
             "android:layout_marginBottom",
             "android:layout_marginStart",
             "android:layout_marginEnd",
+            "android:layout_weight",
             "android:layout_gravity",
             "android:gravity"
         )
@@ -54,25 +55,25 @@ class LayoutAnalyzer {
     }
 
     fun analyze(node: LayoutNode): AnalyzedNode {
-        return analyzeNode(node)
+        return analyzeNode(node, parentTagName = null)
     }
 
-    private fun analyzeNode(node: LayoutNode): AnalyzedNode {
+    private fun analyzeNode(node: LayoutNode, parentTagName: String?): AnalyzedNode {
         // 1. 检查 View 类型是否支持
         if (node.tagName !in SUPPORTED_VIEWS) {
-            return markAsFallback(node)
+            return markAsFallback(node, parentTagName)
         }
 
         // 2. 检查是否有强制 fallback 的属性（style, theme）
         val hasForceFallback = node.attributes.keys.any { it in FORCE_FALLBACK_ATTRIBUTES }
         if (hasForceFallback) {
-            return markAsFallback(node)
+            return markAsFallback(node, parentTagName)
         }
 
         // 3. 检查是否有 ?attr/ 引用（运行时 theme 依赖）
         val hasThemeRef = node.attributes.values.any { it.startsWith("?") }
         if (hasThemeRef) {
-            return markAsFallback(node)
+            return markAsFallback(node, parentTagName)
         }
 
         // 4. 分类属性
@@ -90,7 +91,7 @@ class LayoutAnalyzer {
         val supportLevel = if (unsupported.isEmpty()) SupportLevel.FULL else SupportLevel.PARTIAL
 
         // 5. 递归分析子节点
-        val analyzedChildren = node.children.map { analyzeNode(it) }
+        val analyzedChildren = node.children.map { analyzeNode(it, parentTagName = node.tagName) }
 
         return AnalyzedNode(
             node = node,
@@ -98,18 +99,20 @@ class LayoutAnalyzer {
             supportedAttributes = supported,
             unsupportedAttributes = unsupported,
             children = analyzedChildren,
-            indexInParent = node.indexInParent
+            indexInParent = node.indexInParent,
+            parentTagName = parentTagName
         )
     }
 
-    private fun markAsFallback(node: LayoutNode): AnalyzedNode {
+    private fun markAsFallback(node: LayoutNode, parentTagName: String? = null): AnalyzedNode {
         return AnalyzedNode(
             node = node,
             supportLevel = SupportLevel.FALLBACK,
             supportedAttributes = emptySet(),
             unsupportedAttributes = node.attributes.keys,
             children = emptyList(), // fallback 子树不再递归分析
-            indexInParent = node.indexInParent
+            indexInParent = node.indexInParent,
+            parentTagName = parentTagName
         )
     }
 }

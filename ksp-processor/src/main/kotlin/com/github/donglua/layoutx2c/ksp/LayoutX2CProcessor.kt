@@ -7,6 +7,10 @@ import com.github.donglua.layoutx2c.report.SupportReportGenerator
 import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.TypeSpec
 import java.io.File
 
 /**
@@ -112,6 +116,7 @@ class LayoutX2CProcessor(
 
         // 为每个 layout 生成代码
         val codeGen = LayoutCodeGenerator(packageName, rPackageName)
+        val generatedLayouts = mutableListOf<Pair<String, String>>()
 
         for (layoutName in layoutNames) {
             val xmlFile = File(layoutDir, "$layoutName.xml")
@@ -146,12 +151,54 @@ class LayoutX2CProcessor(
                 )
                 reportFile.writer().use { it.write(report) }
 
+                generatedLayouts += layoutName to fileSpec.name
                 logger.info("Generated factory for layout: $layoutName")
             } catch (e: Exception) {
                 logger.error("Failed to process layout $layoutName: ${e.message}")
             }
         }
 
+        if (generatedLayouts.isNotEmpty()) {
+            generateRegistry(packageName, rPackageName, generatedLayouts)
+        }
+
         return emptyList()
+    }
+
+    private fun generateRegistry(
+        packageName: String,
+        rPackageName: String,
+        generatedLayouts: List<Pair<String, String>>
+    ) {
+        val registerFun = FunSpec.builder("register")
+            .apply {
+                for ((layoutName, factoryClassName) in generatedLayouts) {
+                    addStatement(
+                        "%T.register(R.layout.%L, %T())",
+                        ClassName("com.github.donglua.layoutx2c.runtime", "LayoutX2CRegistry"),
+                        layoutName,
+                        ClassName(packageName, factoryClassName)
+                    )
+                }
+            }
+            .build()
+
+        val fileSpec = FileSpec.builder(packageName, "LayoutX2CGenerated")
+            .addImport(rPackageName, "R")
+            .addType(
+                TypeSpec.objectBuilder("LayoutX2CGenerated")
+                    .addFunction(registerFun)
+                    .build()
+            )
+            .build()
+
+        val file = codeGenerator.createNewFile(
+            Dependencies(false),
+            packageName,
+            fileSpec.name
+        )
+        file.writer().use { writer ->
+            fileSpec.writeTo(writer)
+        }
     }
 }

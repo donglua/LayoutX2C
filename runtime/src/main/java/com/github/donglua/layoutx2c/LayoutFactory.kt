@@ -1,5 +1,6 @@
 package com.github.donglua.layoutx2c.runtime
 
+import android.content.Context
 import android.view.View
 import android.view.ViewGroup
 
@@ -11,8 +12,9 @@ interface LayoutFactory {
 
     /**
      * 创建 View 树。
+     * @param context 创建 View 使用的 Context
      * @param parent 父容器，用于生成正确的 LayoutParams（可为 null）
      * @return 生成的根 View
      */
-    fun create(parent: ViewGroup?): View
+    fun create(context: Context, parent: ViewGroup? = null): View
 }

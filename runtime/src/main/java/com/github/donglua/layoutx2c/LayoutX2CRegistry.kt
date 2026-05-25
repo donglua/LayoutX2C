@@ -13,6 +13,7 @@ import androidx.annotation.LayoutRes
 object LayoutX2CRegistry {
 
     private val factories = mutableMapOf<Int, LayoutFactory>()
+    private val initializedPackages = mutableSetOf<String>()
 
     /**
      * 注册一个 layout 的 generated factory。
@@ -25,8 +26,9 @@ object LayoutX2CRegistry {
      * 尝试用 generated factory 创建 View。
      * 如果没有注册对应的 factory，返回 null（调用方应 fallback 到 LayoutInflater）。
      */
-    fun create(@LayoutRes layoutId: Int, parent: ViewGroup?): View? {
-        return factories[layoutId]?.create(parent)
+    fun create(context: Context, @LayoutRes layoutId: Int, parent: ViewGroup?): View? {
+        ensureGeneratedLayoutsRegistered(context)
+        return factories[layoutId]?.create(context, parent)
     }
 
     /**
@@ -34,6 +36,19 @@ object LayoutX2CRegistry {
      */
     fun has(@LayoutRes layoutId: Int): Boolean {
         return factories.containsKey(layoutId)
+    }
+
+    private fun ensureGeneratedLayoutsRegistered(context: Context) {
+        val packageName = context.packageName
+        if (!initializedPackages.add(packageName)) {
+            return
+        }
+
+        runCatching {
+            val generated = Class.forName("$packageName.generated.LayoutX2CGenerated")
+            val instance = generated.getField("INSTANCE").get(null)
+            generated.getMethod("register").invoke(instance)
+        }
     }
 
     /**
@@ -45,7 +60,7 @@ object LayoutX2CRegistry {
         parent: ViewGroup?,
         attachToRoot: Boolean = false
     ): View {
-        val view = create(layoutId, parent)
+        val view = create(context, layoutId, parent)
         if (view != null) {
             if (attachToRoot && parent != null) {
                 parent.addView(view)

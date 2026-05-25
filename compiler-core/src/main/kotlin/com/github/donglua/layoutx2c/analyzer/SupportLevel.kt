@@ -23,5 +23,6 @@ data class AnalyzedNode(
     val supportedAttributes: Set<String>,
     val unsupportedAttributes: Set<String>,
     val children: List<AnalyzedNode>,
-    val indexInParent: Int
+    val indexInParent: Int,
+    val parentTagName: String?
 )
