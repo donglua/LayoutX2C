@@ -56,6 +56,17 @@ class LayoutAnalyzer {
             "android:theme"
         )
 
+        private val SUPPORTED_SCALE_TYPES = setOf(
+            "center",
+            "centerCrop",
+            "centerInside",
+            "fitCenter",
+            "fitEnd",
+            "fitStart",
+            "fitXY",
+            "matrix"
+        )
+
         /** xmlns 声明，忽略不计 */
         private fun isXmlnsAttribute(name: String) = name.startsWith("xmlns:")
     }
@@ -90,6 +101,10 @@ class LayoutAnalyzer {
         // 3. 检查是否有 ?attr/ 引用（运行时 theme 依赖）
         val hasThemeRef = node.attributes.values.any { it.startsWith("?") }
         if (hasThemeRef) {
+            return markAsFallback(node, parentTagName)
+        }
+
+        if (hasUnsupportedAttributeValue(node)) {
             return markAsFallback(node, parentTagName)
         }
 
@@ -143,6 +158,11 @@ class LayoutAnalyzer {
             "app:tint" -> node.isImageView()
             else -> true
         }
+    }
+
+    private fun hasUnsupportedAttributeValue(node: LayoutNode): Boolean {
+        val scaleType = node.attributes["android:scaleType"]
+        return scaleType != null && node.isImageView() && scaleType !in SUPPORTED_SCALE_TYPES
     }
 
     private fun LayoutNode.isLinearLayout(): Boolean {

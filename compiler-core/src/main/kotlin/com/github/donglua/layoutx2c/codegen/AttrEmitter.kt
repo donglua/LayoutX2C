@@ -137,7 +137,7 @@ class DefaultAttrEmitter : AttrEmitter {
             "fitStart" -> "FIT_START"
             "fitXY" -> "FIT_XY"
             "matrix" -> "MATRIX"
-            else -> "FIT_CENTER"
+            else -> error("Unsupported ImageView scaleType: $value")
         }
     }
 }

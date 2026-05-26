@@ -146,4 +146,20 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("scaleType = ImageView.ScaleType.CENTER_CROP")
         assertThat(generated).contains("imageTintList = ContextCompat.getColorStateList(context, R.color.demo_tint)")
     }
+
+    @Test
+    fun `unknown image scale type falls back instead of emitting default scale type`() {
+        val xml = """
+            <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:scaleType="centercrop" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "image_unknown_scale_type").root)
+        val generated = generator.generate(analyzed, "image_unknown_scale_type", "R.layout.image_unknown_scale_type").toString()
+
+        assertThat(generated).contains("FallbackInflater.inflate(context, R.layout.image_unknown_scale_type, parent)")
+        assertThat(generated).doesNotContain("ScaleType.FIT_CENTER")
+    }
 }

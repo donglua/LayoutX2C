@@ -114,4 +114,20 @@ class LayoutAnalyzerTest {
         assertThat(result.supportLevel).isEqualTo(SupportLevel.PARTIAL)
         assertThat(result.unsupportedAttributes).containsAtLeast("android:orientation", "android:src")
     }
+
+    @Test
+    fun `unknown image scale type returns FALLBACK`() {
+        val xml = """
+            <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:scaleType="centercrop" />
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.unsupportedAttributes).contains("android:scaleType")
+    }
 }
