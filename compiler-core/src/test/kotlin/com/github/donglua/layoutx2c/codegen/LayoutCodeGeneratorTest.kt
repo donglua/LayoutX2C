@@ -80,4 +80,34 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("(root_child0.layoutParams as ViewGroup.MarginLayoutParams).setMargins(0, (8f *")
         assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt(), 0, 0)")
     }
+
+    @Test
+    fun `supported attributes emit current view property code`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="invisible"
+                android:text="@string/app_name"
+                android:paddingStart="4dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="16dp"
+                android:gravity="center_vertical|end" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "supported_attrs").root)
+        val generated = generator.generate(analyzed, "supported_attrs", "R.layout.supported_attrs").toString()
+
+        assertThat(generated).contains("id = R.id.title")
+        assertThat(generated).contains("visibility = View.INVISIBLE")
+        assertThat(generated).contains("text = context.getString(R.string.app_name)")
+        assertThat(generated).contains("setPadding((4f * context.resources.displayMetrics.density + 0.5f).toInt(),")
+        assertThat(generated).contains("(8f *")
+        assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt(), (12f *")
+        assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt(), (16f *")
+        assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt())")
+        assertThat(generated).contains("gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.END")
+    }
 }
