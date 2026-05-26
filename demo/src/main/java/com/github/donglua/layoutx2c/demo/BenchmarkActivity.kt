@@ -23,6 +23,7 @@ class BenchmarkActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_benchmark)
+        applySystemBarInsetsToContent()
 
         val resultView = findViewById<TextView>(R.id.benchmark_result)
 

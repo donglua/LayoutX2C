@@ -36,6 +36,7 @@ class CodeViewerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_code_viewer)
+        applySystemBarInsetsToContent()
 
         setupLayoutSelector()
         setupTabSwitch()
