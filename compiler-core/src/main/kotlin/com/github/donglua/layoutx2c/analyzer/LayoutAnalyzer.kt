@@ -19,6 +19,7 @@ class LayoutAnalyzer {
         val SUPPORTED_VIEWS = setOf(
             "LinearLayout", "android.widget.LinearLayout",
             "FrameLayout", "android.widget.FrameLayout",
+            "RelativeLayout", "android.widget.RelativeLayout",
             "ScrollView", "android.widget.ScrollView",
             "HorizontalScrollView", "android.widget.HorizontalScrollView",
             "TextView", "android.widget.TextView",
@@ -63,6 +64,27 @@ class LayoutAnalyzer {
             "android:layout_marginEnd",
             "android:layout_weight",
             "android:layout_gravity",
+            "android:layout_above",
+            "android:layout_below",
+            "android:layout_toStartOf",
+            "android:layout_toEndOf",
+            "android:layout_toLeftOf",
+            "android:layout_toRightOf",
+            "android:layout_alignStart",
+            "android:layout_alignEnd",
+            "android:layout_alignLeft",
+            "android:layout_alignRight",
+            "android:layout_alignTop",
+            "android:layout_alignBottom",
+            "android:layout_alignParentStart",
+            "android:layout_alignParentEnd",
+            "android:layout_alignParentLeft",
+            "android:layout_alignParentRight",
+            "android:layout_alignParentTop",
+            "android:layout_alignParentBottom",
+            "android:layout_centerInParent",
+            "android:layout_centerHorizontal",
+            "android:layout_centerVertical",
             "android:gravity",
             "android:fillViewport",
             "android:enabled",
@@ -129,10 +151,40 @@ class LayoutAnalyzer {
 
         /** xmlns 声明，忽略不计 */
         private fun isXmlnsAttribute(name: String) = name.startsWith("xmlns:")
+
+        private val RELATIVE_LAYOUT_ID_RULE_ATTRIBUTES = setOf(
+            "android:layout_above",
+            "android:layout_below",
+            "android:layout_toStartOf",
+            "android:layout_toEndOf",
+            "android:layout_toLeftOf",
+            "android:layout_toRightOf",
+            "android:layout_alignStart",
+            "android:layout_alignEnd",
+            "android:layout_alignLeft",
+            "android:layout_alignRight",
+            "android:layout_alignTop",
+            "android:layout_alignBottom"
+        )
+
+        private val RELATIVE_LAYOUT_BOOLEAN_RULE_ATTRIBUTES = setOf(
+            "android:layout_alignParentStart",
+            "android:layout_alignParentEnd",
+            "android:layout_alignParentLeft",
+            "android:layout_alignParentRight",
+            "android:layout_alignParentTop",
+            "android:layout_alignParentBottom",
+            "android:layout_centerInParent",
+            "android:layout_centerHorizontal",
+            "android:layout_centerVertical"
+        )
+
+        private val RELATIVE_LAYOUT_RULE_ATTRIBUTES =
+            RELATIVE_LAYOUT_ID_RULE_ATTRIBUTES + RELATIVE_LAYOUT_BOOLEAN_RULE_ATTRIBUTES
     }
 
     fun analyze(node: LayoutNode): AnalyzedNode {
-        if (hasUnsupportedLayoutParam(node)) {
+        if (hasUnsupportedLayoutParam(node) || hasInvalidRelativeLayoutParam(node)) {
             return markAsFallback(node, parentTagName = null)
         }
         return analyzeNode(node, parentTagName = null)
@@ -144,6 +196,11 @@ class LayoutAnalyzer {
                 attrName.startsWith("android:layout_") &&
                 attrName !in SUPPORTED_ATTRIBUTES
         } || node.children.any(::hasUnsupportedLayoutParam)
+    }
+
+    private fun hasInvalidRelativeLayoutParam(node: LayoutNode, parentTagName: String? = null): Boolean {
+        return hasUnsupportedRelativeLayoutRuleValue(node, parentTagName) ||
+            node.children.any { child -> hasInvalidRelativeLayoutParam(child, node.tagName) }
     }
 
     private fun analyzeNode(node: LayoutNode, parentTagName: String?): AnalyzedNode {
@@ -164,7 +221,7 @@ class LayoutAnalyzer {
             return markAsFallback(node, parentTagName)
         }
 
-        if (hasUnsupportedAttributeValue(node)) {
+        if (hasUnsupportedAttributeValue(node, parentTagName)) {
             return markAsFallback(node, parentTagName)
         }
 
@@ -175,7 +232,7 @@ class LayoutAnalyzer {
         for (attrName in node.attributes.keys) {
             when {
                 isXmlnsAttribute(attrName) -> { /* 忽略 */ }
-                isSupportedAttribute(node, attrName) -> supported.add(attrName)
+                isSupportedAttribute(node, parentTagName, attrName) -> supported.add(attrName)
                 else -> unsupported.add(attrName)
             }
         }
@@ -208,7 +265,7 @@ class LayoutAnalyzer {
         )
     }
 
-    private fun isSupportedAttribute(node: LayoutNode, attrName: String): Boolean {
+    private fun isSupportedAttribute(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
         if (attrName !in SUPPORTED_ATTRIBUTES) return false
         return when (attrName) {
             "android:orientation" -> node.isLinearLayout()
@@ -224,11 +281,12 @@ class LayoutAnalyzer {
             "app:tint" -> node.isImageView()
             "android:gravity" -> node.isLinearLayout() || node.isTextLikeView()
             "android:fillViewport" -> node.isScrollView()
+            in RELATIVE_LAYOUT_RULE_ATTRIBUTES -> isRelativeLayoutTag(parentTagName)
             else -> true
         }
     }
 
-    private fun hasUnsupportedAttributeValue(node: LayoutNode): Boolean {
+    private fun hasUnsupportedAttributeValue(node: LayoutNode, parentTagName: String?): Boolean {
         val scaleType = node.attributes["android:scaleType"]
         return scaleType != null && node.isImageView() && !ImageScaleTypes.supports(scaleType) ||
             node.isTextLikeView() && node.attributes["android:textSize"]?.let { !isSupportedDimension(it) } == true ||
@@ -242,7 +300,28 @@ class LayoutAnalyzer {
             node.attributes["android:elevation"]?.let { !isSupportedDimension(it) } == true ||
             node.attributes["android:minWidth"]?.let { !isSupportedDimension(it) } == true ||
             node.attributes["android:minHeight"]?.let { !isSupportedDimension(it) } == true ||
-            node.isScrollView() && node.attributes["android:fillViewport"]?.let { !isSupportedBoolean(it) } == true
+            node.isScrollView() && node.attributes["android:fillViewport"]?.let { !isSupportedBoolean(it) } == true ||
+            hasUnsupportedRelativeLayoutRuleValue(node, parentTagName)
+    }
+
+    private fun hasUnsupportedRelativeLayoutRuleValue(node: LayoutNode, parentTagName: String?): Boolean {
+        for ((attrName, value) in node.attributes) {
+            if (attrName in RELATIVE_LAYOUT_ID_RULE_ATTRIBUTES) {
+                if (!isRelativeLayoutTag(parentTagName) || !isSupportedIdReference(value)) return true
+            }
+            if (attrName in RELATIVE_LAYOUT_BOOLEAN_RULE_ATTRIBUTES) {
+                if (!isRelativeLayoutTag(parentTagName) || !isSupportedBoolean(value)) return true
+            }
+        }
+        return false
+    }
+
+    private fun isSupportedIdReference(value: String): Boolean {
+        return value.startsWith("@id/") || value.startsWith("@+id/")
+    }
+
+    private fun isRelativeLayoutTag(tagName: String?): Boolean {
+        return tagName == "RelativeLayout" || tagName == "android.widget.RelativeLayout"
     }
 
     private fun isSupportedDimension(value: String): Boolean {

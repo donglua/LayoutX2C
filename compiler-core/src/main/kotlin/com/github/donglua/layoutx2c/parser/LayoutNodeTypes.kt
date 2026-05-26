@@ -8,6 +8,10 @@ internal fun LayoutNode.isFrameLayout(): Boolean {
     return tagName == "FrameLayout" || tagName == "android.widget.FrameLayout"
 }
 
+internal fun LayoutNode.isRelativeLayout(): Boolean {
+    return tagName == "RelativeLayout" || tagName == "android.widget.RelativeLayout"
+}
+
 internal fun LayoutNode.isTextView(): Boolean {
     return tagName == "TextView" || tagName == "android.widget.TextView"
 }

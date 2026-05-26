@@ -63,4 +63,60 @@ class FallbackSemanticsRegressionTest {
         )
         assertThat(generated).doesNotContain("val root = LinearLayout(context).apply {")
     }
+
+    @Test
+    fun `unsupported relative rule escalates whole layout to FALLBACK`() {
+        val xml = """
+            <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignWithParentIfMissing="true"
+                    android:text="Title" />
+            </RelativeLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "unsupported_relative_rule").root)
+        val generated = generator.generate(
+            analyzed,
+            "unsupported_relative_rule",
+            "R.layout.unsupported_relative_rule"
+        ).toString()
+
+        assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(generated).contains(
+            "val root = FallbackInflater.inflate(context, R.layout.unsupported_relative_rule, parent)"
+        )
+        assertThat(generated).doesNotContain("val root = RelativeLayout(context)")
+    }
+
+    @Test
+    fun `invalid relative rule value escalates whole layout to FALLBACK`() {
+        val xml = """
+            <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="title"
+                    android:text="Title" />
+            </RelativeLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "invalid_relative_rule").root)
+        val generated = generator.generate(
+            analyzed,
+            "invalid_relative_rule",
+            "R.layout.invalid_relative_rule"
+        ).toString()
+
+        assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(generated).contains(
+            "val root = FallbackInflater.inflate(context, R.layout.invalid_relative_rule, parent)"
+        )
+        assertThat(generated).doesNotContain("addRule(RelativeLayout.BELOW")
+    }
 }

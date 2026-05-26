@@ -288,4 +288,36 @@ class LayoutAnalyzerTest {
         assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
         assertThat(result.unsupportedAttributes).contains("android:textStyle")
     }
+
+    @Test
+    fun `relative layout with common rules returns FULL`() {
+        val xml = """
+            <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Title" />
+                <TextView
+                    android:id="@+id/subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/title"
+                    android:layout_toEndOf="@id/title"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="Subtitle" />
+            </RelativeLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children).hasSize(2)
+        assertThat(result.children.map { it.supportLevel }).containsExactly(SupportLevel.FULL, SupportLevel.FULL)
+        assertThat(result.children[1].unsupportedAttributes).isEmpty()
+    }
 }

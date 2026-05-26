@@ -504,4 +504,65 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX, context.resources.getDimension(R.dimen.title_size))")
         assertThat(generated).contains("setBackgroundResource(R.drawable.title_background)")
     }
+
+    @Test
+    fun `relative layout emits relative layout params and addRule calls`() {
+        val xml = """
+            <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Title" />
+                <TextView
+                    android:id="@+id/badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/title"
+                    android:layout_alignParentEnd="true"
+                    android:text="Badge" />
+                <Button
+                    android:id="@+id/action"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/title"
+                    android:layout_centerVertical="true"
+                    android:text="Action" />
+            </RelativeLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "relative_rules").root)
+        val generated = generator.generate(analyzed, "relative_rules", "R.layout.relative_rules").toString()
+
+        assertThat(generated).contains("import android.widget.RelativeLayout")
+        assertThat(generated).contains("val root = RelativeLayout(context)")
+        assertThat(generated).contains("root_child1.layoutParams = RelativeLayout.LayoutParams(")
+        assertThat(generated).contains("root_child2.layoutParams = RelativeLayout.LayoutParams(")
+        assertThat(generated).contains("root_child1.layoutParams as RelativeLayout.LayoutParams")
+        assertThat(generated).contains("RelativeLayout.BELOW")
+        assertThat(generated).contains("RelativeLayout.ALIGN_PARENT_END")
+        assertThat(generated).contains("root_child2.layoutParams as RelativeLayout.LayoutParams")
+        assertThat(generated).contains("RelativeLayout.END_OF")
+        assertThat(generated).contains("RelativeLayout.CENTER_VERTICAL")
+        assertThat(generated).contains("R.id.title")
+        assertThat(generated).doesNotContain("root_child1.layoutParams = ViewGroup.MarginLayoutParams(")
+    }
+
+    @Test
+    fun `root layout params use relative layout when parent is relative layout`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Title" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "relative_root_params").root)
+        val generated = generator.generate(analyzed, "relative_root_params", "R.layout.relative_root_params").toString()
+
+        assertThat(generated).contains("parent?.let { parentView ->")
+        assertThat(generated).contains("is RelativeLayout -> RelativeLayout.LayoutParams(")
+    }
 }
