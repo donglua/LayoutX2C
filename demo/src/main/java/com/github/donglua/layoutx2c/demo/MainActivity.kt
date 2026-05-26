@@ -39,7 +39,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun showRegistryStatus() {
         val resultView = findViewById<TextView>(R.id.result)
-        val layouts = listOf("activity_main", "activity_simple", "activity_nested", "activity_image", "activity_scroll")
+        val layouts = listOf(
+            "activity_main",
+            "activity_simple",
+            "activity_nested",
+            "activity_image",
+            "activity_scroll",
+            "activity_form"
+        )
         val registered = layouts.filter { name ->
             val resId = resources.getIdentifier(name, "layout", packageName)
             resId != 0 && LayoutX2CRegistry.has(this, resId)
@@ -76,6 +83,12 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_scroll_layout).setOnClickListener {
             startActivity(
                 PreviewActivity.intent(this, R.layout.activity_scroll, "activity_scroll")
+            )
+        }
+
+        findViewById<Button>(R.id.btn_form_layout).setOnClickListener {
+            startActivity(
+                PreviewActivity.intent(this, R.layout.activity_form, "activity_form")
             )
         }
     }

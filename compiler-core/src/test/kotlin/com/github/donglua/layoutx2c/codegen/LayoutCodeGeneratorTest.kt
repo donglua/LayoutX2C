@@ -242,6 +242,117 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `button emits app compat button and text-like attrs`() {
+        val xml = """
+            <Button xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/submit"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/app_name"
+                android:textColor="#112233"
+                android:textStyle="bold"
+                android:enabled="false"
+                android:clickable="true"
+                android:focusable="false"
+                android:elevation="2dp"
+                android:minWidth="120dp"
+                android:minHeight="40dp" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "button_attrs").root)
+        val generated = generator.generate(analyzed, "button_attrs", "R.layout.button_attrs").toString()
+
+        assertThat(generated).contains("val root = AppCompatButton(context).apply {")
+        assertThat(generated).contains("id = R.id.submit")
+        assertThat(generated).contains("text = context.getString(R.string.app_name)")
+        assertThat(generated).contains("setTextColor(Color.parseColor(\"#112233\"))")
+        assertThat(generated).contains("setTypeface(typeface, android.graphics.Typeface.BOLD)")
+        assertThat(generated).contains("isEnabled = false")
+        assertThat(generated).contains("isClickable = true")
+        assertThat(generated).contains("isFocusable = false")
+        assertThat(generated).contains("elevation = (2f * context.resources.displayMetrics.density)")
+        assertThat(generated).contains("minimumWidth = (120f * context.resources.displayMetrics.density + 0.5f).toInt()")
+        assertThat(generated).contains("minimumHeight = (40f * context.resources.displayMetrics.density + 0.5f).toInt()")
+    }
+
+    @Test
+    fun `edit text emits hint and input type`() {
+        val xml = """
+            <EditText xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/app_name"
+                android:inputType="textPersonName|textCapWords"
+                android:textSize="16sp" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "edit_text_attrs").root)
+        val generated = generator.generate(analyzed, "edit_text_attrs", "R.layout.edit_text_attrs").toString()
+
+        assertThat(generated).contains("val root = AppCompatEditText(context).apply {")
+        assertThat(generated).contains("id = R.id.name")
+        assertThat(generated).contains("hint = context.getString(R.string.app_name)")
+        assertThat(generated).contains("inputType = android.text.InputType.TYPE_CLASS_TEXT or")
+        assertThat(generated).contains("android.text.InputType.TYPE_TEXT_VARIATION_PERSON_NAME or")
+        assertThat(generated).contains("android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS")
+        assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX,")
+    }
+
+    @Test
+    fun `number input type flag includes number class`() {
+        val xml = """
+            <EditText xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "edit_text_number_decimal").root)
+        val generated = generator.generate(analyzed, "edit_text_number_decimal", "R.layout.edit_text_number_decimal").toString()
+
+        assertThat(generated).contains("inputType = android.text.InputType.TYPE_CLASS_NUMBER or")
+        assertThat(generated).contains("android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL")
+    }
+
+    @Test
+    fun `unsupported input type combination falls back instead of generating invalid code`() {
+        val xml = """
+            <EditText xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPersonName|textEmailAddress" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "edit_text_invalid_input_type").root)
+        val generated = generator.generate(
+            analyzed,
+            "edit_text_invalid_input_type",
+            "R.layout.edit_text_invalid_input_type"
+        ).toString()
+
+        assertThat(generated).contains("FallbackInflater.inflate(context, R.layout.edit_text_invalid_input_type, parent)")
+        assertThat(generated).doesNotContain("TYPE_TEXT_VARIATION_PERSON_NAME")
+        assertThat(generated).doesNotContain("TYPE_TEXT_VARIATION_EMAIL_ADDRESS")
+    }
+
+    @Test
+    fun `gravity is unsupported on plain view and not emitted`() {
+        val xml = """
+            <View xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "view_gravity").root)
+        val generated = generator.generate(analyzed, "view_gravity", "R.layout.view_gravity").toString()
+
+        assertThat(analyzed.unsupportedAttributes).contains("android:gravity")
+        assertThat(generated).doesNotContain("gravity = android.view.Gravity.CENTER")
+    }
+
+    @Test
     fun `orientation emits only for linear layout nodes`() {
         val xml = """
             <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"

@@ -73,6 +73,30 @@ interface LayoutX2CConfig
 只有在资源目录、`R` 包名或生成包名不符合默认推导时，才需要手动传：
 `layoutx2c.resDir`、`layoutx2c.rPackageName`、`layoutx2c.packageName`。
 
+## 当前支持范围
+
+支持的 View：
+
+- `LinearLayout`, `FrameLayout`
+- `ScrollView`, `HorizontalScrollView`
+- `TextView`, `Button`, `EditText`
+- `ImageView`, `androidx.appcompat.widget.AppCompatImageView`
+- `View`
+
+高频属性支持：
+
+- 通用：`id`, `visibility`, `background`, `padding*`, `enabled`, `clickable`, `focusable`,
+  `elevation`, `minWidth`, `minHeight`
+- LayoutParams：`layout_width`, `layout_height`, `layout_margin*`, `layout_weight`,
+  `layout_gravity`
+- Text-like：`text`, `textColor`, `textSize`, `textStyle`, `gravity`
+- EditText：`hint`, 常见 `inputType`
+- ImageView：`src`, `scaleType`, `tint`
+- ScrollView：`fillViewport`
+
+未支持的 View 会 fallback 到原生 `LayoutInflater`；不安全或无法等价生成的属性值会触发
+layout/subtree fallback。
+
 ## License
 
 Apache License 2.0

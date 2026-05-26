@@ -9,6 +9,7 @@ object LayoutX2CConfig {
         R.layout.activity_simple,
         R.layout.activity_nested,
         R.layout.activity_image,
-        R.layout.activity_scroll
+        R.layout.activity_scroll,
+        R.layout.activity_form
     )
 }

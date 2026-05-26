@@ -12,6 +12,22 @@ internal fun LayoutNode.isTextView(): Boolean {
     return tagName == "TextView" || tagName == "android.widget.TextView"
 }
 
+internal fun LayoutNode.isButton(): Boolean {
+    return tagName == "Button" ||
+        tagName == "android.widget.Button" ||
+        tagName == "androidx.appcompat.widget.AppCompatButton"
+}
+
+internal fun LayoutNode.isEditText(): Boolean {
+    return tagName == "EditText" ||
+        tagName == "android.widget.EditText" ||
+        tagName == "androidx.appcompat.widget.AppCompatEditText"
+}
+
+internal fun LayoutNode.isTextLikeView(): Boolean {
+    return isTextView() || isButton() || isEditText()
+}
+
 internal fun LayoutNode.isImageView(): Boolean {
     return tagName == "ImageView" ||
         tagName == "android.widget.ImageView" ||

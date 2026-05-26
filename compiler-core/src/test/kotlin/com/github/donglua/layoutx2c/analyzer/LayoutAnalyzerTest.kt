@@ -92,6 +92,89 @@ class LayoutAnalyzerTest {
     }
 
     @Test
+    fun `button and edit text are supported text-like views`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <Button
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Submit"
+                    android:enabled="false" />
+                <EditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:hint="Name"
+                    android:inputType="textPersonName" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[1].supportLevel).isEqualTo(SupportLevel.FULL)
+    }
+
+    @Test
+    fun `input type is edit text only and unsupported values fallback`() {
+        val unsupportedOnTextView = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="text" />
+        """.trimIndent()
+        val invalidEditText = """
+            <EditText xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="textWeMadeUp" />
+        """.trimIndent()
+
+        val textViewResult = analyzer.analyze(parser.parse(unsupportedOnTextView, "test").root)
+        val editTextResult = analyzer.analyze(parser.parse(invalidEditText, "test").root)
+
+        assertThat(textViewResult.supportLevel).isEqualTo(SupportLevel.PARTIAL)
+        assertThat(textViewResult.unsupportedAttributes).contains("android:inputType")
+        assertThat(editTextResult.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(editTextResult.unsupportedAttributes).contains("android:inputType")
+    }
+
+    @Test
+    fun `input type rejects mutually exclusive class and variation combinations`() {
+        val twoTextVariations = """
+            <EditText xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="textPersonName|textEmailAddress" />
+        """.trimIndent()
+        val twoClasses = """
+            <EditText xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="text|number" />
+        """.trimIndent()
+        val noneWithFlag = """
+            <EditText xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="none|textCapWords" />
+        """.trimIndent()
+
+        val twoTextVariationsResult = analyzer.analyze(parser.parse(twoTextVariations, "test").root)
+        val twoClassesResult = analyzer.analyze(parser.parse(twoClasses, "test").root)
+        val noneWithFlagResult = analyzer.analyze(parser.parse(noneWithFlag, "test").root)
+
+        assertThat(twoTextVariationsResult.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(twoClassesResult.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(noneWithFlagResult.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+    }
+
+    @Test
     fun `style attribute forces FALLBACK`() {
         val xml = """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"

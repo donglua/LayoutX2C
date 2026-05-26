@@ -2,10 +2,11 @@ package com.github.donglua.layoutx2c.analyzer
 
 import com.github.donglua.layoutx2c.codegen.ImageScaleTypes
 import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.isEditText
 import com.github.donglua.layoutx2c.parser.isImageView
 import com.github.donglua.layoutx2c.parser.isLinearLayout
 import com.github.donglua.layoutx2c.parser.isScrollView
-import com.github.donglua.layoutx2c.parser.isTextView
+import com.github.donglua.layoutx2c.parser.isTextLikeView
 
 /**
  * 分析 LayoutTree 中每个节点的支持度。
@@ -21,6 +22,8 @@ class LayoutAnalyzer {
             "ScrollView", "android.widget.ScrollView",
             "HorizontalScrollView", "android.widget.HorizontalScrollView",
             "TextView", "android.widget.TextView",
+            "Button", "android.widget.Button", "androidx.appcompat.widget.AppCompatButton",
+            "EditText", "android.widget.EditText", "androidx.appcompat.widget.AppCompatEditText",
             "ImageView", "android.widget.ImageView",
             "androidx.appcompat.widget.AppCompatImageView",
             "View", "android.view.View"
@@ -37,6 +40,8 @@ class LayoutAnalyzer {
             "android:textColor",
             "android:textSize",
             "android:textStyle",
+            "android:hint",
+            "android:inputType",
             "android:background",
             "android:src",
             "android:scaleType",
@@ -59,7 +64,13 @@ class LayoutAnalyzer {
             "android:layout_weight",
             "android:layout_gravity",
             "android:gravity",
-            "android:fillViewport"
+            "android:fillViewport",
+            "android:enabled",
+            "android:clickable",
+            "android:focusable",
+            "android:elevation",
+            "android:minWidth",
+            "android:minHeight"
         )
 
         /** 遇到这些属性直接标记整个节点为 FALLBACK */
@@ -156,11 +167,14 @@ class LayoutAnalyzer {
             "android:text",
             "android:textColor",
             "android:textSize",
-            "android:textStyle" -> node.isTextView()
+            "android:textStyle" -> node.isTextLikeView()
+            "android:hint",
+            "android:inputType" -> node.isEditText()
             "android:src",
             "android:scaleType",
             "android:tint",
             "app:tint" -> node.isImageView()
+            "android:gravity" -> node.isLinearLayout() || node.isTextLikeView()
             "android:fillViewport" -> node.isScrollView()
             else -> true
         }
@@ -169,10 +183,17 @@ class LayoutAnalyzer {
     private fun hasUnsupportedAttributeValue(node: LayoutNode): Boolean {
         val scaleType = node.attributes["android:scaleType"]
         return scaleType != null && node.isImageView() && !ImageScaleTypes.supports(scaleType) ||
-            node.isTextView() && node.attributes["android:textSize"]?.let { !isSupportedDimension(it) } == true ||
-            node.isTextView() && node.attributes["android:textStyle"]?.let { !isSupportedTextStyle(it) } == true ||
-            node.isTextView() && node.attributes["android:textColor"]?.let { !isSupportedColor(it) } == true ||
+            node.isTextLikeView() && node.attributes["android:textSize"]?.let { !isSupportedDimension(it) } == true ||
+            node.isTextLikeView() && node.attributes["android:textStyle"]?.let { !isSupportedTextStyle(it) } == true ||
+            node.isTextLikeView() && node.attributes["android:textColor"]?.let { !isSupportedColor(it) } == true ||
+            node.isEditText() && node.attributes["android:inputType"]?.let { !isSupportedInputType(it) } == true ||
             node.attributes["android:background"]?.let { !isSupportedBackground(it) } == true ||
+            node.attributes["android:enabled"]?.let { !isSupportedBoolean(it) } == true ||
+            node.attributes["android:clickable"]?.let { !isSupportedBoolean(it) } == true ||
+            node.attributes["android:focusable"]?.let { !isSupportedBoolean(it) } == true ||
+            node.attributes["android:elevation"]?.let { !isSupportedDimension(it) } == true ||
+            node.attributes["android:minWidth"]?.let { !isSupportedDimension(it) } == true ||
+            node.attributes["android:minHeight"]?.let { !isSupportedDimension(it) } == true ||
             node.isScrollView() && node.attributes["android:fillViewport"]?.let { !isSupportedBoolean(it) } == true
     }
 
@@ -198,5 +219,60 @@ class LayoutAnalyzer {
 
     private fun isSupportedBoolean(value: String): Boolean {
         return value == "true" || value == "false"
+    }
+
+    private fun isSupportedInputType(value: String): Boolean {
+        val parts = value.split("|").map { it.trim() }
+        val supportedParts = setOf(
+            "none",
+            "text",
+            "textCapCharacters",
+            "textCapWords",
+            "textCapSentences",
+            "textAutoCorrect",
+            "textAutoComplete",
+            "textMultiLine",
+            "textNoSuggestions",
+            "textEmailAddress",
+            "textEmailSubject",
+            "textUri",
+            "textPersonName",
+            "textPassword",
+            "textVisiblePassword",
+            "textWebEditText",
+            "textFilter",
+            "textPostalAddress",
+            "number",
+            "numberSigned",
+            "numberDecimal",
+            "numberPassword",
+            "phone",
+            "datetime",
+            "date",
+            "time"
+        )
+        if (parts.any { it !in supportedParts }) return false
+        if ("none" in parts) return parts.size == 1
+
+        val classOrVariationParts = setOf(
+            "text",
+            "textEmailAddress",
+            "textEmailSubject",
+            "textUri",
+            "textPersonName",
+            "textPassword",
+            "textVisiblePassword",
+            "textWebEditText",
+            "textFilter",
+            "textPostalAddress",
+            "number",
+            "numberPassword",
+            "phone",
+            "datetime",
+            "date",
+            "time"
+        )
+        val classOrVariationCount = parts.count { it in classOrVariationParts }
+        return classOrVariationCount <= 1
     }
 }

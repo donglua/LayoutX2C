@@ -26,6 +26,10 @@ class DefaultViewEmitter : ViewEmitter {
                 ClassName("android.widget", "HorizontalScrollView")
             "TextView", "android.widget.TextView" ->
                 ClassName("androidx.appcompat.widget", "AppCompatTextView")
+            "Button", "android.widget.Button", "androidx.appcompat.widget.AppCompatButton" ->
+                ClassName("androidx.appcompat.widget", "AppCompatButton")
+            "EditText", "android.widget.EditText", "androidx.appcompat.widget.AppCompatEditText" ->
+                ClassName("androidx.appcompat.widget", "AppCompatEditText")
             "ImageView", "android.widget.ImageView", "androidx.appcompat.widget.AppCompatImageView" ->
                 ClassName("androidx.appcompat.widget", "AppCompatImageView")
             "View", "android.view.View" ->
