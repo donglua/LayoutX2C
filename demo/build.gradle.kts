@@ -30,7 +30,42 @@ android {
         }
     }
 
+    // =========================================================================
+    // NOTE: The following configuration is ONLY used for the "Code Viewer" 
+    // feature in this demo app, which displays the generated code on screen.
+    // You DO NOT need this in your own project to use LayoutX2C!
+    // =========================================================================
+    sourceSets {
+        getByName("debug") {
+            assets.srcDir("build/generated/custom_assets")
+        }
+    }
 }
+
+val copySourceCodeForDemo by tasks.registering(Copy::class) {
+    // Read the original XML files
+    from("src/main/res/layout") {
+        include("demo_*.xml")
+        into("xml")
+    }
+    // Read the generated Kotlin files (assuming debug build)
+    from("build/generated/ksp/debug/kotlin/com/github/donglua/layoutx2c/demo/generated") {
+        include("*.kt")
+        into("kotlin")
+    }
+    into(layout.buildDirectory.dir("generated/custom_assets/code"))
+    
+    // We need to wait for KSP to generate the code first
+    dependsOn("kspDebugKotlin")
+}
+
+tasks.whenTaskAdded {
+    if (name == "generateDebugAssets") {
+        dependsOn(copySourceCodeForDemo)
+    }
+}
+// =========================================================================
+
 
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->

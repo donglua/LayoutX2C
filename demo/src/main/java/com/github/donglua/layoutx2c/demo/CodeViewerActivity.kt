@@ -74,63 +74,21 @@ class CodeViewerActivity : AppCompatActivity() {
     }
 
     private fun loadXml(demo: DemoEntry) {
-        val xml = runCatching {
-            resources.openRawResource(demo.xmlResId).bufferedReader().readText()
-        }.getOrElse {
-            // Fallback: read from res/layout via asset path (won't work at runtime for layout res IDs,
-            // so we surface a helpful message)
-            readXmlFromDisk(demo.layoutName)
-        }
+        val xml = readAsset("code/xml/${demo.layoutName}.xml")
+            ?: "<!-- XML source not available at runtime.\nFile: res/layout/${demo.layoutName}.xml -->"
         findViewById<TextView>(R.id.code_xml).text = xml
     }
 
-    private fun readXmlFromDisk(layoutName: String): String {
-        // Try to find the XML source from the project source tree (only works on emulator/device
-        // with a debug build where sources are on-disk at a predictable location).
-        val candidates = listOf(
-            File(filesDir, "../../../../../../demo/src/main/res/layout/${layoutName}.xml"),
-        )
-        for (f in candidates) {
-            if (f.exists()) return f.readText()
-        }
-        return "<!-- XML source not available at runtime.\nFile: res/layout/${layoutName}.xml -->"
-    }
-
     private fun loadKotlin(demo: DemoEntry) {
-        val code = findGeneratedKotlin(demo.generatedClassName)
+        val code = readAsset("code/kotlin/${demo.generatedClassName}.kt")
+            ?: getString(R.string.code_viewer_no_source)
         findViewById<TextView>(R.id.code_kotlin).text = code
     }
 
-    /**
-     * Search common KSP output directories for the generated .kt file.
-     * Works when running on a device/emulator with a debug build where the
-     * build directory is accessible via the external storage or a known path.
-     *
-     * Falls back to a helpful hint if the file can't be found.
-     */
-    private fun findGeneratedKotlin(className: String): String {
-        val fileName = "$className.kt"
-
-        // On a real device the build/ dir isn't accessible, but on an emulator
-        // with a connected project we can try the external files dir as a staging area.
-        // The primary approach: look relative to the app's data dir for any pre-staged file.
-        val staged = File(filesDir, "generated/$fileName")
-        if (staged.exists()) return staged.readText()
-
-        // Secondary: search common KSP output paths relative to the project root
-        // (only works on host-side JVM tests or when running from Android Studio with
-        //  a shared filesystem — not typical for a production APK).
-        val kspCandidates = listOf(
-            "demo/build/generated/ksp/debug/kotlin/com/github/donglua/layoutx2c/demo/generated/$fileName",
-            "demo/build/generated/ksp/release/kotlin/com/github/donglua/layoutx2c/demo/generated/$fileName",
-        )
-        for (rel in kspCandidates) {
-            // Try from possible project roots accessible at runtime
-            val f = File("/data/local/tmp/layoutx2c/$rel")
-            if (f.exists()) return f.readText()
-        }
-
-        return getString(R.string.code_viewer_no_source)
+    private fun readAsset(path: String): String? {
+        return runCatching {
+            assets.open(path).bufferedReader().use { it.readText() }
+        }.getOrNull()
     }
 
     private fun applyTabVisibility() {
