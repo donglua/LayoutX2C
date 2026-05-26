@@ -2,4 +2,11 @@
 <resources>
     <color name="demo_image_tint">#3367D6</color>
     <color name="demo_text_primary">#202124</color>
+    <color name="code_viewer_chip_text">#202124</color>
+    <color name="code_viewer_chip_text_selected">#FFFFFF</color>
+    <color name="code_viewer_muted_text">#5F6368</color>
+    <color name="code_viewer_code_background">#FFFFFF</color>
+    <color name="code_viewer_gutter_text">#80868B</color>
+    <color name="code_viewer_tab_text">#202124</color>
+    <color name="code_viewer_tab_text_selected">#FFFFFF</color>
 </resources>

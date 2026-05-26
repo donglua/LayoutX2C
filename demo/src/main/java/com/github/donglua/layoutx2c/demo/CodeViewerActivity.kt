@@ -3,37 +3,36 @@ package com.github.donglua.layoutx2c.demo
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
-import android.widget.ScrollView
+import android.widget.HorizontalScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import java.io.File
 
 /**
  * Code Viewer：对照展示 XML 源码与 KSP 生成的 Kotlin 代码。
- *
- * XML 从 assets（未来方案）或 raw resource 读取；
- * Kotlin 从 build/generated/ksp/ 目录中查找对应文件。
  */
 class CodeViewerActivity : AppCompatActivity() {
 
     // 每个 demo 对应的 xml res id 和 layout 名称（用于查找生成文件）
     private data class DemoEntry(
-        val label: String,
         val layoutName: String,   // e.g. "demo_simple"
-        val xmlResId: Int,
         val generatedClassName: String // KotlinPoet 生成的类名
     )
 
+    private enum class CodeTab {
+        Xml,
+        Kotlin
+    }
+
     private val demos = listOf(
-        DemoEntry("Simple", "demo_simple", R.layout.demo_simple, "Layout_DemoSimple"),
-        DemoEntry("Nested", "demo_nested", R.layout.demo_nested, "Layout_DemoNested"),
-        DemoEntry("Form",   "demo_form",   R.layout.demo_form,   "Layout_DemoForm"),
-        DemoEntry("Relative", "demo_relative", R.layout.demo_relative, "Layout_DemoRelative"),
-        DemoEntry("Recycler", "demo_recycler", R.layout.demo_recycler, "Layout_DemoRecycler"),
+        DemoEntry("demo_simple", "Layout_DemoSimple"),
+        DemoEntry("demo_nested", "Layout_DemoNested"),
+        DemoEntry("demo_form", "Layout_DemoForm"),
+        DemoEntry("demo_relative", "Layout_DemoRelative"),
+        DemoEntry("demo_recycler", "Layout_DemoRecycler"),
     )
 
     private var currentDemo = demos[0]
-    private var showingXml = true
+    private var currentTab = CodeTab.Xml
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,17 +45,16 @@ class CodeViewerActivity : AppCompatActivity() {
     }
 
     private fun setupLayoutSelector() {
-        val btnSimple = findViewById<Button>(R.id.btn_demo_simple)
-        val btnNested = findViewById<Button>(R.id.btn_demo_nested)
-        val btnForm   = findViewById<Button>(R.id.btn_demo_form)
-        val btnRelative = findViewById<Button>(R.id.btn_demo_relative)
-        val btnRecycler = findViewById<Button>(R.id.btn_demo_recycler)
-
-        btnSimple.setOnClickListener { showDemo(demos[0]) }
-        btnNested.setOnClickListener { showDemo(demos[1]) }
-        btnForm.setOnClickListener   { showDemo(demos[2]) }
-        btnRelative.setOnClickListener { showDemo(demos[3]) }
-        btnRecycler.setOnClickListener { showDemo(demos[4]) }
+        val buttons = listOf(
+            findViewById<Button>(R.id.btn_demo_simple),
+            findViewById<Button>(R.id.btn_demo_nested),
+            findViewById<Button>(R.id.btn_demo_form),
+            findViewById<Button>(R.id.btn_demo_relative),
+            findViewById<Button>(R.id.btn_demo_recycler)
+        )
+        buttons.zip(demos).forEach { (button, demo) ->
+            button.setOnClickListener { showDemo(demo) }
+        }
     }
 
     private fun setupTabSwitch() {
@@ -64,11 +62,11 @@ class CodeViewerActivity : AppCompatActivity() {
         val tabKotlin = findViewById<Button>(R.id.tab_kotlin)
 
         tabXml.setOnClickListener {
-            showingXml = true
+            currentTab = CodeTab.Xml
             applyTabVisibility()
         }
         tabKotlin.setOnClickListener {
-            showingXml = false
+            currentTab = CodeTab.Kotlin
             applyTabVisibility()
         }
     }
@@ -83,13 +81,41 @@ class CodeViewerActivity : AppCompatActivity() {
     private fun loadXml(demo: DemoEntry) {
         val xml = readAsset("code/xml/${demo.layoutName}.xml")
             ?: "<!-- XML source not available at runtime.\nFile: res/layout/${demo.layoutName}.xml -->"
-        findViewById<TextView>(R.id.code_xml).text = xml
+        bindCode(
+            title = "res/layout/${demo.layoutName}.xml",
+            formatted = CodeFormatter.withLineNumbers(xml),
+            titleViewId = R.id.title_xml,
+            summaryViewId = R.id.summary_xml,
+            lineNumbersViewId = R.id.line_numbers_xml,
+            codeViewId = R.id.code_xml
+        )
     }
 
     private fun loadKotlin(demo: DemoEntry) {
         val code = readAsset("code/kotlin/${demo.generatedClassName}.kt")
             ?: getString(R.string.code_viewer_no_source)
-        findViewById<TextView>(R.id.code_kotlin).text = code
+        bindCode(
+            title = "${demo.generatedClassName}.kt",
+            formatted = CodeFormatter.withLineNumbers(code),
+            titleViewId = R.id.title_kotlin,
+            summaryViewId = R.id.summary_kotlin,
+            lineNumbersViewId = R.id.line_numbers_kotlin,
+            codeViewId = R.id.code_kotlin
+        )
+    }
+
+    private fun bindCode(
+        title: String,
+        formatted: CodeFormatter.FormattedCode,
+        titleViewId: Int,
+        summaryViewId: Int,
+        lineNumbersViewId: Int,
+        codeViewId: Int
+    ) {
+        findViewById<TextView>(titleViewId).text = title
+        findViewById<TextView>(summaryViewId).text = formatted.summary
+        findViewById<TextView>(lineNumbersViewId).text = formatted.lineNumbers
+        findViewById<TextView>(codeViewId).text = formatted.code
     }
 
     private fun readAsset(path: String): String? {
@@ -99,9 +125,34 @@ class CodeViewerActivity : AppCompatActivity() {
     }
 
     private fun applyTabVisibility() {
-        val scrollXml    = findViewById<ScrollView>(R.id.scroll_xml)
-        val scrollKotlin = findViewById<ScrollView>(R.id.scroll_kotlin)
-        scrollXml.visibility    = if (showingXml) View.VISIBLE else View.GONE
-        scrollKotlin.visibility = if (showingXml) View.GONE    else View.VISIBLE
+        val panelXml = findViewById<View>(R.id.panel_xml)
+        val panelKotlin = findViewById<View>(R.id.panel_kotlin)
+        val tabXml = findViewById<Button>(R.id.tab_xml)
+        val tabKotlin = findViewById<Button>(R.id.tab_kotlin)
+
+        panelXml.visibility = if (currentTab == CodeTab.Xml) View.VISIBLE else View.GONE
+        panelKotlin.visibility = if (currentTab == CodeTab.Kotlin) View.VISIBLE else View.GONE
+        tabXml.isSelected = currentTab == CodeTab.Xml
+        tabKotlin.isSelected = currentTab == CodeTab.Kotlin
+        updateDemoSelection()
+        resetHorizontalScroll()
+    }
+
+    private fun updateDemoSelection() {
+        val buttonPairs = listOf(
+            R.id.btn_demo_simple to demos[0],
+            R.id.btn_demo_nested to demos[1],
+            R.id.btn_demo_form to demos[2],
+            R.id.btn_demo_relative to demos[3],
+            R.id.btn_demo_recycler to demos[4]
+        )
+        buttonPairs.forEach { (buttonId, demo) ->
+            findViewById<Button>(buttonId).isSelected = demo == currentDemo
+        }
+    }
+
+    private fun resetHorizontalScroll() {
+        findViewById<HorizontalScrollView>(R.id.code_hscroll_xml).scrollTo(0, 0)
+        findViewById<HorizontalScrollView>(R.id.code_hscroll_kotlin).scrollTo(0, 0)
     }
 }

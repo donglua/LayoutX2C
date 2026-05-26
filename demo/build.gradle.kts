@@ -60,7 +60,7 @@ val copySourceCodeForDemo by tasks.registering(Copy::class) {
 }
 
 tasks.whenTaskAdded {
-    if (name == "generateDebugAssets") {
+    if (name == "generateDebugAssets" || name.startsWith("lint") || name.startsWith("generateDebugLint")) {
         dependsOn(copySourceCodeForDemo)
     }
 }
@@ -81,4 +81,6 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("com.google.android.material:material:1.14.0")
+
+    testImplementation("junit:junit:4.13.2")
 }
