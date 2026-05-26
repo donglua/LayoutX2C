@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LayoutX2CDemo" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:windowBackground">@color/demo_surface</item>
+        <item name="android:colorAccent">@color/demo_primary</item>
+        <item name="colorPrimary">@color/demo_primary</item>
+        <item name="colorPrimaryVariant">@color/demo_primary</item>
+        <item name="colorOnPrimary">@color/demo_on_primary</item>
+        <item name="colorSurface">@color/demo_surface</item>
+        <item name="colorOnSurface">@color/demo_text_primary</item>
+    </style>
+</resources>

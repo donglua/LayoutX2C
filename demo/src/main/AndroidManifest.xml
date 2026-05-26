@@ -5,7 +5,7 @@
         android:name=".DemoApp"
         android:allowBackup="true"
         android:label="LayoutX2C Demo"
-        android:theme="@style/Theme.MaterialComponents.Light.NoActionBar">
+        android:theme="@style/Theme.LayoutX2CDemo">
 
         <activity
             android:name=".MainActivity"

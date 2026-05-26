@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="@color/demo_surface"
     android:orientation="vertical">
 
     <HorizontalScrollView
@@ -32,11 +32,12 @@
 
             <Button
                 android:id="@+id/btn_demo_simple"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/Widget.AppCompat.Button.Borderless"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:layout_marginEnd="8dp"
                 android:background="@drawable/code_viewer_chip"
+                android:backgroundTint="@null"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:paddingStart="14dp"
@@ -47,11 +48,12 @@
 
             <Button
                 android:id="@+id/btn_demo_nested"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/Widget.AppCompat.Button.Borderless"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:layout_marginEnd="8dp"
                 android:background="@drawable/code_viewer_chip"
+                android:backgroundTint="@null"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:paddingStart="14dp"
@@ -62,11 +64,12 @@
 
             <Button
                 android:id="@+id/btn_demo_form"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/Widget.AppCompat.Button.Borderless"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:layout_marginEnd="8dp"
                 android:background="@drawable/code_viewer_chip"
+                android:backgroundTint="@null"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:paddingStart="14dp"
@@ -77,11 +80,12 @@
 
             <Button
                 android:id="@+id/btn_demo_relative"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/Widget.AppCompat.Button.Borderless"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:layout_marginEnd="8dp"
                 android:background="@drawable/code_viewer_chip"
+                android:backgroundTint="@null"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:paddingStart="14dp"
@@ -92,10 +96,11 @@
 
             <Button
                 android:id="@+id/btn_demo_recycler"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/Widget.AppCompat.Button.Borderless"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:background="@drawable/code_viewer_chip"
+                android:backgroundTint="@null"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:paddingStart="14dp"
@@ -117,12 +122,13 @@
 
         <Button
             android:id="@+id/tab_xml"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+            style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="0dp"
             android:layout_height="40dp"
             android:layout_marginEnd="8dp"
             android:layout_weight="1"
             android:background="@drawable/code_viewer_tab"
+            android:backgroundTint="@null"
             android:minHeight="0dp"
             android:text="@string/code_viewer_tab_xml"
             android:textAllCaps="false"
@@ -130,11 +136,12 @@
 
         <Button
             android:id="@+id/tab_kotlin"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+            style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="0dp"
             android:layout_height="40dp"
             android:layout_weight="1"
             android:background="@drawable/code_viewer_tab"
+            android:backgroundTint="@null"
             android:minHeight="0dp"
             android:text="@string/code_viewer_tab_kotlin"
             android:textAllCaps="false"

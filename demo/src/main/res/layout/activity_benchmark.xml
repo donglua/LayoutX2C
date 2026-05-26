@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/demo_surface"
     android:orientation="vertical">
 
     <!-- Toolbar area -->
@@ -43,6 +44,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/benchmark_idle"
+            android:textColor="@color/demo_text_primary"
             android:textSize="13sp"
             android:padding="16dp"
             android:lineSpacingExtra="4dp" />
