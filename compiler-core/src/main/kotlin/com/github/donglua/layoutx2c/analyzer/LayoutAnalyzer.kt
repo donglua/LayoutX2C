@@ -79,6 +79,54 @@ class LayoutAnalyzer {
             "android:theme"
         )
 
+        private val SUPPORTED_INPUT_TYPES = setOf(
+            "none",
+            "text",
+            "textCapCharacters",
+            "textCapWords",
+            "textCapSentences",
+            "textAutoCorrect",
+            "textAutoComplete",
+            "textMultiLine",
+            "textNoSuggestions",
+            "textEmailAddress",
+            "textEmailSubject",
+            "textUri",
+            "textPersonName",
+            "textPassword",
+            "textVisiblePassword",
+            "textWebEditText",
+            "textFilter",
+            "textPostalAddress",
+            "number",
+            "numberSigned",
+            "numberDecimal",
+            "numberPassword",
+            "phone",
+            "datetime",
+            "date",
+            "time"
+        )
+
+        private val INPUT_TYPE_CLASS_OR_VARIATION_PARTS = setOf(
+            "text",
+            "textEmailAddress",
+            "textEmailSubject",
+            "textUri",
+            "textPersonName",
+            "textPassword",
+            "textVisiblePassword",
+            "textWebEditText",
+            "textFilter",
+            "textPostalAddress",
+            "number",
+            "numberPassword",
+            "phone",
+            "datetime",
+            "date",
+            "time"
+        )
+
         /** xmlns 声明，忽略不计 */
         private fun isXmlnsAttribute(name: String) = name.startsWith("xmlns:")
     }
@@ -223,56 +271,10 @@ class LayoutAnalyzer {
 
     private fun isSupportedInputType(value: String): Boolean {
         val parts = value.split("|").map { it.trim() }
-        val supportedParts = setOf(
-            "none",
-            "text",
-            "textCapCharacters",
-            "textCapWords",
-            "textCapSentences",
-            "textAutoCorrect",
-            "textAutoComplete",
-            "textMultiLine",
-            "textNoSuggestions",
-            "textEmailAddress",
-            "textEmailSubject",
-            "textUri",
-            "textPersonName",
-            "textPassword",
-            "textVisiblePassword",
-            "textWebEditText",
-            "textFilter",
-            "textPostalAddress",
-            "number",
-            "numberSigned",
-            "numberDecimal",
-            "numberPassword",
-            "phone",
-            "datetime",
-            "date",
-            "time"
-        )
-        if (parts.any { it !in supportedParts }) return false
+        if (parts.any { it !in SUPPORTED_INPUT_TYPES }) return false
         if ("none" in parts) return parts.size == 1
 
-        val classOrVariationParts = setOf(
-            "text",
-            "textEmailAddress",
-            "textEmailSubject",
-            "textUri",
-            "textPersonName",
-            "textPassword",
-            "textVisiblePassword",
-            "textWebEditText",
-            "textFilter",
-            "textPostalAddress",
-            "number",
-            "numberPassword",
-            "phone",
-            "datetime",
-            "date",
-            "time"
-        )
-        val classOrVariationCount = parts.count { it in classOrVariationParts }
+        val classOrVariationCount = parts.count { it in INPUT_TYPE_CLASS_OR_VARIATION_PARTS }
         return classOrVariationCount <= 1
     }
 }
