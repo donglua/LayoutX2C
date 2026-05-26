@@ -81,8 +81,8 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("val root = ScrollView(context).apply {")
         assertThat(generated).contains("isFillViewport = true")
         assertThat(generated).contains("root_child0.layoutParams =")
-        assertThat(generated).contains("android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,")
-        assertThat(generated).contains("android.view.ViewGroup.LayoutParams.WRAP_CONTENT)")
+        assertThat(generated).contains("FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("ViewGroup.LayoutParams.WRAP_CONTENT)")
     }
 
     @Test
@@ -107,7 +107,50 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("val root = HorizontalScrollView(context).apply {")
         assertThat(generated).doesNotContain("isFillViewport = false")
-        assertThat(generated).contains("root_child0.layoutParams = android.widget.FrameLayout.LayoutParams((320f *")
+        assertThat(generated).contains("root_child0.layoutParams = FrameLayout.LayoutParams((320f *")
+    }
+
+    @Test
+    fun `layout params use imports instead of fully qualified names`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "layout_param_imports").root)
+        val generated = generator.generate(analyzed, "layout_param_imports", "R.layout.layout_param_imports").toString()
+
+        assertThat(generated).contains("import android.view.ViewGroup")
+        assertThat(generated).contains("import android.widget.LinearLayout")
+        assertThat(generated).contains("root_child0.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("ViewGroup.LayoutParams.WRAP_CONTENT)")
+        assertThat(generated).doesNotContain("android.widget.LinearLayout.LayoutParams")
+        assertThat(generated).doesNotContain("android.view.ViewGroup.LayoutParams")
+    }
+
+    @Test
+    fun `nodes without emitted attributes do not use empty apply block`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="1dp" />
+            </FrameLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "empty_apply").root)
+        val generated = generator.generate(analyzed, "empty_apply", "R.layout.empty_apply").toString()
+
+        assertThat(generated).contains("val root_child0 = View(context)")
+        assertThat(generated).doesNotContain("val root_child0 = View(context).apply {\n  }")
     }
 
     @Test
@@ -146,7 +189,7 @@ class LayoutCodeGeneratorTest {
         val generated = generator.generate(analyzed, "frame_layout_gravity", "R.layout.frame_layout_gravity").toString()
 
         assertThat(generated).contains("root_child0.layoutParams =")
-        assertThat(generated).contains("android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,")
+        assertThat(generated).contains("FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,")
         assertThat(generated).contains("(root_child0.layoutParams as FrameLayout.LayoutParams).gravity = android.view.Gravity.CENTER")
     }
 
@@ -167,7 +210,7 @@ class LayoutCodeGeneratorTest {
         val generated = generator.generate(analyzed, "scroll_layout_gravity", "R.layout.scroll_layout_gravity").toString()
 
         assertThat(generated).contains("root_child0.layoutParams =")
-        assertThat(generated).contains("android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,")
+        assertThat(generated).contains("FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,")
         assertThat(generated).contains("(root_child0.layoutParams as FrameLayout.LayoutParams).gravity =")
         assertThat(generated).contains("android.view.Gravity.CENTER_HORIZONTAL")
     }
@@ -190,7 +233,7 @@ class LayoutCodeGeneratorTest {
         val generated = generator.generate(analyzed, "linear_layout_gravity", "R.layout.linear_layout_gravity").toString()
 
         assertThat(generated).contains("root_child0.layoutParams =")
-        assertThat(generated).contains("android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,")
+        assertThat(generated).contains("LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,")
         assertThat(generated).contains("(root_child0.layoutParams as LinearLayout.LayoutParams).gravity = android.view.Gravity.END or")
         assertThat(generated).contains("android.view.Gravity.BOTTOM")
     }

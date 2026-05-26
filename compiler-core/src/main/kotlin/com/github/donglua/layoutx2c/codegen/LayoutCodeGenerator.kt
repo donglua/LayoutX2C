@@ -92,15 +92,14 @@ class LayoutCodeGenerator(
             return
         }
 
-        // 生成 View 创建代码
-        viewEmitter.emitCreate(builder, varName, node)
-        builder.indent()
-
-        // 生成属性设置代码
-        attrEmitter.emit(builder, node)
-
-        builder.unindent()
-        builder.addStatement("}")
+        val hasAttributes = hasEmittedAttributes(node)
+        viewEmitter.emitCreate(builder, varName, node, hasAttributes)
+        if (hasAttributes) {
+            builder.indent()
+            attrEmitter.emit(builder, node)
+            builder.unindent()
+            builder.addStatement("}")
+        }
 
         // 生成 LayoutParams
         if (!isRoot) {
@@ -131,6 +130,12 @@ class LayoutCodeGenerator(
     private fun usesDensity(node: AnalyzedNode): Boolean {
         return node.node.attributes.values.any { value -> value.endsWith("dp") } ||
             node.children.any(::usesDensity)
+    }
+
+    private fun hasEmittedAttributes(node: AnalyzedNode): Boolean {
+        return node.supportedAttributes.any { attrName ->
+            !attrName.startsWith("xmlns:") && !attrName.startsWith("android:layout_")
+        }
     }
 
     private fun layoutNameToClassName(layoutName: String): String {

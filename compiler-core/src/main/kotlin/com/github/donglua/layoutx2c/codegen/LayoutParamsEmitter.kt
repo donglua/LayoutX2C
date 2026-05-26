@@ -40,7 +40,7 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
             builder.addStatement(
                 "(%L.layoutParams as %T).setMargins(%L, %L, %L, %L)",
                 varName,
-                ClassName("android.view", "ViewGroup.MarginLayoutParams"),
+                ClassName("android.view", "ViewGroup", "MarginLayoutParams"),
                 dimensionToCode(marginLeft ?: "0dp"),
                 dimensionToCode(marginTop ?: "0dp"),
                 dimensionToCode(marginRight ?: "0dp"),
@@ -61,23 +61,23 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
     private fun layoutParamsToCode(
         node: AnalyzedNode,
         parentVarName: String,
-        width: String,
-        height: String
-    ): String {
+        width: CodeBlock,
+        height: CodeBlock
+    ): CodeBlock {
         val attrs = node.node.attributes
         val weight = attrs["android:layout_weight"]?.toFloatOrNull()
         return when {
             node.parentIs(LayoutNode::isLinearLayout) -> {
                 if (weight != null) {
-                    "android.widget.LinearLayout.LayoutParams($width, $height, ${weight}f)"
+                    CodeBlock.of("%T(%L, %L, %Lf)", linearLayoutParamsClass, width, height, weight)
                 } else {
-                    "android.widget.LinearLayout.LayoutParams($width, $height)"
+                    CodeBlock.of("%T(%L, %L)", linearLayoutParamsClass, width, height)
                 }
             }
             node.parentIs(LayoutNode::isFrameLayout) || node.parentIs(LayoutNode::isScrollView) ->
-                "android.widget.FrameLayout.LayoutParams($width, $height)"
+                CodeBlock.of("%T(%L, %L)", frameLayoutParamsClass, width, height)
             else ->
-                "$parentVarName.generateLayoutParams(android.view.ViewGroup.MarginLayoutParams($width, $height))"
+                CodeBlock.of("%T(%L, %L)", viewGroupMarginLayoutParamsClass, width, height)
         }
     }
 
@@ -89,18 +89,24 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
     private fun layoutGravityParamsClass(parentTagName: String?): ClassName? {
         val parent = parentTagName?.let { LayoutNode(it, emptyMap(), emptyList()) } ?: return null
         return when {
-            parent.isLinearLayout() -> ClassName("android.widget", "LinearLayout", "LayoutParams")
-            parent.isFrameLayout() || parent.isScrollView() -> ClassName("android.widget", "FrameLayout", "LayoutParams")
+            parent.isLinearLayout() -> linearLayoutParamsClass
+            parent.isFrameLayout() || parent.isScrollView() -> frameLayoutParamsClass
             else -> null
         }
     }
 
-    private fun layoutDimensionToCode(value: String): String {
+    private fun layoutDimensionToCode(value: String): CodeBlock {
         return when (value) {
-            "match_parent", "fill_parent" -> "android.view.ViewGroup.LayoutParams.MATCH_PARENT"
-            "wrap_content" -> "android.view.ViewGroup.LayoutParams.WRAP_CONTENT"
-            else -> dimensionToCode(value)
+            "match_parent", "fill_parent" -> CodeBlock.of("%T.MATCH_PARENT", viewGroupLayoutParamsClass)
+            "wrap_content" -> CodeBlock.of("%T.WRAP_CONTENT", viewGroupLayoutParamsClass)
+            else -> CodeBlock.of("%L", dimensionToCode(value))
         }
     }
 
+    private companion object {
+        val viewGroupLayoutParamsClass = ClassName("android.view", "ViewGroup", "LayoutParams")
+        val viewGroupMarginLayoutParamsClass = ClassName("android.view", "ViewGroup", "MarginLayoutParams")
+        val linearLayoutParamsClass = ClassName("android.widget", "LinearLayout", "LayoutParams")
+        val frameLayoutParamsClass = ClassName("android.widget", "FrameLayout", "LayoutParams")
+    }
 }

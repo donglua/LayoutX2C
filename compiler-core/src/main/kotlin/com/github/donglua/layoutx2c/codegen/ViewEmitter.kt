@@ -5,13 +5,17 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 
 interface ViewEmitter {
-    fun emitCreate(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode)
+    fun emitCreate(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode, hasAttributes: Boolean)
 }
 
 class DefaultViewEmitter : ViewEmitter {
 
-    override fun emitCreate(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode) {
-        builder.addStatement("val %L = %T(context).apply {", varName, resolveViewClass(node.node.tagName))
+    override fun emitCreate(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode, hasAttributes: Boolean) {
+        if (hasAttributes) {
+            builder.addStatement("val %L = %T(context).apply {", varName, resolveViewClass(node.node.tagName))
+        } else {
+            builder.addStatement("val %L = %T(context)", varName, resolveViewClass(node.node.tagName))
+        }
     }
 
     private fun resolveViewClass(tagName: String): ClassName {
