@@ -6,6 +6,7 @@
     <string name="btn_benchmark">Run Benchmark</string>
     <string name="btn_simple_layout">Preview: activity_simple</string>
     <string name="btn_nested_layout">Preview: activity_nested</string>
+    <string name="image_demo_title">ImageView generated with src, scaleType, and tint</string>
 
     <!-- Nested layout -->
     <string name="nested_header">Nested Layout Demo</string>

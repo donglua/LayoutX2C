@@ -7,6 +7,7 @@ object LayoutX2CConfig {
     val layouts = intArrayOf(
         R.layout.activity_main,
         R.layout.activity_simple,
-        R.layout.activity_nested
+        R.layout.activity_nested,
+        R.layout.activity_image
     )
 }

@@ -14,6 +14,8 @@ class LayoutAnalyzer {
             "LinearLayout", "android.widget.LinearLayout",
             "FrameLayout", "android.widget.FrameLayout",
             "TextView", "android.widget.TextView",
+            "ImageView", "android.widget.ImageView",
+            "androidx.appcompat.widget.AppCompatImageView",
             "View", "android.view.View"
         )
 
@@ -25,6 +27,10 @@ class LayoutAnalyzer {
             "android:orientation",
             "android:visibility",
             "android:text",
+            "android:src",
+            "android:scaleType",
+            "android:tint",
+            "app:tint",
             "android:padding",
             "android:paddingLeft",
             "android:paddingRight",
@@ -94,7 +100,7 @@ class LayoutAnalyzer {
         for (attrName in node.attributes.keys) {
             when {
                 isXmlnsAttribute(attrName) -> { /* 忽略 */ }
-                attrName in SUPPORTED_ATTRIBUTES -> supported.add(attrName)
+                isSupportedAttribute(node, attrName) -> supported.add(attrName)
                 else -> unsupported.add(attrName)
             }
         }
@@ -125,5 +131,27 @@ class LayoutAnalyzer {
             indexInParent = node.indexInParent,
             parentTagName = parentTagName
         )
+    }
+
+    private fun isSupportedAttribute(node: LayoutNode, attrName: String): Boolean {
+        if (attrName !in SUPPORTED_ATTRIBUTES) return false
+        return when (attrName) {
+            "android:orientation" -> node.isLinearLayout()
+            "android:src",
+            "android:scaleType",
+            "android:tint",
+            "app:tint" -> node.isImageView()
+            else -> true
+        }
+    }
+
+    private fun LayoutNode.isLinearLayout(): Boolean {
+        return tagName == "LinearLayout" || tagName == "android.widget.LinearLayout"
+    }
+
+    private fun LayoutNode.isImageView(): Boolean {
+        return tagName == "ImageView" ||
+            tagName == "android.widget.ImageView" ||
+            tagName == "androidx.appcompat.widget.AppCompatImageView"
     }
 }

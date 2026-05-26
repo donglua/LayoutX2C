@@ -182,7 +182,7 @@ class LayoutX2CProcessor(
         val rPackageName = options[OPTION_R_PACKAGE] ?: inferredPackageName ?: "com.github.donglua.layoutx2c"
         val packageName = options[OPTION_PACKAGE] ?: "$rPackageName.generated"
         val resDir = options[OPTION_RES_DIR]?.let(::File)
-            ?: configSources.firstNotNullOfOrNull { inferMainResDir(it.file) }
+            ?: configSources.firstNotNullOfOrNull { LayoutX2CResDirResolver.inferMainResDir(it.file) }
             ?: File("src/main/res")
 
         return LayoutX2CProcessorConfig(
@@ -190,18 +190,6 @@ class LayoutX2CProcessor(
             packageName = packageName,
             rPackageName = rPackageName
         )
-    }
-
-    private fun inferMainResDir(sourceFile: File): File? {
-        var current: File? = sourceFile.parentFile
-        while (current != null) {
-            val resDir = current.resolve("res")
-            if (resDir.isDirectory) {
-                return resDir
-            }
-            current = current.parentFile
-        }
-        return null
     }
 
     private fun KSAnnotated.packageName(): String? {

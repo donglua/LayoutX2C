@@ -96,4 +96,22 @@ class LayoutAnalyzerTest {
         assertThat(result.supportLevel).isEqualTo(SupportLevel.PARTIAL)
         assertThat(result.unsupportedAttributes).contains("android:background")
     }
+
+    @Test
+    fun `view-specific attributes are unsupported on other view types`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:src="@drawable/ic_demo">
+            </FrameLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.PARTIAL)
+        assertThat(result.unsupportedAttributes).containsAtLeast("android:orientation", "android:src")
+    }
 }

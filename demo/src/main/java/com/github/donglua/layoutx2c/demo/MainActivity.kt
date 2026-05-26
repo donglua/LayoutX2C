@@ -39,7 +39,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showRegistryStatus() {
         val resultView = findViewById<TextView>(R.id.result)
-        val layouts = listOf("activity_main", "activity_simple", "activity_nested")
+        val layouts = listOf("activity_main", "activity_simple", "activity_nested", "activity_image")
         val registered = layouts.filter { name ->
             val resId = resources.getIdentifier(name, "layout", packageName)
             resId != 0 && LayoutX2CRegistry.has(this, resId)

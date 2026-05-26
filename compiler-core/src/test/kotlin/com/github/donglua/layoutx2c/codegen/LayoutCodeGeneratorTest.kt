@@ -125,4 +125,25 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).doesNotContain("orientation = LinearLayout.HORIZONTAL")
     }
+
+    @Test
+    fun `image view emits src scaleType and tint`() {
+        val xml = """
+            <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/avatar"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_demo"
+                android:scaleType="centerCrop"
+                android:tint="@color/demo_tint" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "image_attrs").root)
+        val generated = generator.generate(analyzed, "image_attrs", "R.layout.image_attrs").toString()
+
+        assertThat(generated).contains("val root = AppCompatImageView(context).apply {")
+        assertThat(generated).contains("setImageResource(R.drawable.ic_demo)")
+        assertThat(generated).contains("scaleType = ImageView.ScaleType.CENTER_CROP")
+        assertThat(generated).contains("imageTintList = ContextCompat.getColorStateList(context, R.color.demo_tint)")
+    }
 }

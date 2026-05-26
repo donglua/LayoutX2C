@@ -49,6 +49,10 @@ class DefaultAttrEmitter : AttrEmitter {
             }
         }
 
+        if (node.node.isImageView()) {
+            emitImageAttrs(builder, attrs)
+        }
+
         emitPadding(builder, attrs)
 
         attrs["android:gravity"]?.let { value ->
@@ -73,6 +77,30 @@ class DefaultAttrEmitter : AttrEmitter {
         }
     }
 
+    private fun emitImageAttrs(builder: CodeBlock.Builder, attrs: Map<String, String>) {
+        attrs["android:src"]?.let { value ->
+            if (value.startsWith("@drawable/")) {
+                val resName = value.removePrefix("@drawable/")
+                builder.addStatement("setImageResource(R.drawable.%L)", resName)
+            }
+        }
+
+        attrs["android:scaleType"]?.let { value ->
+            builder.addStatement("scaleType = %T.ScaleType.%L", ClassName("android.widget", "ImageView"), scaleTypeToCode(value))
+        }
+
+        (attrs["app:tint"] ?: attrs["android:tint"])?.let { value ->
+            if (value.startsWith("@color/")) {
+                val resName = value.removePrefix("@color/")
+                builder.addStatement(
+                    "imageTintList = %T.getColorStateList(context, R.color.%L)",
+                    ClassName("androidx.core.content", "ContextCompat"),
+                    resName
+                )
+            }
+        }
+    }
+
     private fun gravityToCode(value: String): String {
         val parts = value.split("|")
         return parts.joinToString(" or ") { part ->
@@ -91,5 +119,25 @@ class DefaultAttrEmitter : AttrEmitter {
 
     private fun com.github.donglua.layoutx2c.parser.LayoutNode.isLinearLayout(): Boolean {
         return tagName == "LinearLayout" || tagName == "android.widget.LinearLayout"
+    }
+
+    private fun com.github.donglua.layoutx2c.parser.LayoutNode.isImageView(): Boolean {
+        return tagName == "ImageView" ||
+            tagName == "android.widget.ImageView" ||
+            tagName == "androidx.appcompat.widget.AppCompatImageView"
+    }
+
+    private fun scaleTypeToCode(value: String): String {
+        return when (value) {
+            "center" -> "CENTER"
+            "centerCrop" -> "CENTER_CROP"
+            "centerInside" -> "CENTER_INSIDE"
+            "fitCenter" -> "FIT_CENTER"
+            "fitEnd" -> "FIT_END"
+            "fitStart" -> "FIT_START"
+            "fitXY" -> "FIT_XY"
+            "matrix" -> "MATRIX"
+            else -> "FIT_CENTER"
+        }
     }
 }

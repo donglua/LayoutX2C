@@ -22,6 +22,8 @@ class DefaultViewEmitter : ViewEmitter {
                 ClassName("android.widget", "FrameLayout")
             "TextView", "android.widget.TextView" ->
                 ClassName("androidx.appcompat.widget", "AppCompatTextView")
+            "ImageView", "android.widget.ImageView", "androidx.appcompat.widget.AppCompatImageView" ->
+                ClassName("androidx.appcompat.widget", "AppCompatImageView")
             "View", "android.view.View" ->
                 ClassName("android.view", "View")
             else -> ClassName.bestGuess(tagName)
