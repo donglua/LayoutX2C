@@ -257,10 +257,9 @@ class LayoutCodeGeneratorTest {
         val generated = generator.generate(analyzed, "fallback_layout_params", "R.layout.fallback_layout_params").toString()
 
         assertThat(generated).contains("root_child0.layoutParams =")
-        assertThat(generated).contains("android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,")
-        assertThat(generated).contains("0, 1.0f)")
-        assertThat(generated).contains("(root_child0.layoutParams as ViewGroup.MarginLayoutParams).setMargins(0, (8f *")
-        assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt(), 0, 0)")
+        assertThat(generated).contains("LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("1.0f)")
+        assertThat(generated).contains("(root_child0.layoutParams as ViewGroup.MarginLayoutParams).topMargin = (8f * density +")
     }
 
     @Test

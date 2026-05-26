@@ -25,29 +25,67 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
         node: AnalyzedNode,
         parentVarName: String
     ) {
+        emitLayoutParams(builder, varName, node, parentVarName)
+        emitLayoutGravity(builder, varName, node)
+    }
+
+    private fun emitLayoutParams(
+        builder: CodeBlock.Builder,
+        varName: String,
+        node: AnalyzedNode,
+        parentVarName: String
+    ) {
         val attrs = node.node.attributes
         val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content")
         val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content")
 
         builder.addStatement("%L.layoutParams = %L", varName, layoutParamsToCode(node, parentVarName, width, height))
+        emitMargins(builder, varName, attrs)
+    }
 
-        val marginLeft = attrs["android:layout_marginLeft"] ?: attrs["android:layout_marginStart"] ?: attrs["android:layout_margin"]
-        val marginTop = attrs["android:layout_marginTop"] ?: attrs["android:layout_margin"]
-        val marginRight = attrs["android:layout_marginRight"] ?: attrs["android:layout_marginEnd"] ?: attrs["android:layout_margin"]
-        val marginBottom = attrs["android:layout_marginBottom"] ?: attrs["android:layout_margin"]
+    private fun emitMargins(builder: CodeBlock.Builder, varName: String, attrs: Map<String, String>) {
+        val marginAll = attrs["android:layout_margin"]
+        val marginLeft = attrs["android:layout_marginLeft"] ?: attrs["android:layout_marginStart"]
+        val marginTop = attrs["android:layout_marginTop"]
+        val marginRight = attrs["android:layout_marginRight"] ?: attrs["android:layout_marginEnd"]
+        val marginBottom = attrs["android:layout_marginBottom"]
 
-        if (marginLeft != null || marginTop != null || marginRight != null || marginBottom != null) {
+        if (marginAll != null) {
             builder.addStatement(
                 "(%L.layoutParams as %T).setMargins(%L, %L, %L, %L)",
                 varName,
                 ClassName("android.view", "ViewGroup", "MarginLayoutParams"),
-                dimensionToCode(marginLeft ?: "0dp"),
-                dimensionToCode(marginTop ?: "0dp"),
-                dimensionToCode(marginRight ?: "0dp"),
-                dimensionToCode(marginBottom ?: "0dp")
+                dimensionToCode(marginLeft ?: marginAll),
+                dimensionToCode(marginTop ?: marginAll),
+                dimensionToCode(marginRight ?: marginAll),
+                dimensionToCode(marginBottom ?: marginAll)
             )
+            return
         }
 
+        marginLeft?.let { emitMarginAssignment(builder, varName, "leftMargin", it) }
+        marginTop?.let { emitMarginAssignment(builder, varName, "topMargin", it) }
+        marginRight?.let { emitMarginAssignment(builder, varName, "rightMargin", it) }
+        marginBottom?.let { emitMarginAssignment(builder, varName, "bottomMargin", it) }
+    }
+
+    private fun emitMarginAssignment(
+        builder: CodeBlock.Builder,
+        varName: String,
+        propertyName: String,
+        value: String
+    ) {
+        builder.addStatement(
+            "(%L.layoutParams as %T).%L = %L",
+            varName,
+            ClassName("android.view", "ViewGroup", "MarginLayoutParams"),
+            propertyName,
+            dimensionToCode(value)
+        )
+    }
+
+    private fun emitLayoutGravity(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode) {
+        val attrs = node.node.attributes
         val layoutGravity = attrs["android:layout_gravity"] ?: return
         val layoutParamsClass = layoutGravityParamsClass(node.parentTagName) ?: return
         builder.addStatement(
