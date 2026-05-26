@@ -1,5 +1,6 @@
 package com.github.donglua.layoutx2c.analyzer
 
+import com.github.donglua.layoutx2c.codegen.ImageScaleTypes
 import com.github.donglua.layoutx2c.parser.LayoutNode
 
 /**
@@ -54,17 +55,6 @@ class LayoutAnalyzer {
         val FORCE_FALLBACK_ATTRIBUTES = setOf(
             "style",
             "android:theme"
-        )
-
-        private val SUPPORTED_SCALE_TYPES = setOf(
-            "center",
-            "centerCrop",
-            "centerInside",
-            "fitCenter",
-            "fitEnd",
-            "fitStart",
-            "fitXY",
-            "matrix"
         )
 
         /** xmlns 声明，忽略不计 */
@@ -162,7 +152,7 @@ class LayoutAnalyzer {
 
     private fun hasUnsupportedAttributeValue(node: LayoutNode): Boolean {
         val scaleType = node.attributes["android:scaleType"]
-        return scaleType != null && node.isImageView() && scaleType !in SUPPORTED_SCALE_TYPES
+        return scaleType != null && node.isImageView() && !ImageScaleTypes.supports(scaleType)
     }
 
     private fun LayoutNode.isLinearLayout(): Boolean {

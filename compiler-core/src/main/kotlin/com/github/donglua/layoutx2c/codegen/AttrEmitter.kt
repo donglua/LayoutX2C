@@ -86,7 +86,9 @@ class DefaultAttrEmitter : AttrEmitter {
         }
 
         attrs["android:scaleType"]?.let { value ->
-            builder.addStatement("scaleType = %T.ScaleType.%L", ClassName("android.widget", "ImageView"), scaleTypeToCode(value))
+            ImageScaleTypes.enumName(value)?.let { scaleType ->
+                builder.addStatement("scaleType = %T.ScaleType.%L", ClassName("android.widget", "ImageView"), scaleType)
+            }
         }
 
         (attrs["app:tint"] ?: attrs["android:tint"])?.let { value ->
@@ -127,17 +129,4 @@ class DefaultAttrEmitter : AttrEmitter {
             tagName == "androidx.appcompat.widget.AppCompatImageView"
     }
 
-    private fun scaleTypeToCode(value: String): String {
-        return when (value) {
-            "center" -> "CENTER"
-            "centerCrop" -> "CENTER_CROP"
-            "centerInside" -> "CENTER_INSIDE"
-            "fitCenter" -> "FIT_CENTER"
-            "fitEnd" -> "FIT_END"
-            "fitStart" -> "FIT_START"
-            "fitXY" -> "FIT_XY"
-            "matrix" -> "MATRIX"
-            else -> error("Unsupported ImageView scaleType: $value")
-        }
-    }
 }
