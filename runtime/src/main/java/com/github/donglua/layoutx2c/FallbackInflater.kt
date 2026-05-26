@@ -40,16 +40,33 @@ object FallbackInflater {
     ): View {
         val inflater = LayoutInflater.from(context)
         val fullTree = inflater.inflate(layoutId, parent, false)
-        val child = findChildByPath(fullTree, childPath)
+        val child = findChildByPath(fullTree, childPath, context.resources.getResourceName(layoutId))
         (child.parent as? ViewGroup)?.removeView(child)
         return child
     }
 
-    private fun findChildByPath(root: View, childPath: IntArray): View {
-        var current = root
-        for (index in childPath) {
-            current = (current as ViewGroup).getChildAt(index)
+    private fun findChildByPath(root: View, childPath: IntArray, layoutName: String): View {
+        return (FallbackChildNavigator.findChildByPath(
+            AndroidFallbackChildNode(root),
+            childPath,
+            layoutName
+        ) as AndroidFallbackChildNode).view
+    }
+
+    private class AndroidFallbackChildNode(
+        val view: View
+    ) : FallbackChildNode {
+        private val viewGroup: ViewGroup?
+            get() = view as? ViewGroup
+
+        override val isContainer: Boolean
+            get() = viewGroup != null
+
+        override val childCount: Int
+            get() = viewGroup?.childCount ?: 0
+
+        override fun childAt(index: Int): AndroidFallbackChildNode {
+            return AndroidFallbackChildNode(viewGroup!!.getChildAt(index))
         }
-        return current
     }
 }

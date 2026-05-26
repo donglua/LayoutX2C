@@ -26,4 +26,7 @@ android {
 dependencies {
     implementation("androidx.annotation:annotation:1.10.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("com.google.truth:truth:1.4.0")
 }
