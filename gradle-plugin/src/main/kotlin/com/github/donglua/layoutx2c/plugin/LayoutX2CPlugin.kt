@@ -8,7 +8,7 @@ import org.gradle.api.Project
 /**
  * LayoutX2C Gradle Plugin。
  *
- * 自动 apply KSP，注册 processor 依赖，传递 res 路径作为 KSP arg。
+ * 自动 apply KSP，注册 processor 依赖，传递生成包名和 R 包名作为 KSP arg。
  * 用户只需要：
  * ```
  * plugins {
@@ -52,15 +52,12 @@ class LayoutX2CPlugin : Plugin<Project> {
         // 自动添加 runtime 依赖
         project.dependencies.add("implementation", "$GROUP:runtime:$VERSION")
 
-        // 传入模块 res 根目录，processor 会在其下查找 layout/。
+        // resDir 由 processor 基于注解源码路径推断，保留 flavor/source-set 语义。
         val androidComponents = project.extensions
             .findByType(AndroidComponentsExtension::class.java) ?: return
 
         androidComponents.onVariants {
-            val resDir = project.layout.projectDirectory.dir("src/main/res")
-
             project.extensions.configure(KspExtension::class.java) {
-                this.arg(LayoutX2CProcessorOptions.RES_DIR, resDir.asFile.absolutePath)
                 this.arg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
                 this.arg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
             }
@@ -79,7 +76,6 @@ class LayoutX2CPlugin : Plugin<Project> {
 }
 
 private object LayoutX2CProcessorOptions {
-    const val RES_DIR = "layoutx2c.resDir"
     const val PACKAGE_NAME = "layoutx2c.packageName"
     const val R_PACKAGE_NAME = "layoutx2c.rPackageName"
 }
