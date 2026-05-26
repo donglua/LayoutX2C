@@ -110,4 +110,19 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt())")
         assertThat(generated).contains("gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.END")
     }
+
+    @Test
+    fun `orientation emits only for linear layout nodes`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "frame_orientation").root)
+        val generated = generator.generate(analyzed, "frame_orientation", "R.layout.frame_orientation").toString()
+
+        assertThat(generated).doesNotContain("orientation = LinearLayout.HORIZONTAL")
+    }
 }

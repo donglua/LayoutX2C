@@ -18,7 +18,7 @@ class DefaultAttrEmitter : AttrEmitter {
             builder.addStatement("id = R.id.%L", idName)
         }
 
-        attrs["android:orientation"]?.let { value ->
+        attrs["android:orientation"]?.takeIf { node.node.isLinearLayout() }?.let { value ->
             val orientation = if (value == "horizontal") "HORIZONTAL" else "VERTICAL"
             builder.addStatement(
                 "orientation = %T.%L",
@@ -73,22 +73,6 @@ class DefaultAttrEmitter : AttrEmitter {
         }
     }
 
-    private fun dimensionToCode(value: String): String {
-        return when {
-            value == "0" || value == "0dp" || value == "0px" -> "0"
-            value.endsWith("dp") -> {
-                val num = value.removeSuffix("dp")
-                "(${num}f * context.resources.displayMetrics.density + 0.5f).toInt()"
-            }
-            value.endsWith("sp") -> {
-                val num = value.removeSuffix("sp")
-                "(${num}f * context.resources.displayMetrics.scaledDensity + 0.5f).toInt()"
-            }
-            value.endsWith("px") -> value.removeSuffix("px")
-            else -> "0"
-        }
-    }
-
     private fun gravityToCode(value: String): String {
         val parts = value.split("|")
         return parts.joinToString(" or ") { part ->
@@ -103,5 +87,9 @@ class DefaultAttrEmitter : AttrEmitter {
                 else -> "android.view.Gravity.NO_GRAVITY"
             }
         }
+    }
+
+    private fun com.github.donglua.layoutx2c.parser.LayoutNode.isLinearLayout(): Boolean {
+        return tagName == "LinearLayout" || tagName == "android.widget.LinearLayout"
     }
 }
