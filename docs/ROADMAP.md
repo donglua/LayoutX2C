@@ -4,7 +4,7 @@
 
 ---
 
-## 当前状态（v0.1.0-SNAPSHOT）
+## 当前状态（v0.2.0-SNAPSHOT）
 
 已完成的基础骨架：
 
@@ -15,16 +15,21 @@
 - Gradle 插件（自动 apply KSP、传递 res 路径）
 - Runtime：LayoutFactory 接口 + FallbackInflater + Registry 自动注册
 - Demo App + BenchmarkActivity
+- 代码生成已拆分为 `ViewEmitter` / `AttrEmitter` / `LayoutParamsEmitter`
+- fallback 子树定位支持完整 child path，并对非法路径输出可诊断错误
 
-支持的 View：LinearLayout, FrameLayout, TextView, View
-支持的属性：约 20 个（尺寸、padding、margin、gravity、visibility、text、id、orientation、weight）
+支持的 View：LinearLayout, FrameLayout, RelativeLayout, ScrollView, HorizontalScrollView,
+RecyclerView（仅容器）, TextView, Button, EditText, ImageView, View
+支持的属性：尺寸、padding、margin、gravity、visibility、text、id、orientation、weight、
+background、textColor、textSize、textStyle、hint、inputType、src、scaleType、tint、fillViewport、
+RelativeLayout 常见规则等。
 
 当前限制：
 
-- fallback 子树仍依赖「inflate 整棵 layout 后按 child index 取节点」的 MVP 实现，仅适合浅层 fallback。
+- fallback 子树仍依赖「inflate 整棵 layout 后按 child path 取节点」的 MVP 实现，尚未优化为 XmlPullParser seek。
 - KSP 处理器会生成聚合 Registry，增量编译策略尚未定义清楚。
 - 覆盖率指标还没有绑定真实 XML 样本集，不能直接用作发布门槛。
-- `LayoutCodeGenerator` 内的 View 类型解析、属性处理、LayoutParams 生成都是硬编码的 `when` 表达式。每加一个 View 或属性都要改核心文件，这是 v0.2「代码生成分层」首先要消化的债。
+- View / 属性支持面仍主要由 analyzer 与默认 emitter 的硬编码表维护，注册式 Handler 尚未落地。
 
 ---
 
