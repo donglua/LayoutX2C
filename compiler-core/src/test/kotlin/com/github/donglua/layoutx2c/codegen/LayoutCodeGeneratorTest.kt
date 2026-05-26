@@ -55,4 +55,29 @@ class LayoutCodeGeneratorTest {
             "val root = FallbackInflater.inflate(context, R.layout.root_fallback, parent)"
         )
     }
+
+    @Test
+    fun `fallback child receives generated parent layout params before addView`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <androidx.recyclerview.widget.RecyclerView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "fallback_layout_params").root)
+        val generated = generator.generate(analyzed, "fallback_layout_params", "R.layout.fallback_layout_params").toString()
+
+        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("0, 1.0f)")
+        assertThat(generated).contains("(root_child0.layoutParams as ViewGroup.MarginLayoutParams).setMargins(0, (8f *")
+        assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt(), 0, 0)")
+    }
 }

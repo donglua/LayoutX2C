@@ -55,7 +55,18 @@ class LayoutAnalyzer {
     }
 
     fun analyze(node: LayoutNode): AnalyzedNode {
+        if (hasUnsupportedLayoutParam(node)) {
+            return markAsFallback(node, parentTagName = null)
+        }
         return analyzeNode(node, parentTagName = null)
+    }
+
+    private fun hasUnsupportedLayoutParam(node: LayoutNode): Boolean {
+        return node.attributes.keys.any { attrName ->
+            !isXmlnsAttribute(attrName) &&
+                attrName.startsWith("android:layout_") &&
+                attrName !in SUPPORTED_ATTRIBUTES
+        } || node.children.any(::hasUnsupportedLayoutParam)
     }
 
     private fun analyzeNode(node: LayoutNode, parentTagName: String?): AnalyzedNode {

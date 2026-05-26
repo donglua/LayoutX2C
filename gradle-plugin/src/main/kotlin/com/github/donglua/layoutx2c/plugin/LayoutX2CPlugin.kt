@@ -1,6 +1,5 @@
 package com.github.donglua.layoutx2c.plugin
 
-import com.android.build.api.artifact.SingleArtifact
 import com.android.build.api.variant.AndroidComponentsExtension
 import com.google.devtools.ksp.gradle.KspExtension
 import org.gradle.api.Plugin
@@ -9,7 +8,7 @@ import org.gradle.api.Project
 /**
  * LayoutX2C Gradle Plugin。
  *
- * 自动 apply KSP，注册 processor 依赖，传递 res 路径作为 KSP arg。
+ * 自动 apply KSP，注册 processor 依赖，传递生成包名和 R 包名作为 KSP arg。
  * 用户只需要：
  * ```
  * plugins {
@@ -53,17 +52,14 @@ class LayoutX2CPlugin : Plugin<Project> {
         // 自动添加 runtime 依赖
         project.dependencies.add("implementation", "$GROUP:runtime:$VERSION")
 
-        // 通过 AGP variant API 拿 merged res 路径，per-variant 配 KSP arg
+        // resDir 由 processor 基于注解源码路径推断，保留 flavor/source-set 语义。
         val androidComponents = project.extensions
             .findByType(AndroidComponentsExtension::class.java) ?: return
 
-        androidComponents.onVariants { variant ->
-            val mergedRes = variant.artifacts.get(SingleArtifact.MERGED_RES)
-
+        androidComponents.onVariants {
             project.extensions.configure(KspExtension::class.java) {
-                it.arg(LayoutX2CProcessorOptions.RES_DIR, mergedRes.get().asFile.absolutePath)
-                it.arg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
-                it.arg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
+                this.arg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
+                this.arg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
             }
         }
     }
@@ -80,7 +76,6 @@ class LayoutX2CPlugin : Plugin<Project> {
 }
 
 private object LayoutX2CProcessorOptions {
-    const val RES_DIR = "layoutx2c.resDir"
     const val PACKAGE_NAME = "layoutx2c.packageName"
     const val R_PACKAGE_NAME = "layoutx2c.rPackageName"
 }
