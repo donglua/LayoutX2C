@@ -9,5 +9,6 @@ object LayoutX2CConfig {
         R.layout.demo_nested,
         R.layout.demo_form,
         R.layout.demo_relative,
+        R.layout.demo_recycler,
     )
 }

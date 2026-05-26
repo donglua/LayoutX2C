@@ -20,6 +20,7 @@
     <string name="code_viewer_nested">Nested</string>
     <string name="code_viewer_form">Form</string>
     <string name="code_viewer_relative">Relative</string>
+    <string name="code_viewer_recycler">Recycler</string>
     <string name="code_viewer_tab_xml">XML</string>
     <string name="code_viewer_tab_kotlin">Generated Kotlin</string>
     <string name="code_viewer_no_source">Build the project first (./gradlew :demo:assembleDebug) to generate Kotlin code.</string>
@@ -43,4 +44,7 @@
     <string name="demo_relative_title">RelativeLayout Rules</string>
     <string name="demo_relative_badge">RULES</string>
     <string name="demo_relative_body">Sibling and parent rules are emitted as RelativeLayout.LayoutParams.addRule calls.</string>
+
+    <!-- demo_recycler layout strings -->
+    <string name="demo_recycler_title">RecyclerView Container</string>
 </resources>

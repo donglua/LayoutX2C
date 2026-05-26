@@ -26,7 +26,7 @@ class LayoutCodeGeneratorTest {
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
-                    <androidx.recyclerview.widget.RecyclerView
+                    <com.example.CustomView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content" />
                 </LinearLayout>
@@ -43,7 +43,7 @@ class LayoutCodeGeneratorTest {
     @Test
     fun `root fallback inflates whole layout instead of extracting a child`() {
         val xml = """
-            <androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+            <com.example.CustomView xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
         """.trimIndent()
@@ -266,7 +266,7 @@ class LayoutCodeGeneratorTest {
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical">
-                <androidx.recyclerview.widget.RecyclerView
+                <com.example.CustomView
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
@@ -281,6 +281,42 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
         assertThat(generated).contains("1.0f)")
         assertThat(generated).contains("(root_child0.layoutParams as ViewGroup.MarginLayoutParams).topMargin = (8f * density +")
+    }
+
+    @Test
+    fun `recycler view emits container constructor and parent layout params`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/list"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="8dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    tools:listitem="@layout/item_demo" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "recycler_container").root)
+        val generated = generator.generate(analyzed, "recycler_container", "R.layout.recycler_container").toString()
+
+        assertThat(generated).contains("import androidx.recyclerview.widget.RecyclerView")
+        assertThat(generated).contains("val root_child0 = RecyclerView(context).apply {")
+        assertThat(generated).contains("id = R.id.list")
+        assertThat(generated).contains("root_child0.layoutParams = LinearLayout.LayoutParams(")
+        assertThat(generated).contains("ViewGroup.LayoutParams.MATCH_PARENT")
+        assertThat(generated).contains("0")
+        assertThat(generated).contains("1.0f)")
+        assertThat(generated).contains("(root_child0.layoutParams as ViewGroup.MarginLayoutParams).topMargin = (8f * density +")
+        assertThat(generated).doesNotContain("layoutManager")
+        assertThat(generated).doesNotContain("listitem")
+        assertThat(generated).doesNotContain("FallbackInflater.inflateChild")
     }
 
     @Test

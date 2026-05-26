@@ -46,6 +46,7 @@ class BenchmarkActivity : AppCompatActivity() {
             "demo_nested"  to R.layout.demo_nested,
             "demo_form"    to R.layout.demo_form,
             "demo_relative" to R.layout.demo_relative,
+            "demo_recycler" to R.layout.demo_recycler,
         )
 
         for ((name, layoutId) in layouts) {

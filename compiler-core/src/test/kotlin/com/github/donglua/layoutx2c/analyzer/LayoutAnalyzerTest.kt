@@ -37,7 +37,7 @@ class LayoutAnalyzerTest {
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
-                <androidx.recyclerview.widget.RecyclerView
+                <com.example.CustomView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
             </LinearLayout>
@@ -51,7 +51,7 @@ class LayoutAnalyzerTest {
     }
 
     @Test
-    fun `scroll containers are supported but recycler view remains fallback`() {
+    fun `scroll containers and recycler view containers are supported`() {
         val xml = """
             <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="match_parent"
@@ -72,7 +72,28 @@ class LayoutAnalyzerTest {
 
         assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
         assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
-        assertThat(result.children[0].children[0].supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.children[0].children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+    }
+
+    @Test
+    fun `recycler view design time attributes are ignored as container metadata`() {
+        val xml = """
+            <androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/item_demo" />
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.supportedAttributes).contains("app:layoutManager")
+        assertThat(result.supportedAttributes).contains("tools:listitem")
+        assertThat(result.unsupportedAttributes).isEmpty()
     }
 
     @Test

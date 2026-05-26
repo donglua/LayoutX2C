@@ -29,6 +29,7 @@ class CodeViewerActivity : AppCompatActivity() {
         DemoEntry("Nested", "demo_nested", R.layout.demo_nested, "Layout_DemoNested"),
         DemoEntry("Form",   "demo_form",   R.layout.demo_form,   "Layout_DemoForm"),
         DemoEntry("Relative", "demo_relative", R.layout.demo_relative, "Layout_DemoRelative"),
+        DemoEntry("Recycler", "demo_recycler", R.layout.demo_recycler, "Layout_DemoRecycler"),
     )
 
     private var currentDemo = demos[0]
@@ -49,11 +50,13 @@ class CodeViewerActivity : AppCompatActivity() {
         val btnNested = findViewById<Button>(R.id.btn_demo_nested)
         val btnForm   = findViewById<Button>(R.id.btn_demo_form)
         val btnRelative = findViewById<Button>(R.id.btn_demo_relative)
+        val btnRecycler = findViewById<Button>(R.id.btn_demo_recycler)
 
         btnSimple.setOnClickListener { showDemo(demos[0]) }
         btnNested.setOnClickListener { showDemo(demos[1]) }
         btnForm.setOnClickListener   { showDemo(demos[2]) }
         btnRelative.setOnClickListener { showDemo(demos[3]) }
+        btnRecycler.setOnClickListener { showDemo(demos[4]) }
     }
 
     private fun setupTabSwitch() {

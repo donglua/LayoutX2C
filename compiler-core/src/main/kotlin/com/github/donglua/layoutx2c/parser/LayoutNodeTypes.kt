@@ -44,3 +44,7 @@ internal fun LayoutNode.isScrollView(): Boolean {
         tagName == "HorizontalScrollView" ||
         tagName == "android.widget.HorizontalScrollView"
 }
+
+internal fun LayoutNode.isRecyclerView(): Boolean {
+    return tagName == "androidx.recyclerview.widget.RecyclerView"
+}

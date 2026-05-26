@@ -44,7 +44,14 @@
             android:id="@+id/btn_demo_relative"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
-            android:text="@string/code_viewer_relative" />
+            android:text="@string/code_viewer_relative"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_demo_recycler"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/code_viewer_recycler" />
 
     </LinearLayout>
 

@@ -26,6 +26,8 @@ class DefaultViewEmitter : ViewEmitter {
                 ClassName("android.widget", "FrameLayout")
             "RelativeLayout", "android.widget.RelativeLayout" ->
                 ClassName("android.widget", "RelativeLayout")
+            "androidx.recyclerview.widget.RecyclerView" ->
+                ClassName("androidx.recyclerview.widget", "RecyclerView")
             "ScrollView", "android.widget.ScrollView" ->
                 ClassName("android.widget", "ScrollView")
             "HorizontalScrollView", "android.widget.HorizontalScrollView" ->

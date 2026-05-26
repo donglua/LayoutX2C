@@ -5,6 +5,7 @@ import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.isEditText
 import com.github.donglua.layoutx2c.parser.isImageView
 import com.github.donglua.layoutx2c.parser.isLinearLayout
+import com.github.donglua.layoutx2c.parser.isRecyclerView
 import com.github.donglua.layoutx2c.parser.isScrollView
 import com.github.donglua.layoutx2c.parser.isTextLikeView
 
@@ -20,6 +21,7 @@ class LayoutAnalyzer {
             "LinearLayout", "android.widget.LinearLayout",
             "FrameLayout", "android.widget.FrameLayout",
             "RelativeLayout", "android.widget.RelativeLayout",
+            "androidx.recyclerview.widget.RecyclerView",
             "ScrollView", "android.widget.ScrollView",
             "HorizontalScrollView", "android.widget.HorizontalScrollView",
             "TextView", "android.widget.TextView",
@@ -87,6 +89,7 @@ class LayoutAnalyzer {
             "android:layout_centerVertical",
             "android:gravity",
             "android:fillViewport",
+            "app:layoutManager",
             "android:enabled",
             "android:clickable",
             "android:focusable",
@@ -151,6 +154,7 @@ class LayoutAnalyzer {
 
         /** xmlns 声明，忽略不计 */
         private fun isXmlnsAttribute(name: String) = name.startsWith("xmlns:")
+        private fun isToolsAttribute(name: String) = name.startsWith("tools:")
 
         private val RELATIVE_LAYOUT_ID_RULE_ATTRIBUTES = setOf(
             "android:layout_above",
@@ -232,6 +236,7 @@ class LayoutAnalyzer {
         for (attrName in node.attributes.keys) {
             when {
                 isXmlnsAttribute(attrName) -> { /* 忽略 */ }
+                isToolsAttribute(attrName) -> supported.add(attrName)
                 isSupportedAttribute(node, parentTagName, attrName) -> supported.add(attrName)
                 else -> unsupported.add(attrName)
             }
@@ -281,6 +286,7 @@ class LayoutAnalyzer {
             "app:tint" -> node.isImageView()
             "android:gravity" -> node.isLinearLayout() || node.isTextLikeView()
             "android:fillViewport" -> node.isScrollView()
+            "app:layoutManager" -> node.isRecyclerView()
             in RELATIVE_LAYOUT_RULE_ATTRIBUTES -> isRelativeLayoutTag(parentTagName)
             else -> true
         }

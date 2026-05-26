@@ -80,6 +80,7 @@ interface LayoutX2CConfig
 - `LinearLayout`, `FrameLayout`
 - `RelativeLayout`
 - `ScrollView`, `HorizontalScrollView`
+- `androidx.recyclerview.widget.RecyclerView`（仅容器创建，不生成 adapter / layoutManager 运行时逻辑）
 - `TextView`, `Button`, `EditText`
 - `ImageView`, `androidx.appcompat.widget.AppCompatImageView`
 - `View`
@@ -100,6 +101,7 @@ interface LayoutX2CConfig
   `layout_alignParentStart`, `layout_alignParentEnd`, `layout_alignParentLeft`,
   `layout_alignParentRight`, `layout_alignParentTop`, `layout_alignParentBottom`,
   `layout_centerInParent`, `layout_centerHorizontal`, `layout_centerVertical`
+- RecyclerView：`app:layoutManager` 仅作为容器元数据接受并忽略
 
 未支持的 View 会 fallback 到原生 `LayoutInflater`；不安全或无法等价生成的属性值会触发
 layout/subtree fallback。
