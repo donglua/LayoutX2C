@@ -320,4 +320,50 @@ class LayoutAnalyzerTest {
         assertThat(result.children.map { it.supportLevel }).containsExactly(SupportLevel.FULL, SupportLevel.FULL)
         assertThat(result.children[1].unsupportedAttributes).isEmpty()
     }
+
+    @Test
+    fun `relative layout supports every declared rule and false boolean rules`() {
+        val xml = """
+            <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:id="@+id/anchor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/target"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_above="@+id/anchor"
+                    android:layout_below="@id/anchor"
+                    android:layout_toStartOf="@id/anchor"
+                    android:layout_toEndOf="@id/anchor"
+                    android:layout_toLeftOf="@id/anchor"
+                    android:layout_toRightOf="@id/anchor"
+                    android:layout_alignStart="@id/anchor"
+                    android:layout_alignEnd="@id/anchor"
+                    android:layout_alignLeft="@id/anchor"
+                    android:layout_alignRight="@id/anchor"
+                    android:layout_alignTop="@id/anchor"
+                    android:layout_alignBottom="@id/anchor"
+                    android:layout_alignParentStart="true"
+                    android:layout_alignParentEnd="true"
+                    android:layout_alignParentLeft="true"
+                    android:layout_alignParentRight="true"
+                    android:layout_alignParentTop="true"
+                    android:layout_alignParentBottom="true"
+                    android:layout_centerInParent="true"
+                    android:layout_centerHorizontal="false"
+                    android:layout_centerVertical="false" />
+            </RelativeLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[1].supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[1].unsupportedAttributes).isEmpty()
+    }
 }

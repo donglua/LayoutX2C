@@ -78,6 +78,7 @@ interface LayoutX2CConfig
 支持的 View：
 
 - `LinearLayout`, `FrameLayout`
+- `RelativeLayout`
 - `ScrollView`, `HorizontalScrollView`
 - `TextView`, `Button`, `EditText`
 - `ImageView`, `androidx.appcompat.widget.AppCompatImageView`
@@ -93,6 +94,12 @@ interface LayoutX2CConfig
 - EditText：`hint`, 常见 `inputType`
 - ImageView：`src`, `scaleType`, `tint`
 - ScrollView：`fillViewport`
+- RelativeLayout：`layout_above`, `layout_below`, `layout_toStartOf`, `layout_toEndOf`,
+  `layout_toLeftOf`, `layout_toRightOf`, `layout_alignStart`, `layout_alignEnd`,
+  `layout_alignLeft`, `layout_alignRight`, `layout_alignTop`, `layout_alignBottom`,
+  `layout_alignParentStart`, `layout_alignParentEnd`, `layout_alignParentLeft`,
+  `layout_alignParentRight`, `layout_alignParentTop`, `layout_alignParentBottom`,
+  `layout_centerInParent`, `layout_centerHorizontal`, `layout_centerVertical`
 
 未支持的 View 会 fallback 到原生 `LayoutInflater`；不安全或无法等价生成的属性值会触发
 layout/subtree fallback。

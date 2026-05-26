@@ -69,7 +69,8 @@
 **RelativeLayout 范围：**
 
 - 支持 `layout_above`、`layout_below`、`layout_toStartOf`、`layout_toEndOf`、`layout_alignStart`、`layout_alignEnd`。
-- 支持 `layout_alignParentStart`、`layout_alignParentEnd`、`layout_alignParentTop`、`layout_alignParentBottom`。
+- 支持 `layout_toLeftOf`、`layout_toRightOf`、`layout_alignLeft`、`layout_alignRight`、`layout_alignTop`、`layout_alignBottom`。
+- 支持 `layout_alignParentStart`、`layout_alignParentEnd`、`layout_alignParentLeft`、`layout_alignParentRight`、`layout_alignParentTop`、`layout_alignParentBottom`。
 - 支持 `layout_centerInParent`、`layout_centerHorizontal`、`layout_centerVertical`。
 - 暂不支持 `layout_alignBaseline`、`layout_alignWithParentIfMissing` 等边角语义；遇到时 fallback。
 - `left/right` 与 `start/end` 分开处理，避免 RTL 语义漂移。

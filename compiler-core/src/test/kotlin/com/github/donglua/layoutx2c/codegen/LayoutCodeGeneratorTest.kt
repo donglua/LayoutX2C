@@ -551,6 +551,71 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `relative layout emits every declared rule and skips false boolean rules`() {
+        val xml = """
+            <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:id="@+id/anchor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:id="@+id/target"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_above="@+id/anchor"
+                    android:layout_below="@id/anchor"
+                    android:layout_toStartOf="@id/anchor"
+                    android:layout_toEndOf="@id/anchor"
+                    android:layout_toLeftOf="@id/anchor"
+                    android:layout_toRightOf="@id/anchor"
+                    android:layout_alignStart="@id/anchor"
+                    android:layout_alignEnd="@id/anchor"
+                    android:layout_alignLeft="@id/anchor"
+                    android:layout_alignRight="@id/anchor"
+                    android:layout_alignTop="@id/anchor"
+                    android:layout_alignBottom="@id/anchor"
+                    android:layout_alignParentStart="true"
+                    android:layout_alignParentEnd="true"
+                    android:layout_alignParentLeft="true"
+                    android:layout_alignParentRight="true"
+                    android:layout_alignParentTop="true"
+                    android:layout_alignParentBottom="true"
+                    android:layout_centerInParent="true"
+                    android:layout_centerHorizontal="false"
+                    android:layout_centerVertical="false" />
+            </RelativeLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "relative_all_rules").root)
+        val generated = generator.generate(analyzed, "relative_all_rules", "R.layout.relative_all_rules").toString()
+
+        assertThat(generated).contains("RelativeLayout.ABOVE")
+        assertThat(generated).contains("RelativeLayout.BELOW")
+        assertThat(generated).contains("RelativeLayout.START_OF")
+        assertThat(generated).contains("RelativeLayout.END_OF")
+        assertThat(generated).contains("RelativeLayout.LEFT_OF")
+        assertThat(generated).contains("RelativeLayout.RIGHT_OF")
+        assertThat(generated).contains("RelativeLayout.ALIGN_START")
+        assertThat(generated).contains("RelativeLayout.ALIGN_END")
+        assertThat(generated).contains("RelativeLayout.ALIGN_LEFT")
+        assertThat(generated).contains("RelativeLayout.ALIGN_RIGHT")
+        assertThat(generated).contains("RelativeLayout.ALIGN_TOP")
+        assertThat(generated).contains("RelativeLayout.ALIGN_BOTTOM")
+        assertThat(generated).contains("R.id.anchor")
+        assertThat(generated).contains("RelativeLayout.ALIGN_PARENT_START")
+        assertThat(generated).contains("RelativeLayout.ALIGN_PARENT_END")
+        assertThat(generated).contains("RelativeLayout.ALIGN_PARENT_LEFT")
+        assertThat(generated).contains("RelativeLayout.ALIGN_PARENT_RIGHT")
+        assertThat(generated).contains("RelativeLayout.ALIGN_PARENT_TOP")
+        assertThat(generated).contains("RelativeLayout.ALIGN_PARENT_BOTTOM")
+        assertThat(generated).contains("RelativeLayout.CENTER_IN_PARENT")
+        assertThat(generated).doesNotContain("RelativeLayout.CENTER_HORIZONTAL")
+        assertThat(generated).doesNotContain("RelativeLayout.CENTER_VERTICAL")
+    }
+
+    @Test
     fun `root layout params use relative layout when parent is relative layout`() {
         val xml = """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"

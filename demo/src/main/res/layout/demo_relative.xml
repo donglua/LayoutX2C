@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- demo_relative: RelativeLayout sibling and parent rules -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/relative_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/demo_relative_title"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/relative_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignTop="@id/relative_title"
+        android:text="@string/demo_relative_badge"
+        android:textSize="12sp"
+        android:textColor="@color/demo_text_primary"
+        android:padding="4dp" />
+
+    <TextView
+        android:id="@+id/relative_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/relative_title"
+        android:layout_alignStart="@id/relative_title"
+        android:layout_marginTop="8dp"
+        android:text="@string/demo_relative_body"
+        android:textSize="14sp" />
+
+</RelativeLayout>
