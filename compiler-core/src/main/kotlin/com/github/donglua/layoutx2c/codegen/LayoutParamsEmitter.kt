@@ -15,6 +15,13 @@ interface LayoutParamsEmitter {
         node: AnalyzedNode,
         parentVarName: String
     )
+
+    fun emitRoot(
+        builder: CodeBlock.Builder,
+        varName: String,
+        node: AnalyzedNode,
+        parentVarName: String
+    )
 }
 
 class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
@@ -29,6 +36,15 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
         emitLayoutGravity(builder, varName, node)
     }
 
+    override fun emitRoot(
+        builder: CodeBlock.Builder,
+        varName: String,
+        node: AnalyzedNode,
+        parentVarName: String
+    ) {
+        emitRootLayoutParams(builder, varName, node, parentVarName)
+    }
+
     private fun emitLayoutParams(
         builder: CodeBlock.Builder,
         varName: String,
@@ -41,6 +57,40 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
 
         builder.addStatement("%L.layoutParams = %L", varName, layoutParamsToCode(node, parentVarName, width, height))
         emitMargins(builder, varName, attrs)
+    }
+
+    private fun emitRootLayoutParams(
+        builder: CodeBlock.Builder,
+        varName: String,
+        node: AnalyzedNode,
+        parentVarName: String
+    ) {
+        val attrs = node.node.attributes
+        val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content")
+        val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content")
+
+        builder.beginControlFlow("%L?.let { parentView ->", parentVarName)
+        builder.addStatement(
+            "%L.layoutParams = when (parentView) {\n" +
+                "  is %T -> %T(%L, %L)\n" +
+                "  is %T -> %T(%L, %L)\n" +
+                "  else -> %T(%L, %L)\n" +
+                "}",
+            varName,
+            linearLayoutClass,
+            linearLayoutParamsClass,
+            width,
+            height,
+            frameLayoutClass,
+            frameLayoutParamsClass,
+            width,
+            height,
+            viewGroupMarginLayoutParamsClass,
+            width,
+            height
+        )
+        emitMargins(builder, varName, attrs)
+        builder.endControlFlow()
     }
 
     private fun emitMargins(builder: CodeBlock.Builder, varName: String, attrs: Map<String, String>) {
@@ -144,7 +194,9 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
     private companion object {
         val viewGroupLayoutParamsClass = ClassName("android.view", "ViewGroup", "LayoutParams")
         val viewGroupMarginLayoutParamsClass = ClassName("android.view", "ViewGroup", "MarginLayoutParams")
+        val linearLayoutClass = ClassName("android.widget", "LinearLayout")
         val linearLayoutParamsClass = ClassName("android.widget", "LinearLayout", "LayoutParams")
+        val frameLayoutClass = ClassName("android.widget", "FrameLayout")
         val frameLayoutParamsClass = ClassName("android.widget", "FrameLayout", "LayoutParams")
     }
 }

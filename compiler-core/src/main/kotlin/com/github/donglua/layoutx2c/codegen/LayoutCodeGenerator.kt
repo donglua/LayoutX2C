@@ -102,7 +102,9 @@ class LayoutCodeGenerator(
         }
 
         // 生成 LayoutParams
-        if (!isRoot) {
+        if (isRoot) {
+            layoutParamsEmitter.emitRoot(builder, varName, node, parentVarName)
+        } else {
             layoutParamsEmitter.emit(builder, varName, node, parentVarName)
         }
 

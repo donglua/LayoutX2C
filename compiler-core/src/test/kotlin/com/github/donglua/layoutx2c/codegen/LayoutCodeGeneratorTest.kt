@@ -111,6 +111,27 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `root layout params are generated from non null parent`() {
+        val xml = """
+            <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginBottom="12dp" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "root_layout_params").root)
+        val generated = generator.generate(analyzed, "root_layout_params", "R.layout.root_layout_params").toString()
+
+        assertThat(generated).contains("parent?.let { parentView ->")
+        assertThat(generated).contains("root.layoutParams =")
+        assertThat(generated).contains("is LinearLayout -> LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("is FrameLayout -> FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("else -> ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("ViewGroup.LayoutParams.MATCH_PARENT)")
+        assertThat(generated).contains("(root.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin = (12f * density +")
+    }
+
+    @Test
     fun `layout params use imports instead of fully qualified names`() {
         val xml = """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
