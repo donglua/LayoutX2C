@@ -17,7 +17,8 @@
         </activity>
 
         <activity android:name=".BenchmarkActivity" />
-        <activity android:name=".PreviewActivity" />
+        <activity android:name=".CodeViewerActivity" />
+
     </application>
 
 </manifest>

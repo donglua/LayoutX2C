@@ -1,32 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">LayoutX2C Demo</string>
-    <string name="demo_subtitle">XML layout to generated Kotlin code</string>
-    <string name="status_loading">Checking...</string>
+    <string name="demo_subtitle">XML layout → generated Kotlin code</string>
+    <string name="status_loading">Checking registry…</string>
+
+    <!-- Main Activity -->
     <string name="btn_benchmark">Run Benchmark</string>
-    <string name="btn_simple_layout">Preview: activity_simple</string>
-    <string name="btn_nested_layout">Preview: activity_nested</string>
-    <string name="btn_scroll_layout">Preview: activity_scroll</string>
-    <string name="btn_form_layout">Preview: activity_form</string>
-    <string name="image_demo_title">ImageView generated with src, scaleType, and tint</string>
-    <string name="scroll_demo_title">ScrollView and HorizontalScrollView</string>
-    <string name="scroll_demo_item_one">Column A</string>
-    <string name="scroll_demo_item_two">Column B</string>
-    <string name="scroll_demo_item_three">Column C</string>
-    <string name="scroll_demo_body">Both scroll containers are created by generated Kotlin code.</string>
-    <string name="form_demo_title">Button and EditText</string>
-    <string name="form_demo_name_hint">Name</string>
-    <string name="form_demo_submit">Submit</string>
+    <string name="btn_code_viewer">Code Viewer</string>
 
-    <!-- Nested layout -->
-    <string name="nested_header">Nested Layout Demo</string>
-    <string name="nested_close">Close</string>
-    <string name="nested_content">This layout uses LinearLayout weight\nand FrameLayout nesting</string>
-    <string name="nested_detail">Generated code handles LayoutParams\ncorrectly for each parent type</string>
-    <string name="btn_cancel">Cancel</string>
-    <string name="btn_confirm">Confirm</string>
-
-    <!-- Benchmark -->
+    <!-- Benchmark Activity -->
     <string name="benchmark_title">Benchmark</string>
-    <string name="benchmark_running">Running benchmark...</string>
+    <string name="benchmark_run">Run</string>
+    <string name="benchmark_idle">Press Run to start…</string>
+    <string name="benchmark_running">Running…</string>
+
+    <!-- Code Viewer Activity -->
+    <string name="code_viewer_layout_label">Layout:</string>
+    <string name="code_viewer_simple">Simple</string>
+    <string name="code_viewer_nested">Nested</string>
+    <string name="code_viewer_form">Form</string>
+    <string name="code_viewer_tab_xml">XML</string>
+    <string name="code_viewer_tab_kotlin">Generated Kotlin</string>
+    <string name="code_viewer_no_source">Build the project first (./gradlew :demo:assembleDebug) to generate Kotlin code.</string>
+
+    <!-- demo_simple layout strings -->
+    <string name="demo_simple_title">Simple Layout</string>
+    <string name="demo_simple_body">This view is created entirely from generated Kotlin code — no XML inflation at runtime.</string>
+
+    <!-- demo_nested layout strings -->
+    <string name="demo_nested_label">Nested Layout</string>
+    <string name="demo_nested_badge">GENERATED</string>
+    <string name="demo_nested_content">LinearLayout weight + FrameLayout nesting handled correctly.</string>
+    <string name="demo_nested_detail">LayoutParams are emitted per parent type.</string>
+
+    <!-- demo_form layout strings -->
+    <string name="demo_form_title">Form Views</string>
+    <string name="demo_form_name_hint">Name</string>
+    <string name="demo_form_submit">Submit</string>
 </resources>

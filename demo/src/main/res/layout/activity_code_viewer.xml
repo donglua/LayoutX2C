@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Top: layout selector -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/code_viewer_layout_label"
+            android:textSize="14sp"
+            android:layout_marginEnd="12dp" />
+
+        <Button
+            android:id="@+id/btn_demo_simple"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/code_viewer_simple"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_demo_nested"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/code_viewer_nested"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_demo_form"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/code_viewer_form" />
+
+    </LinearLayout>
+
+    <!-- Middle: XML / Kotlin tab switch -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp">
+
+        <Button
+            android:id="@+id/tab_xml"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="@string/code_viewer_tab_xml"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/tab_kotlin"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="@string/code_viewer_tab_kotlin" />
+
+    </LinearLayout>
+
+    <!-- Code display area -->
+    <ScrollView
+        android:id="@+id/scroll_xml"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <TextView
+            android:id="@+id/code_xml"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:textSize="12sp"
+            android:lineSpacingExtra="3dp" />
+
+    </ScrollView>
+
+    <ScrollView
+        android:id="@+id/scroll_kotlin"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/code_kotlin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:textSize="12sp"
+            android:lineSpacingExtra="3dp" />
+
+    </ScrollView>
+
+</LinearLayout>
