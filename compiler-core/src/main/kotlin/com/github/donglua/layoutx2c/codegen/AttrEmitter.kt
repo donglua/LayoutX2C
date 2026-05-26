@@ -1,6 +1,10 @@
 package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
+import com.github.donglua.layoutx2c.parser.isImageView
+import com.github.donglua.layoutx2c.parser.isLinearLayout
+import com.github.donglua.layoutx2c.parser.isScrollView
+import com.github.donglua.layoutx2c.parser.isTextView
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 
@@ -56,6 +60,10 @@ class DefaultAttrEmitter : AttrEmitter {
 
         attrs["android:gravity"]?.let { value ->
             builder.addStatement("gravity = %L", gravityToCode(value))
+        }
+
+        attrs["android:fillViewport"]?.takeIf { node.node.isScrollView() && it == "true" }?.let {
+            builder.addStatement("isFillViewport = true")
         }
     }
 
@@ -151,36 +159,6 @@ class DefaultAttrEmitter : AttrEmitter {
                 builder.addStatement("%L(%T.parseColor(%S))", methodName, ClassName("android.graphics", "Color"), value)
             }
         }
-    }
-
-    private fun gravityToCode(value: String): String {
-        val parts = value.split("|")
-        return parts.joinToString(" or ") { part ->
-            when (part.trim()) {
-                "center" -> "android.view.Gravity.CENTER"
-                "center_horizontal" -> "android.view.Gravity.CENTER_HORIZONTAL"
-                "center_vertical" -> "android.view.Gravity.CENTER_VERTICAL"
-                "top" -> "android.view.Gravity.TOP"
-                "bottom" -> "android.view.Gravity.BOTTOM"
-                "left", "start" -> "android.view.Gravity.START"
-                "right", "end" -> "android.view.Gravity.END"
-                else -> "android.view.Gravity.NO_GRAVITY"
-            }
-        }
-    }
-
-    private fun com.github.donglua.layoutx2c.parser.LayoutNode.isLinearLayout(): Boolean {
-        return tagName == "LinearLayout" || tagName == "android.widget.LinearLayout"
-    }
-
-    private fun com.github.donglua.layoutx2c.parser.LayoutNode.isTextView(): Boolean {
-        return tagName == "TextView" || tagName == "android.widget.TextView"
-    }
-
-    private fun com.github.donglua.layoutx2c.parser.LayoutNode.isImageView(): Boolean {
-        return tagName == "ImageView" ||
-            tagName == "android.widget.ImageView" ||
-            tagName == "androidx.appcompat.widget.AppCompatImageView"
     }
 
     private fun textStyleToCode(value: String): String {

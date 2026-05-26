@@ -57,6 +57,126 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `scroll view emits fill viewport and frame layout params for its child`() {
+        val xml = """
+            <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Title" />
+                </LinearLayout>
+            </ScrollView>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "scroll_container").root)
+        val generated = generator.generate(analyzed, "scroll_container", "R.layout.scroll_container").toString()
+
+        assertThat(generated).contains("val root = ScrollView(context).apply {")
+        assertThat(generated).contains("isFillViewport = true")
+        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("android.view.ViewGroup.LayoutParams.WRAP_CONTENT)")
+    }
+
+    @Test
+    fun `horizontal scroll view emits horizontal scroll constructor and child layout params`() {
+        val xml = """
+            <HorizontalScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fillViewport="false">
+                <FrameLayout
+                    android:layout_width="320dp"
+                    android:layout_height="48dp" />
+            </HorizontalScrollView>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "horizontal_scroll_container").root)
+        val generated = generator.generate(
+            analyzed,
+            "horizontal_scroll_container",
+            "R.layout.horizontal_scroll_container"
+        ).toString()
+
+        assertThat(generated).contains("val root = HorizontalScrollView(context).apply {")
+        assertThat(generated).doesNotContain("isFillViewport = false")
+        assertThat(generated).contains("root_child0.layoutParams = android.widget.FrameLayout.LayoutParams((320f *")
+    }
+
+    @Test
+    fun `layout gravity emits for frame backed parent layout params`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" />
+            </FrameLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "frame_layout_gravity").root)
+        val generated = generator.generate(analyzed, "frame_layout_gravity", "R.layout.frame_layout_gravity").toString()
+
+        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,")
+        assertThat(generated).contains("(root_child0.layoutParams as FrameLayout.LayoutParams).gravity = android.view.Gravity.CENTER")
+    }
+
+    @Test
+    fun `layout gravity emits for scroll view child layout params`() {
+        val xml = """
+            <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal" />
+            </ScrollView>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "scroll_layout_gravity").root)
+        val generated = generator.generate(analyzed, "scroll_layout_gravity", "R.layout.scroll_layout_gravity").toString()
+
+        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,")
+        assertThat(generated).contains("(root_child0.layoutParams as FrameLayout.LayoutParams).gravity =")
+        assertThat(generated).contains("android.view.Gravity.CENTER_HORIZONTAL")
+    }
+
+    @Test
+    fun `layout gravity emits for linear layout child layout params`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|bottom" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "linear_layout_gravity").root)
+        val generated = generator.generate(analyzed, "linear_layout_gravity", "R.layout.linear_layout_gravity").toString()
+
+        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,")
+        assertThat(generated).contains("(root_child0.layoutParams as LinearLayout.LayoutParams).gravity = android.view.Gravity.END or")
+        assertThat(generated).contains("android.view.Gravity.BOTTOM")
+    }
+
+    @Test
     fun `fallback child receives generated parent layout params before addView`() {
         val xml = """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"

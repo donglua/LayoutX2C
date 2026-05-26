@@ -6,7 +6,13 @@
     <string name="btn_benchmark">Run Benchmark</string>
     <string name="btn_simple_layout">Preview: activity_simple</string>
     <string name="btn_nested_layout">Preview: activity_nested</string>
+    <string name="btn_scroll_layout">Preview: activity_scroll</string>
     <string name="image_demo_title">ImageView generated with src, scaleType, and tint</string>
+    <string name="scroll_demo_title">ScrollView and HorizontalScrollView</string>
+    <string name="scroll_demo_item_one">Column A</string>
+    <string name="scroll_demo_item_two">Column B</string>
+    <string name="scroll_demo_item_three">Column C</string>
+    <string name="scroll_demo_body">Both scroll containers are created by generated Kotlin code.</string>
 
     <!-- Nested layout -->
     <string name="nested_header">Nested Layout Demo</string>

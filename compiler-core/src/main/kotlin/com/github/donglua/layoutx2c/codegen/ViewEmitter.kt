@@ -20,6 +20,10 @@ class DefaultViewEmitter : ViewEmitter {
                 ClassName("android.widget", "LinearLayout")
             "FrameLayout", "android.widget.FrameLayout" ->
                 ClassName("android.widget", "FrameLayout")
+            "ScrollView", "android.widget.ScrollView" ->
+                ClassName("android.widget", "ScrollView")
+            "HorizontalScrollView", "android.widget.HorizontalScrollView" ->
+                ClassName("android.widget", "HorizontalScrollView")
             "TextView", "android.widget.TextView" ->
                 ClassName("androidx.appcompat.widget", "AppCompatTextView")
             "ImageView", "android.widget.ImageView", "androidx.appcompat.widget.AppCompatImageView" ->

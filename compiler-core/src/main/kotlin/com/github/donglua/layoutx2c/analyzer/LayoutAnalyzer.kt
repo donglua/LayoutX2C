@@ -2,6 +2,10 @@ package com.github.donglua.layoutx2c.analyzer
 
 import com.github.donglua.layoutx2c.codegen.ImageScaleTypes
 import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.isImageView
+import com.github.donglua.layoutx2c.parser.isLinearLayout
+import com.github.donglua.layoutx2c.parser.isScrollView
+import com.github.donglua.layoutx2c.parser.isTextView
 
 /**
  * 分析 LayoutTree 中每个节点的支持度。
@@ -14,6 +18,8 @@ class LayoutAnalyzer {
         val SUPPORTED_VIEWS = setOf(
             "LinearLayout", "android.widget.LinearLayout",
             "FrameLayout", "android.widget.FrameLayout",
+            "ScrollView", "android.widget.ScrollView",
+            "HorizontalScrollView", "android.widget.HorizontalScrollView",
             "TextView", "android.widget.TextView",
             "ImageView", "android.widget.ImageView",
             "androidx.appcompat.widget.AppCompatImageView",
@@ -52,7 +58,8 @@ class LayoutAnalyzer {
             "android:layout_marginEnd",
             "android:layout_weight",
             "android:layout_gravity",
-            "android:gravity"
+            "android:gravity",
+            "android:fillViewport"
         )
 
         /** 遇到这些属性直接标记整个节点为 FALLBACK */
@@ -154,6 +161,7 @@ class LayoutAnalyzer {
             "android:scaleType",
             "android:tint",
             "app:tint" -> node.isImageView()
+            "android:fillViewport" -> node.isScrollView()
             else -> true
         }
     }
@@ -164,21 +172,8 @@ class LayoutAnalyzer {
             node.isTextView() && node.attributes["android:textSize"]?.let { !isSupportedDimension(it) } == true ||
             node.isTextView() && node.attributes["android:textStyle"]?.let { !isSupportedTextStyle(it) } == true ||
             node.isTextView() && node.attributes["android:textColor"]?.let { !isSupportedColor(it) } == true ||
-            node.attributes["android:background"]?.let { !isSupportedBackground(it) } == true
-    }
-
-    private fun LayoutNode.isLinearLayout(): Boolean {
-        return tagName == "LinearLayout" || tagName == "android.widget.LinearLayout"
-    }
-
-    private fun LayoutNode.isTextView(): Boolean {
-        return tagName == "TextView" || tagName == "android.widget.TextView"
-    }
-
-    private fun LayoutNode.isImageView(): Boolean {
-        return tagName == "ImageView" ||
-            tagName == "android.widget.ImageView" ||
-            tagName == "androidx.appcompat.widget.AppCompatImageView"
+            node.attributes["android:background"]?.let { !isSupportedBackground(it) } == true ||
+            node.isScrollView() && node.attributes["android:fillViewport"]?.let { !isSupportedBoolean(it) } == true
     }
 
     private fun isSupportedDimension(value: String): Boolean {
@@ -199,5 +194,9 @@ class LayoutAnalyzer {
 
     private fun isSupportedTextStyle(value: String): Boolean {
         return value.split("|").map { it.trim() }.all { it in setOf("normal", "bold", "italic") }
+    }
+
+    private fun isSupportedBoolean(value: String): Boolean {
+        return value == "true" || value == "false"
     }
 }

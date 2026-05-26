@@ -51,6 +51,47 @@ class LayoutAnalyzerTest {
     }
 
     @Test
+    fun `scroll containers are supported but recycler view remains fallback`() {
+        val xml = """
+            <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true">
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </HorizontalScrollView>
+            </ScrollView>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[0].children[0].supportLevel).isEqualTo(SupportLevel.FALLBACK)
+    }
+
+    @Test
+    fun `non literal fill viewport returns fallback`() {
+        val xml = """
+            <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="@bool/fill_viewport" />
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.unsupportedAttributes).contains("android:fillViewport")
+    }
+
+    @Test
     fun `style attribute forces FALLBACK`() {
         val xml = """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"

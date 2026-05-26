@@ -1,6 +1,10 @@
 package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
+import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.isFrameLayout
+import com.github.donglua.layoutx2c.parser.isLinearLayout
+import com.github.donglua.layoutx2c.parser.isScrollView
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 
@@ -43,6 +47,15 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
                 dimensionToCode(marginBottom ?: "0dp")
             )
         }
+
+        val layoutGravity = attrs["android:layout_gravity"] ?: return
+        val layoutParamsClass = layoutGravityParamsClass(node.parentTagName) ?: return
+        builder.addStatement(
+            "(%L.layoutParams as %T).gravity = %L",
+            varName,
+            layoutParamsClass,
+            gravityToCode(layoutGravity)
+        )
     }
 
     private fun layoutParamsToCode(
@@ -53,18 +66,32 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
     ): String {
         val attrs = node.node.attributes
         val weight = attrs["android:layout_weight"]?.toFloatOrNull()
-        return when (node.parentTagName) {
-            "LinearLayout", "android.widget.LinearLayout" -> {
+        return when {
+            node.parentIs(LayoutNode::isLinearLayout) -> {
                 if (weight != null) {
                     "android.widget.LinearLayout.LayoutParams($width, $height, ${weight}f)"
                 } else {
                     "android.widget.LinearLayout.LayoutParams($width, $height)"
                 }
             }
-            "FrameLayout", "android.widget.FrameLayout" ->
+            node.parentIs(LayoutNode::isFrameLayout) || node.parentIs(LayoutNode::isScrollView) ->
                 "android.widget.FrameLayout.LayoutParams($width, $height)"
             else ->
                 "$parentVarName.generateLayoutParams(android.view.ViewGroup.MarginLayoutParams($width, $height))"
+        }
+    }
+
+    private fun AnalyzedNode.parentIs(predicate: LayoutNode.() -> Boolean): Boolean {
+        val tagName = parentTagName ?: return false
+        return LayoutNode(tagName, emptyMap(), emptyList()).predicate()
+    }
+
+    private fun layoutGravityParamsClass(parentTagName: String?): ClassName? {
+        val parent = parentTagName?.let { LayoutNode(it, emptyMap(), emptyList()) } ?: return null
+        return when {
+            parent.isLinearLayout() -> ClassName("android.widget", "LinearLayout", "LayoutParams")
+            parent.isFrameLayout() || parent.isScrollView() -> ClassName("android.widget", "FrameLayout", "LayoutParams")
+            else -> null
         }
     }
 
