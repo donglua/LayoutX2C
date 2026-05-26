@@ -6,7 +6,7 @@
 
 - **runtime** — Android library，ViewFactory 接口 + FallbackInflater + 注册表
 - **compiler-core** — 纯 JVM，XML 解析、支持度分析、代码生成
-- **ksp-processor** — KSP 注解处理器，扫描 @FastLayouts 注解
+- **ksp-processor** — KSP 注解处理器，扫描 @FastLayoutConfig / @FastLayouts / @FastLayoutPattern
 - **gradle-plugin** — Gradle 插件，自动配置 KSP、传递 res 路径
 - **demo** — 示例 App + benchmark
 
@@ -37,10 +37,37 @@ dependencies {
 }
 ```
 
+推荐使用 `@FastLayoutConfig`，直接写 `R.layout.*`，processor 会从源码中提取 layout 名：
+
 ```kotlin
-// 任意 Kotlin 文件
-@FastLayouts(R.layout.activity_main, R.layout.fragment_home)
-package com.example.app
+import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig
+
+@FastLayoutConfig
+object LayoutX2CConfig {
+    val layouts = intArrayOf(
+        R.layout.activity_main,
+        R.layout.fragment_home
+    )
+}
+```
+
+也可以使用 `@FastLayouts` 显式声明 layout 名。这里传的是不带 `.xml` 后缀的字符串，不是
+`R.layout.*`：
+
+```kotlin
+import com.github.donglua.layoutx2c.runtime.annotation.FastLayouts
+
+@FastLayouts("activity_main", "fragment_home")
+interface LayoutX2CConfig
+```
+
+如果一组 layout 有稳定前缀，可以使用 `@FastLayoutPattern` 批量匹配：
+
+```kotlin
+import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutPattern
+
+@FastLayoutPattern(rClass = R::class, layoutPrefix = "activity_")
+interface LayoutX2CConfig
 ```
 
 只有在资源目录、`R` 包名或生成包名不符合默认推导时，才需要手动传：
