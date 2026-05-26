@@ -46,6 +46,11 @@ class LayoutCodeGenerator(
     private fun generateCreateBody(node: AnalyzedNode, layoutResId: String): CodeBlock {
         val builder = CodeBlock.builder()
 
+        if (usesDensity(node)) {
+            builder.addStatement("val density = context.resources.displayMetrics.density")
+            builder.add("\n")
+        }
+
         generateNodeCode(builder, node, "root", "parent", layoutResId, isRoot = true, childPath = emptyList())
 
         builder.add("\n")
@@ -121,6 +126,11 @@ class LayoutCodeGenerator(
 
     private fun childPathToCode(childPath: List<Int>): String {
         return childPath.joinToString(prefix = "intArrayOf(", postfix = ")")
+    }
+
+    private fun usesDensity(node: AnalyzedNode): Boolean {
+        return node.node.attributes.values.any { value -> value.endsWith("dp") } ||
+            node.children.any(::usesDensity)
     }
 
     private fun layoutNameToClassName(layoutName: String): String {

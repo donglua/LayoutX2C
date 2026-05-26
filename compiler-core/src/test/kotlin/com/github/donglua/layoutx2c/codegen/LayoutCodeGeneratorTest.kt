@@ -111,6 +111,25 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `dp conversions reuse local density`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:minWidth="120dp" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "density_reuse").root)
+        val generated = generator.generate(analyzed, "density_reuse", "R.layout.density_reuse").toString()
+
+        assertThat(generated).contains("val density = context.resources.displayMetrics.density")
+        assertThat(generated).contains("setPadding((16f * density + 0.5f).toInt(),")
+        assertThat(generated).contains("minimumWidth = (120f * density + 0.5f).toInt()")
+        assertThat(generated).doesNotContain("16f * context.resources.displayMetrics.density")
+    }
+
+    @Test
     fun `layout gravity emits for frame backed parent layout params`() {
         val xml = """
             <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -233,11 +252,11 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("context.resources.displayMetrics)")
         assertThat(generated).contains("setTypeface(typeface, android.graphics.Typeface.BOLD_ITALIC)")
         assertThat(generated).contains("setBackgroundColor(Color.parseColor(\"#FF0000\"))")
-        assertThat(generated).contains("setPadding((4f * context.resources.displayMetrics.density + 0.5f).toInt(),")
+        assertThat(generated).contains("setPadding((4f * density + 0.5f).toInt(),")
         assertThat(generated).contains("(8f *")
-        assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt(), (12f *")
-        assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt(), (16f *")
-        assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt())")
+        assertThat(generated).contains("density + 0.5f).toInt(), (12f *")
+        assertThat(generated).contains("density +")
+        assertThat(generated).contains("0.5f).toInt(), (16f * density + 0.5f).toInt())")
         assertThat(generated).contains("gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.END")
     }
 
@@ -270,9 +289,9 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("isEnabled = false")
         assertThat(generated).contains("isClickable = true")
         assertThat(generated).contains("isFocusable = false")
-        assertThat(generated).contains("elevation = (2f * context.resources.displayMetrics.density)")
-        assertThat(generated).contains("minimumWidth = (120f * context.resources.displayMetrics.density + 0.5f).toInt()")
-        assertThat(generated).contains("minimumHeight = (40f * context.resources.displayMetrics.density + 0.5f).toInt()")
+        assertThat(generated).contains("elevation = (2f * density)")
+        assertThat(generated).contains("minimumWidth = (120f * density + 0.5f).toInt()")
+        assertThat(generated).contains("minimumHeight = (40f * density + 0.5f).toInt()")
     }
 
     @Test

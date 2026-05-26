@@ -5,7 +5,7 @@ internal fun dimensionToCode(value: String): String {
         value == "0" || value == "0dp" || value == "0px" -> "0"
         value.endsWith("dp") -> {
             val num = value.removeSuffix("dp")
-            "(${num}f * context.resources.displayMetrics.density + 0.5f).toInt()"
+            "(${num}f * density + 0.5f).toInt()"
         }
         value.endsWith("sp") -> {
             val num = value.removeSuffix("sp")
@@ -21,7 +21,7 @@ internal fun dimensionToPxFloatCode(value: String): String {
         value == "0" || value == "0dp" || value == "0px" -> "0f"
         value.endsWith("dp") -> {
             val num = value.removeSuffix("dp")
-            "(${num}f * context.resources.displayMetrics.density)"
+            "(${num}f * density)"
         }
         value.endsWith("sp") -> {
             val num = value.removeSuffix("sp")
