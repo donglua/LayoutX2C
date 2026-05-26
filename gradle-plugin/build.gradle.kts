@@ -1,5 +1,5 @@
 plugins {
-    `kotlin-dsl`
+    id("org.jetbrains.kotlin.jvm")
     `java-gradle-plugin`
 }
 
@@ -9,7 +9,6 @@ val agpVersion: String by rootProject.extra
 dependencies {
     implementation("com.android.tools.build:gradle:$agpVersion")
     implementation("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:$kspVersion")
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:${rootProject.extra["kotlinVersion"]}")
 }
 
 gradlePlugin {

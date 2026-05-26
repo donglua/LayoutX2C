@@ -28,6 +28,10 @@ class LayoutAnalyzer {
             "android:orientation",
             "android:visibility",
             "android:text",
+            "android:textColor",
+            "android:textSize",
+            "android:textStyle",
+            "android:background",
             "android:src",
             "android:scaleType",
             "android:tint",
@@ -142,6 +146,10 @@ class LayoutAnalyzer {
         if (attrName !in SUPPORTED_ATTRIBUTES) return false
         return when (attrName) {
             "android:orientation" -> node.isLinearLayout()
+            "android:text",
+            "android:textColor",
+            "android:textSize",
+            "android:textStyle" -> node.isTextView()
             "android:src",
             "android:scaleType",
             "android:tint",
@@ -152,16 +160,44 @@ class LayoutAnalyzer {
 
     private fun hasUnsupportedAttributeValue(node: LayoutNode): Boolean {
         val scaleType = node.attributes["android:scaleType"]
-        return scaleType != null && node.isImageView() && !ImageScaleTypes.supports(scaleType)
+        return scaleType != null && node.isImageView() && !ImageScaleTypes.supports(scaleType) ||
+            node.isTextView() && node.attributes["android:textSize"]?.let { !isSupportedDimension(it) } == true ||
+            node.isTextView() && node.attributes["android:textStyle"]?.let { !isSupportedTextStyle(it) } == true ||
+            node.isTextView() && node.attributes["android:textColor"]?.let { !isSupportedColor(it) } == true ||
+            node.attributes["android:background"]?.let { !isSupportedBackground(it) } == true
     }
 
     private fun LayoutNode.isLinearLayout(): Boolean {
         return tagName == "LinearLayout" || tagName == "android.widget.LinearLayout"
     }
 
+    private fun LayoutNode.isTextView(): Boolean {
+        return tagName == "TextView" || tagName == "android.widget.TextView"
+    }
+
     private fun LayoutNode.isImageView(): Boolean {
         return tagName == "ImageView" ||
             tagName == "android.widget.ImageView" ||
             tagName == "androidx.appcompat.widget.AppCompatImageView"
+    }
+
+    private fun isSupportedDimension(value: String): Boolean {
+        return value.startsWith("@dimen/") ||
+            value.endsWith("dp") ||
+            value.endsWith("sp") ||
+            value.endsWith("px") ||
+            value == "0"
+    }
+
+    private fun isSupportedColor(value: String): Boolean {
+        return value.startsWith("@color/") || value.startsWith("#")
+    }
+
+    private fun isSupportedBackground(value: String): Boolean {
+        return value.startsWith("@drawable/") || isSupportedColor(value)
+    }
+
+    private fun isSupportedTextStyle(value: String): Boolean {
+        return value.split("|").map { it.trim() }.all { it in setOf("normal", "bold", "italic") }
     }
 }

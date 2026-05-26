@@ -40,13 +40,12 @@ class DefaultAttrEmitter : AttrEmitter {
             )
         }
 
-        attrs["android:text"]?.let { value ->
-            if (value.startsWith("@string/")) {
-                val resName = value.removePrefix("@string/")
-                builder.addStatement("text = context.getString(R.string.%L)", resName)
-            } else {
-                builder.addStatement("text = %S", value)
-            }
+        attrs["android:background"]?.let { value ->
+            emitBackground(builder, value)
+        }
+
+        if (node.node.isTextView()) {
+            emitTextAttrs(builder, attrs)
         }
 
         if (node.node.isImageView()) {
@@ -57,6 +56,29 @@ class DefaultAttrEmitter : AttrEmitter {
 
         attrs["android:gravity"]?.let { value ->
             builder.addStatement("gravity = %L", gravityToCode(value))
+        }
+    }
+
+    private fun emitTextAttrs(builder: CodeBlock.Builder, attrs: Map<String, String>) {
+        attrs["android:text"]?.let { value ->
+            if (value.startsWith("@string/")) {
+                val resName = value.removePrefix("@string/")
+                builder.addStatement("text = context.getString(R.string.%L)", resName)
+            } else {
+                builder.addStatement("text = %S", value)
+            }
+        }
+
+        attrs["android:textColor"]?.let { value ->
+            emitColorAssignment(builder, value, "setTextColor")
+        }
+
+        attrs["android:textSize"]?.let { value ->
+            builder.addStatement("setTextSize(%T.COMPLEX_UNIT_PX, %L)", ClassName("android.util", "TypedValue"), dimensionToPxFloatCode(value))
+        }
+
+        attrs["android:textStyle"]?.let { value ->
+            builder.addStatement("setTypeface(typeface, %L)", textStyleToCode(value))
         }
     }
 
@@ -103,6 +125,34 @@ class DefaultAttrEmitter : AttrEmitter {
         }
     }
 
+    private fun emitBackground(builder: CodeBlock.Builder, value: String) {
+        when {
+            value.startsWith("@drawable/") -> {
+                val resName = value.removePrefix("@drawable/")
+                builder.addStatement("setBackgroundResource(R.drawable.%L)", resName)
+            }
+            value.startsWith("@color/") -> {
+                val resName = value.removePrefix("@color/")
+                builder.addStatement("setBackgroundColor(%T.getColor(context, R.color.%L))", ClassName("androidx.core.content", "ContextCompat"), resName)
+            }
+            value.startsWith("#") -> {
+                builder.addStatement("setBackgroundColor(%T.parseColor(%S))", ClassName("android.graphics", "Color"), value)
+            }
+        }
+    }
+
+    private fun emitColorAssignment(builder: CodeBlock.Builder, value: String, methodName: String) {
+        when {
+            value.startsWith("@color/") -> {
+                val resName = value.removePrefix("@color/")
+                builder.addStatement("%L(%T.getColor(context, R.color.%L))", methodName, ClassName("androidx.core.content", "ContextCompat"), resName)
+            }
+            value.startsWith("#") -> {
+                builder.addStatement("%L(%T.parseColor(%S))", methodName, ClassName("android.graphics", "Color"), value)
+            }
+        }
+    }
+
     private fun gravityToCode(value: String): String {
         val parts = value.split("|")
         return parts.joinToString(" or ") { part ->
@@ -123,10 +173,23 @@ class DefaultAttrEmitter : AttrEmitter {
         return tagName == "LinearLayout" || tagName == "android.widget.LinearLayout"
     }
 
+    private fun com.github.donglua.layoutx2c.parser.LayoutNode.isTextView(): Boolean {
+        return tagName == "TextView" || tagName == "android.widget.TextView"
+    }
+
     private fun com.github.donglua.layoutx2c.parser.LayoutNode.isImageView(): Boolean {
         return tagName == "ImageView" ||
             tagName == "android.widget.ImageView" ||
             tagName == "androidx.appcompat.widget.AppCompatImageView"
     }
 
+    private fun textStyleToCode(value: String): String {
+        val styles = value.split("|").map { it.trim() }.toSet()
+        return when {
+            "bold" in styles && "italic" in styles -> "android.graphics.Typeface.BOLD_ITALIC"
+            "bold" in styles -> "android.graphics.Typeface.BOLD"
+            "italic" in styles -> "android.graphics.Typeface.ITALIC"
+            else -> "android.graphics.Typeface.NORMAL"
+        }
+    }
 }

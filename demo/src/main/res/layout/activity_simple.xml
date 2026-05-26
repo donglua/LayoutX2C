@@ -10,11 +10,15 @@
         android:id="@+id/text_hello"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textColor="@color/demo_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold"
         android:text="Hello from generated code" />
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
+        android:background="#FFE0E0E0"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp" />
 
@@ -22,6 +26,9 @@
         android:id="@+id/text_world"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:background="@drawable/ic_layoutx2c_demo"
+        android:textColor="#FF3367D6"
+        android:textSize="14sp"
         android:text="World" />
 
 </LinearLayout>

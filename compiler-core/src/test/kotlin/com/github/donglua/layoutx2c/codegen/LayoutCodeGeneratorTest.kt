@@ -90,6 +90,10 @@ class LayoutCodeGeneratorTest {
                 android:layout_height="wrap_content"
                 android:visibility="invisible"
                 android:text="@string/app_name"
+                android:textColor="@color/title"
+                android:textSize="16sp"
+                android:textStyle="bold|italic"
+                android:background="#FF0000"
                 android:paddingStart="4dp"
                 android:paddingTop="8dp"
                 android:paddingEnd="12dp"
@@ -103,6 +107,12 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("id = R.id.title")
         assertThat(generated).contains("visibility = View.INVISIBLE")
         assertThat(generated).contains("text = context.getString(R.string.app_name)")
+        assertThat(generated).contains("setTextColor(ContextCompat.getColor(context, R.color.title))")
+        assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX,")
+        assertThat(generated).contains("android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 16f,")
+        assertThat(generated).contains("context.resources.displayMetrics)")
+        assertThat(generated).contains("setTypeface(typeface, android.graphics.Typeface.BOLD_ITALIC)")
+        assertThat(generated).contains("setBackgroundColor(Color.parseColor(\"#FF0000\"))")
         assertThat(generated).contains("setPadding((4f * context.resources.displayMetrics.density + 0.5f).toInt(),")
         assertThat(generated).contains("(8f *")
         assertThat(generated).contains("context.resources.displayMetrics.density + 0.5f).toInt(), (12f *")
@@ -161,5 +171,24 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("FallbackInflater.inflate(context, R.layout.image_unknown_scale_type, parent)")
         assertThat(generated).doesNotContain("ScaleType.FIT_CENTER")
+    }
+
+    @Test
+    fun `high frequency attributes emit resource references`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#112233"
+                android:textSize="@dimen/title_size"
+                android:background="@drawable/title_background" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "high_frequency_attrs").root)
+        val generated = generator.generate(analyzed, "high_frequency_attrs", "R.layout.high_frequency_attrs").toString()
+
+        assertThat(generated).contains("setTextColor(Color.parseColor(\"#112233\"))")
+        assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX, context.resources.getDimension(R.dimen.title_size))")
+        assertThat(generated).contains("setBackgroundResource(R.drawable.title_background)")
     }
 }

@@ -100,6 +100,11 @@ class LayoutX2CProcessor(
                 )
             }
         }
+
+        if (layoutNames.isEmpty() && patternAnnotated.isEmpty()) {
+            return emptyList()
+        }
+
         val config = resolveConfig(configSources)
         val layoutDir = File(config.resDir, "layout")
 

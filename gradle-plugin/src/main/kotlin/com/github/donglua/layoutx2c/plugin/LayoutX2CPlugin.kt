@@ -57,11 +57,17 @@ class LayoutX2CPlugin : Plugin<Project> {
             .findByType(AndroidComponentsExtension::class.java) ?: return
 
         androidComponents.onVariants {
-            project.extensions.configure(KspExtension::class.java) {
-                this.arg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
-                this.arg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
+            project.extensions.configure(KspExtension::class.java) { ksp ->
+                ksp.addArg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
+                ksp.addArg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
             }
         }
+    }
+
+    private fun KspExtension.addArg(key: String, value: String) {
+        javaClass.methods
+            .first { it.name == "arg" && it.parameterTypes.contentEquals(arrayOf(String::class.java, String::class.java)) }
+            .invoke(this, key, value)
     }
 
     private fun Project.androidNamespace(): String {
