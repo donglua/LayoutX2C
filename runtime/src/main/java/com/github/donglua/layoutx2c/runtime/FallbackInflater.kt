@@ -9,7 +9,7 @@ import androidx.annotation.LayoutRes
 /**
  * Fallback：对不支持的布局或子树，使用原始 LayoutInflater inflate 原始 layout。
  *
- * 这是 MVP 阶段的简单实现。后续可优化为 XmlPullParser seek 方式。
+ * 子树 fallback 会先 seek 到原始 XML 的目标节点，再只 inflate 目标子树。
  */
 object FallbackInflater {
 
@@ -38,9 +38,30 @@ object FallbackInflater {
         childPath: IntArray,
         parent: ViewGroup?
     ): View {
+        val layoutName = context.resources.getResourceName(layoutId)
+        context.resources.getLayout(layoutId).use { parser ->
+            val subtree = FallbackXmlSubtreeSeeker.seekToChild(parser, childPath, layoutName)
+            if (!subtree.requiresLegacyInflate()) {
+                return LayoutInflater.from(context).inflate(ReplayStartTagXmlResourceParser(parser), parent, false)
+            }
+        }
+        return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
+    }
+
+    private fun FallbackXmlSubtree.requiresLegacyInflate(): Boolean {
+        return tagName == "merge" || tagName == "include" || tagName == "fragment"
+    }
+
+    private fun inflateChildFromFullTree(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        childPath: IntArray,
+        parent: ViewGroup?,
+        layoutName: String
+    ): View {
         val inflater = LayoutInflater.from(context)
         val fullTree = inflater.inflate(layoutId, parent, false)
-        val child = findChildByPath(fullTree, childPath, context.resources.getResourceName(layoutId))
+        val child = findChildByPath(fullTree, childPath, layoutName)
         (child.parent as? ViewGroup)?.removeView(child)
         return child
     }
