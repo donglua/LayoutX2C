@@ -13,7 +13,8 @@ class SupportReportGenerator {
         val tagName: String,
         val indexPath: String,
         val supportLevel: SupportLevel,
-        val unsupportedAttributes: Set<String>
+        val unsupportedAttributes: Set<String>,
+        val reason: String?
     )
 
     fun generate(analyzedRoot: AnalyzedNode, layoutName: String): String {
@@ -30,6 +31,7 @@ class SupportReportGenerator {
             sb.appendLine("      \"tag\": \"${entry.tagName}\",")
             sb.appendLine("      \"path\": \"${entry.indexPath}\",")
             sb.appendLine("      \"support\": \"${entry.supportLevel.name}\",")
+            sb.appendLine("      \"reason\": ${entry.reason?.let { "\"$it\"" } ?: "null"},")
             sb.appendLine("      \"unsupportedAttrs\": [${entry.unsupportedAttributes.joinToString(", ") { "\"$it\"" }}]")
             sb.append("    }")
             if (index < entries.size - 1) sb.append(",")
@@ -54,12 +56,21 @@ class SupportReportGenerator {
                 tagName = node.node.tagName,
                 indexPath = currentPath,
                 supportLevel = node.supportLevel,
-                unsupportedAttributes = node.unsupportedAttributes
+                unsupportedAttributes = node.unsupportedAttributes,
+                reason = fallbackReason(node)
             )
         )
 
         for (child in node.children) {
             collectEntries(child, currentPath, entries)
+        }
+    }
+
+    private fun fallbackReason(node: AnalyzedNode): String? {
+        if (node.supportLevel != SupportLevel.FALLBACK) return null
+        return when (node.node.tagName) {
+            "layout" -> "DATA_BINDING_WRAPPER"
+            else -> "UNSUPPORTED_VIEW_OR_SEMANTICS"
         }
     }
 }

@@ -106,6 +106,10 @@ interface LayoutX2CConfig
 未支持的 View 会 fallback 到原生 `LayoutInflater`；不安全或无法等价生成的属性值会触发
 layout/subtree fallback。
 
+DataBinding 的 `<layout>` 根标签会作为 `DATA_BINDING_WRAPPER` 单独归因并保守
+fallback。LayoutX2C 当前不替代 `DataBindingUtil.inflate()`、生成的 Binding class、
+变量绑定或 binding expression 运行时语义。
+
 ## License
 
 Apache License 2.0
