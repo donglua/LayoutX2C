@@ -12,24 +12,12 @@ import androidx.appcompat.app.AppCompatActivity
  */
 class CodeViewerActivity : AppCompatActivity() {
 
-    // 每个 demo 对应的 xml res id 和 layout 名称（用于查找生成文件）
-    private data class DemoEntry(
-        val layoutName: String,   // e.g. "demo_simple"
-        val generatedClassName: String // KotlinPoet 生成的类名
-    )
-
     private enum class CodeTab {
         Xml,
         Kotlin
     }
 
-    private val demos = listOf(
-        DemoEntry("demo_simple", "Layout_DemoSimple"),
-        DemoEntry("demo_nested", "Layout_DemoNested"),
-        DemoEntry("demo_form", "Layout_DemoForm"),
-        DemoEntry("demo_relative", "Layout_DemoRelative"),
-        DemoEntry("demo_recycler", "Layout_DemoRecycler"),
-    )
+    private val demos = DemoLayoutCatalog.entries
 
     private var currentDemo = demos[0]
     private var currentTab = CodeTab.Xml
@@ -50,7 +38,8 @@ class CodeViewerActivity : AppCompatActivity() {
             findViewById<Button>(R.id.btn_demo_nested),
             findViewById<Button>(R.id.btn_demo_form),
             findViewById<Button>(R.id.btn_demo_relative),
-            findViewById<Button>(R.id.btn_demo_recycler)
+            findViewById<Button>(R.id.btn_demo_recycler),
+            findViewById<Button>(R.id.btn_demo_fallback)
         )
         buttons.zip(demos).forEach { (button, demo) ->
             button.setOnClickListener { showDemo(demo) }
@@ -71,14 +60,14 @@ class CodeViewerActivity : AppCompatActivity() {
         }
     }
 
-    private fun showDemo(demo: DemoEntry) {
+    private fun showDemo(demo: DemoLayoutCatalog.Entry) {
         currentDemo = demo
         loadXml(demo)
         loadKotlin(demo)
         applyTabVisibility()
     }
 
-    private fun loadXml(demo: DemoEntry) {
+    private fun loadXml(demo: DemoLayoutCatalog.Entry) {
         val xml = readAsset("code/xml/${demo.layoutName}.xml")
             ?: "<!-- XML source not available at runtime.\nFile: res/layout/${demo.layoutName}.xml -->"
         bindCode(
@@ -91,7 +80,7 @@ class CodeViewerActivity : AppCompatActivity() {
         )
     }
 
-    private fun loadKotlin(demo: DemoEntry) {
+    private fun loadKotlin(demo: DemoLayoutCatalog.Entry) {
         val code = readAsset("code/kotlin/${demo.generatedClassName}.kt")
             ?: getString(R.string.code_viewer_no_source)
         bindCode(
@@ -144,7 +133,8 @@ class CodeViewerActivity : AppCompatActivity() {
             R.id.btn_demo_nested to demos[1],
             R.id.btn_demo_form to demos[2],
             R.id.btn_demo_relative to demos[3],
-            R.id.btn_demo_recycler to demos[4]
+            R.id.btn_demo_recycler to demos[4],
+            R.id.btn_demo_fallback to demos[5]
         )
         buttonPairs.forEach { (buttonId, demo) ->
             findViewById<Button>(buttonId).isSelected = demo == currentDemo

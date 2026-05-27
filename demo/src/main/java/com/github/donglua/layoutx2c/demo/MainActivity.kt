@@ -19,18 +19,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showRegistryStatus() {
-        val demos = listOf(
-            "demo_simple" to R.layout.demo_simple,
-            "demo_nested" to R.layout.demo_nested,
-            "demo_form"   to R.layout.demo_form,
-            "demo_relative" to R.layout.demo_relative,
-            "demo_recycler" to R.layout.demo_recycler,
-        )
-        val registered = demos.count { (_, id) -> LayoutX2CRegistry.has(this, id) }
+        val demos = DemoLayoutCatalog.entries
+        val registered = demos.count { demo -> LayoutX2CRegistry.has(this, demo.layoutResId) }
         val total = demos.size
-        val lines = demos.joinToString("\n") { (name, id) ->
-            val ok = if (LayoutX2CRegistry.has(this, id)) "✓" else "–"
-            "  $ok $name"
+        val lines = demos.joinToString("\n") { demo ->
+            val ok = if (LayoutX2CRegistry.has(this, demo.layoutResId)) "✓" else "–"
+            "  $ok ${demo.layoutName}"
         }
         findViewById<TextView>(R.id.registry_status).text =
             "Registry: $registered/$total\n$lines"

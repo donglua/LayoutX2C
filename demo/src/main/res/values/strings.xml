@@ -21,6 +21,7 @@
     <string name="code_viewer_form">Form</string>
     <string name="code_viewer_relative">Relative</string>
     <string name="code_viewer_recycler">Recycler</string>
+    <string name="code_viewer_fallback">Fallback</string>
     <string name="code_viewer_tab_xml">XML</string>
     <string name="code_viewer_tab_kotlin">Generated Kotlin</string>
     <string name="code_viewer_no_source">Build the project first (./gradlew :demo:assembleDebug) to generate Kotlin code.</string>
@@ -47,4 +48,9 @@
 
     <!-- demo_recycler layout strings -->
     <string name="demo_recycler_title">RecyclerView Container</string>
+
+    <!-- demo_fallback layout strings -->
+    <string name="demo_fallback_title">Fallback Layout</string>
+    <string name="demo_fallback_badge">FALLBACK</string>
+    <string name="demo_fallback_body">This layout intentionally uses android:theme so LayoutX2C keeps runtime LayoutInflater semantics.</string>
 </resources>

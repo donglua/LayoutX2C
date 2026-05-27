@@ -41,18 +41,11 @@ class BenchmarkActivity : AppCompatActivity() {
         val container = FrameLayout(this)
         val sb = StringBuilder()
 
-        val layouts = listOf(
-            "demo_simple"  to R.layout.demo_simple,
-            "demo_nested"  to R.layout.demo_nested,
-            "demo_form"    to R.layout.demo_form,
-            "demo_relative" to R.layout.demo_relative,
-            "demo_recycler" to R.layout.demo_recycler,
-        )
-
-        for ((name, layoutId) in layouts) {
+        for (demo in DemoLayoutCatalog.entries) {
+            val layoutId = demo.layoutResId
             val hasGenerated = LayoutX2CRegistry.has(this, layoutId)
 
-            sb.appendLine("▸ $name")
+            sb.appendLine("▸ ${demo.layoutName}")
 
             val inflaterTime = benchmark {
                 LayoutInflater.from(this).inflate(layoutId, container, false)

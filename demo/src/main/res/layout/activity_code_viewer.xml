@@ -99,6 +99,7 @@
                 style="@style/Widget.AppCompat.Button.Borderless"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
+                android:layout_marginEnd="8dp"
                 android:background="@drawable/code_viewer_chip"
                 android:backgroundTint="@null"
                 android:minWidth="0dp"
@@ -106,6 +107,21 @@
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
                 android:text="@string/code_viewer_recycler"
+                android:textAllCaps="false"
+                android:textColor="@color/code_viewer_chip_text_selector" />
+
+            <Button
+                android:id="@+id/btn_demo_fallback"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:background="@drawable/code_viewer_chip"
+                android:backgroundTint="@null"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/code_viewer_fallback"
                 android:textAllCaps="false"
                 android:textColor="@color/code_viewer_chip_text_selector" />
 
