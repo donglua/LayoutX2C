@@ -19,6 +19,14 @@ class BenchmarkActivity : AppCompatActivity() {
         private const val WARMUP = 10
     }
 
+    private enum class BenchmarkStage {
+        START_LAYOUT,
+        INFLATE_XML,
+        INFLATE_GENERATED,
+        NEXT_LAYOUT,
+        COMPLETE,
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_benchmark)
@@ -28,48 +36,72 @@ class BenchmarkActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btn_run).setOnClickListener {
             resultView.text = getString(R.string.benchmark_running)
-            resultView.post {
-                val results = runBenchmarks()
-                resultView.text = results
-                Log.i(TAG, results)
-            }
+            it.isEnabled = false
+            runBenchmarksProgressively(resultView, it as Button)
         }
     }
 
-    private fun runBenchmarks(): String {
+    private fun runBenchmarksProgressively(resultView: TextView, runButton: Button) {
         val container = FrameLayout(this)
-        val sb = StringBuilder()
+        val formatter = BenchmarkProgressFormatter(ITERATIONS, WARMUP)
+        var index = 0
+        var stage = BenchmarkStage.START_LAYOUT
 
-        for (demo in DemoLayoutCatalog.entries) {
-            val layoutId = demo.layoutResId
-
-            sb.appendLine("▸ ${demo.layoutName}")
-
-            val inflaterTime = benchmark {
-                LayoutInflater.from(this).inflate(layoutId, container, false)
-                container.removeAllViews()
-            }
-            sb.appendLine("  LayoutInflater  ${inflaterTime}ms  avg ${fmtAvg(inflaterTime)}ms")
-
-            val generatedTime = benchmark {
-                demo.generatedInflater(this, container)
-                container.removeAllViews()
-            }
-            sb.appendLine("  LayoutX2C      ${generatedTime}ms  avg ${fmtAvg(generatedTime)}ms")
-
-            val speedup = if (generatedTime > 0) {
-                String.format("%.1fx", inflaterTime.toFloat() / generatedTime)
-            } else "∞"
-            sb.appendLine("  Speedup: $speedup faster")
-            sb.appendLine()
+        fun render() {
+            resultView.text = formatter.toString()
         }
 
-        sb.appendLine("Iterations: $ITERATIONS  Warmup: $WARMUP")
-        return sb.toString().trimEnd()
-    }
+        fun step() {
+            when (stage) {
+                BenchmarkStage.START_LAYOUT -> {
+                    formatter.onLayoutStarted(DemoLayoutCatalog.entries[index].layoutName)
+                    render()
+                    stage = BenchmarkStage.INFLATE_XML
+                    resultView.post(::step)
+                }
+                BenchmarkStage.INFLATE_XML -> {
+                    val demo = DemoLayoutCatalog.entries[index]
+                    val inflaterTime = benchmark {
+                        LayoutInflater.from(this).inflate(demo.layoutResId, container, false)
+                        container.removeAllViews()
+                    }
+                    formatter.onInflaterMeasured(inflaterTime)
+                    render()
+                    stage = BenchmarkStage.INFLATE_GENERATED
+                    resultView.post(::step)
+                }
+                BenchmarkStage.INFLATE_GENERATED -> {
+                    val demo = DemoLayoutCatalog.entries[index]
+                    val generatedTime = benchmark {
+                        demo.generatedInflater(this, container)
+                        container.removeAllViews()
+                    }
+                    formatter.onGeneratedMeasured(generatedTime)
+                    render()
+                    stage = BenchmarkStage.NEXT_LAYOUT
+                    resultView.post(::step)
+                }
+                BenchmarkStage.NEXT_LAYOUT -> {
+                    index += 1
+                    stage = if (index < DemoLayoutCatalog.entries.size) {
+                        BenchmarkStage.START_LAYOUT
+                    } else {
+                        BenchmarkStage.COMPLETE
+                    }
+                    resultView.post(::step)
+                }
+                BenchmarkStage.COMPLETE -> {
+                    formatter.onComplete()
+                    val results = formatter.toString()
+                    resultView.text = results
+                    runButton.isEnabled = true
+                    Log.i(TAG, results)
+                }
+            }
+        }
 
-    private fun fmtAvg(totalMs: Long) =
-        String.format("%.2f", totalMs.toFloat() / ITERATIONS)
+        resultView.post(::step)
+    }
 
     private fun benchmark(block: () -> Unit): Long {
         repeat(WARMUP) { block() }
