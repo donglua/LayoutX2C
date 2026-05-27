@@ -17,6 +17,7 @@ android {
         targetSdk = rootProject.extra["targetSdk"] as Int
         versionCode = 1
         versionName = "0.1.0"
+        testInstrumentationRunner = "com.github.donglua.layoutx2c.demo.GeneratedInflateTestRunner"
     }
 
     compileOptions {
