@@ -21,11 +21,23 @@ object DemoLayoutCatalog {
     )
 
     val entries = listOf(
-        Entry("Simple", "demo_simple", R.layout.demo_simple, "Layout_DemoSimple", DemoSimpleX2C::inflate),
-        Entry("Nested", "demo_nested", R.layout.demo_nested, "Layout_DemoNested", DemoNestedX2C::inflate),
-        Entry("Form", "demo_form", R.layout.demo_form, "Layout_DemoForm", DemoFormX2C::inflate),
-        Entry("Relative", "demo_relative", R.layout.demo_relative, "Layout_DemoRelative", DemoRelativeX2C::inflate),
-        Entry("Recycler", "demo_recycler", R.layout.demo_recycler, "Layout_DemoRecycler", DemoRecyclerX2C::inflate),
-        Entry("Fallback", "demo_fallback", R.layout.demo_fallback, "Layout_DemoFallback", DemoFallbackX2C::inflate),
+        Entry("Simple", "demo_simple", R.layout.demo_simple, "Layout_DemoSimple") { context, parent ->
+            DemoSimpleX2C.inflate(context, parent)
+        },
+        Entry("Nested", "demo_nested", R.layout.demo_nested, "Layout_DemoNested") { context, parent ->
+            DemoNestedX2C.inflate(context, parent)
+        },
+        Entry("Form", "demo_form", R.layout.demo_form, "Layout_DemoForm") { context, parent ->
+            DemoFormX2C.inflate(context, parent)
+        },
+        Entry("Relative", "demo_relative", R.layout.demo_relative, "Layout_DemoRelative") { context, parent ->
+            DemoRelativeX2C.inflate(context, parent)
+        },
+        Entry("Recycler", "demo_recycler", R.layout.demo_recycler, "Layout_DemoRecycler") { context, parent ->
+            DemoRecyclerX2C.inflate(context, parent)
+        },
+        Entry("Fallback", "demo_fallback", R.layout.demo_fallback, "Layout_DemoFallback") { context, parent ->
+            DemoFallbackX2C.inflate(context, parent)
+        },
     )
 }
