@@ -2,6 +2,8 @@ package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.analyzer.SupportLevel
+import com.github.donglua.layoutx2c.registry.DefaultViewRegistry
+import com.github.donglua.layoutx2c.registry.ViewEmitRegistry
 import com.squareup.kotlinpoet.*
 
 /**
@@ -11,10 +13,13 @@ import com.squareup.kotlinpoet.*
 class LayoutCodeGenerator(
     private val packageName: String,
     private val rPackageName: String,
-    private val viewEmitter: ViewEmitter = DefaultViewEmitter(),
-    private val attrEmitter: AttrEmitter = DefaultAttrEmitter(),
-    private val layoutParamsEmitter: LayoutParamsEmitter = DefaultLayoutParamsEmitter()
+    viewEmitter: ViewEmitter? = null,
+    attrEmitter: AttrEmitter? = null,
+    private val layoutParamsEmitter: LayoutParamsEmitter = DefaultLayoutParamsEmitter(),
+    private val viewRegistry: ViewEmitRegistry = DefaultViewRegistry
 ) {
+    private val viewEmitter: ViewEmitter = viewEmitter ?: DefaultViewEmitter(viewRegistry)
+    private val attrEmitter: AttrEmitter = attrEmitter ?: DefaultAttrEmitter(viewRegistry)
 
     fun generate(analyzedRoot: AnalyzedNode, layoutName: String, layoutResId: String): FileSpec {
         val className = layoutNameToClassName(layoutName)
@@ -171,7 +176,10 @@ class LayoutCodeGenerator(
 
     private fun hasEmittedAttributes(node: AnalyzedNode): Boolean {
         return node.supportedAttributes.any { attrName ->
-            !attrName.startsWith("xmlns:") && !attrName.startsWith("android:layout_")
+            !attrName.startsWith("xmlns:") &&
+                !attrName.startsWith("tools:") &&
+                !attrName.startsWith("android:layout_") &&
+                viewRegistry.canEmitAttribute(node, attrName)
         }
     }
 
