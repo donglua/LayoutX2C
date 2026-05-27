@@ -130,6 +130,7 @@ class LayoutCodeGenerator(
     }
 
     private fun usesDensity(node: AnalyzedNode): Boolean {
+        if (node.supportLevel == SupportLevel.FALLBACK) return false
         return node.node.attributes.values.any { value -> value.endsWith("dp") } ||
             node.children.any(::usesDensity)
     }

@@ -62,6 +62,33 @@ class FallbackSemanticsRegressionTest {
             "val root = FallbackInflater.inflate(context, R.layout.unsafe_partial_layout_params, parent)"
         )
         assertThat(generated).doesNotContain("val root = LinearLayout(context).apply {")
+        assertThat(generated).doesNotContain("val density = context.resources.displayMetrics.density")
+    }
+
+    @Test
+    fun `root fallback with dp attributes does not generate unused density`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp"
+                android:theme="@style/AppTheme">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fallback" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "themed_fallback").root)
+        val generated = generator.generate(analyzed, "themed_fallback", "R.layout.themed_fallback").toString()
+
+        assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(generated).contains(
+            "val root = FallbackInflater.inflate(context, R.layout.themed_fallback, parent)"
+        )
+        assertThat(generated).doesNotContain("val density = context.resources.displayMetrics.density")
     }
 
     @Test
