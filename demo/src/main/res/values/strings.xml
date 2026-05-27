@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">LayoutX2C Demo</string>
     <string name="demo_subtitle">XML layout → generated Kotlin code</string>
-    <string name="status_loading">Checking registry…</string>
+    <string name="status_loading">Checking generated entries…</string>
 
     <!-- Main Activity -->
     <string name="btn_benchmark">Run Benchmark</string>

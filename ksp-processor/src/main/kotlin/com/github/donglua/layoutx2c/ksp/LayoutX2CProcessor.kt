@@ -147,6 +147,7 @@ class LayoutX2CProcessor(
                 val analyzed = analyzer.analyze(tree.root)
                 val layoutResId = "R.layout.$layoutName"
                 val fileSpec = codeGen.generate(analyzed, layoutName, layoutResId)
+                val facadeFileSpec = codeGen.generateFacade(layoutName)
 
                 // 写入生成的 Kotlin 文件
                 val file = codeGenerator.createNewFile(
@@ -156,6 +157,15 @@ class LayoutX2CProcessor(
                 )
                 file.writer().use { writer ->
                     fileSpec.writeTo(writer)
+                }
+
+                val facadeFile = codeGenerator.createNewFile(
+                    Dependencies(false),
+                    config.packageName,
+                    facadeFileSpec.name
+                )
+                facadeFile.writer().use { writer ->
+                    facadeFileSpec.writeTo(writer)
                 }
 
                 // 写入 report

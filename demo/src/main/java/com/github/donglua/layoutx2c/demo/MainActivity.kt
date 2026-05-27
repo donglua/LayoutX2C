@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.github.donglua.layoutx2c.runtime.LayoutX2CRegistry
 
 class MainActivity : AppCompatActivity() {
 
@@ -14,20 +13,18 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         applySystemBarInsetsToContent()
 
-        showRegistryStatus()
+        showGeneratedEntryStatus()
         setupButtons()
     }
 
-    private fun showRegistryStatus() {
+    private fun showGeneratedEntryStatus() {
         val demos = DemoLayoutCatalog.entries
-        val registered = demos.count { demo -> LayoutX2CRegistry.has(this, demo.layoutResId) }
         val total = demos.size
         val lines = demos.joinToString("\n") { demo ->
-            val ok = if (LayoutX2CRegistry.has(this, demo.layoutResId)) "✓" else "–"
-            "  $ok ${demo.layoutName}"
+            "  ✓ ${demo.layoutName} → ${demo.generatedClassName.replace("Layout_", "")}X2C"
         }
         findViewById<TextView>(R.id.registry_status).text =
-            "Registry: $registered/$total\n$lines"
+            "Direct generated entries: $total/$total\n$lines"
     }
 
     private fun setupButtons() {

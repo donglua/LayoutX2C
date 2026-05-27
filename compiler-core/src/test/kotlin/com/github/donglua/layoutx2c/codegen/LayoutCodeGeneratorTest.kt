@@ -15,6 +15,22 @@ class LayoutCodeGeneratorTest {
     )
 
     @Test
+    fun `facade exposes databinding style inflate entry without registry`() {
+        val generated = generator.generateFacade("demo_simple").toString()
+
+        assertThat(generated).contains("public object DemoSimpleX2C")
+        assertThat(generated).contains("public fun inflate(")
+        assertThat(generated).contains("context: Context")
+        assertThat(generated).contains("parent: ViewGroup? = null")
+        assertThat(generated).contains("attachToParent: Boolean = false")
+        assertThat(generated).contains("val view = Layout_DemoSimple().create(context, parent)")
+        assertThat(generated).contains("if (attachToParent && parent != null) {")
+        assertThat(generated).contains("parent.addView(view)")
+        assertThat(generated).contains("return view")
+        assertThat(generated).doesNotContain("LayoutX2CRegistry")
+    }
+
+    @Test
     fun `nested fallback uses full child path instead of root child index`() {
         val xml = """
             <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"

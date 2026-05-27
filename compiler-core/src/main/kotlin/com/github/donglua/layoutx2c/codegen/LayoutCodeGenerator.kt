@@ -43,6 +43,40 @@ class LayoutCodeGenerator(
             .build()
     }
 
+    fun generateFacade(layoutName: String): FileSpec {
+        val factoryClassName = layoutNameToClassName(layoutName)
+        val facadeClassName = layoutNameToFacadeName(layoutName)
+
+        val inflateFun = FunSpec.builder("inflate")
+            .addParameter("context", ClassName("android.content", "Context"))
+            .addParameter(
+                ParameterSpec.builder(
+                    "parent",
+                    ClassName("android.view", "ViewGroup").copy(nullable = true)
+                ).defaultValue("null").build()
+            )
+            .addParameter(
+                ParameterSpec.builder("attachToParent", Boolean::class)
+                    .defaultValue("false")
+                    .build()
+            )
+            .returns(ClassName("android.view", "View"))
+            .addStatement("val view = %N().create(context, parent)", factoryClassName)
+            .beginControlFlow("if (attachToParent && parent != null)")
+            .addStatement("parent.addView(view)")
+            .endControlFlow()
+            .addStatement("return view")
+            .build()
+
+        val typeSpec = TypeSpec.objectBuilder(facadeClassName)
+            .addFunction(inflateFun)
+            .build()
+
+        return FileSpec.builder(packageName, facadeClassName)
+            .addType(typeSpec)
+            .build()
+    }
+
     private fun generateCreateBody(node: AnalyzedNode, layoutResId: String): CodeBlock {
         val builder = CodeBlock.builder()
 
@@ -145,5 +179,11 @@ class LayoutCodeGenerator(
         return "Layout_" + layoutName.split("_").joinToString("") {
             it.replaceFirstChar { char -> char.uppercaseChar() }
         }
+    }
+
+    private fun layoutNameToFacadeName(layoutName: String): String {
+        return layoutName.split("_").joinToString("") {
+            it.replaceFirstChar { char -> char.uppercaseChar() }
+        } + "X2C"
     }
 }

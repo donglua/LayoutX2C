@@ -7,7 +7,6 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.github.donglua.layoutx2c.runtime.LayoutX2CRegistry
 
 /**
  * Benchmark：对比 LayoutInflater vs LayoutX2C generated factory 的耗时。
@@ -43,7 +42,6 @@ class BenchmarkActivity : AppCompatActivity() {
 
         for (demo in DemoLayoutCatalog.entries) {
             val layoutId = demo.layoutResId
-            val hasGenerated = LayoutX2CRegistry.has(this, layoutId)
 
             sb.appendLine("▸ ${demo.layoutName}")
 
@@ -53,20 +51,16 @@ class BenchmarkActivity : AppCompatActivity() {
             }
             sb.appendLine("  LayoutInflater  ${inflaterTime}ms  avg ${fmtAvg(inflaterTime)}ms")
 
-            if (hasGenerated) {
-                val generatedTime = benchmark {
-                    LayoutX2CRegistry.inflate(this, layoutId, container)
-                    container.removeAllViews()
-                }
-                sb.appendLine("  LayoutX2C      ${generatedTime}ms  avg ${fmtAvg(generatedTime)}ms")
-
-                val speedup = if (generatedTime > 0) {
-                    String.format("%.1fx", inflaterTime.toFloat() / generatedTime)
-                } else "∞"
-                sb.appendLine("  Speedup: $speedup faster")
-            } else {
-                sb.appendLine("  LayoutX2C: not registered (run KSP build)")
+            val generatedTime = benchmark {
+                demo.generatedInflater(this, container)
+                container.removeAllViews()
             }
+            sb.appendLine("  LayoutX2C      ${generatedTime}ms  avg ${fmtAvg(generatedTime)}ms")
+
+            val speedup = if (generatedTime > 0) {
+                String.format("%.1fx", inflaterTime.toFloat() / generatedTime)
+            } else "∞"
+            sb.appendLine("  Speedup: $speedup faster")
             sb.appendLine()
         }
 

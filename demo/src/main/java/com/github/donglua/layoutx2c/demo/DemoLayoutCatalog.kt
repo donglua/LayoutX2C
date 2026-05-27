@@ -1,20 +1,31 @@
 package com.github.donglua.layoutx2c.demo
 
+import android.content.Context
+import android.view.View
+import android.view.ViewGroup
+import com.github.donglua.layoutx2c.demo.generated.DemoFallbackX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoFormX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoNestedX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoRecyclerX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoRelativeX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoSimpleX2C
+
 object DemoLayoutCatalog {
 
     data class Entry(
         val label: String,
         val layoutName: String,
         val layoutResId: Int,
-        val generatedClassName: String
+        val generatedClassName: String,
+        val generatedInflater: (Context, ViewGroup?) -> View
     )
 
     val entries = listOf(
-        Entry("Simple", "demo_simple", R.layout.demo_simple, "Layout_DemoSimple"),
-        Entry("Nested", "demo_nested", R.layout.demo_nested, "Layout_DemoNested"),
-        Entry("Form", "demo_form", R.layout.demo_form, "Layout_DemoForm"),
-        Entry("Relative", "demo_relative", R.layout.demo_relative, "Layout_DemoRelative"),
-        Entry("Recycler", "demo_recycler", R.layout.demo_recycler, "Layout_DemoRecycler"),
-        Entry("Fallback", "demo_fallback", R.layout.demo_fallback, "Layout_DemoFallback"),
+        Entry("Simple", "demo_simple", R.layout.demo_simple, "Layout_DemoSimple", DemoSimpleX2C::inflate),
+        Entry("Nested", "demo_nested", R.layout.demo_nested, "Layout_DemoNested", DemoNestedX2C::inflate),
+        Entry("Form", "demo_form", R.layout.demo_form, "Layout_DemoForm", DemoFormX2C::inflate),
+        Entry("Relative", "demo_relative", R.layout.demo_relative, "Layout_DemoRelative", DemoRelativeX2C::inflate),
+        Entry("Recycler", "demo_recycler", R.layout.demo_recycler, "Layout_DemoRecycler", DemoRecyclerX2C::inflate),
+        Entry("Fallback", "demo_fallback", R.layout.demo_fallback, "Layout_DemoFallback", DemoFallbackX2C::inflate),
     )
 }
