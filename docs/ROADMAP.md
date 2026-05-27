@@ -17,6 +17,9 @@
 - Demo App + BenchmarkActivity
 - 代码生成已拆分为 `ViewEmitter` / `AttrEmitter` / `LayoutParamsEmitter`
 - fallback 子树定位支持完整 child path，并对非法路径输出可诊断错误
+- View / 属性支持面已迁移到 `DefaultViewRegistry` 和注册式 `ViewHandler` / `AttributeHandler`
+- KSP 生成输出已显式声明依赖：per-layout factory 关联触发生成的源码，聚合 Registry 关联配置源码
+- 生成代码提供 direct X2C inflate facade，demo 可直接走生成入口做 benchmark
 
 支持的 View：LinearLayout, FrameLayout, RelativeLayout, ScrollView, HorizontalScrollView,
 RecyclerView（仅容器）, TextView, Button, EditText, ImageView, View
@@ -27,9 +30,9 @@ RelativeLayout 常见规则等。
 当前限制：
 
 - fallback 子树仍依赖「inflate 整棵 layout 后按 child path 取节点」的 MVP 实现，尚未优化为 XmlPullParser seek。
-- KSP 处理器会生成聚合 Registry，增量编译策略尚未定义清楚。
+- KSP 处理器仍会生成聚合 Registry；依赖已声明，但单 layout 变更下的增量行为还需要端到端验证。
 - 覆盖率指标还没有绑定真实 XML 样本集，不能直接用作发布门槛。
-- View / 属性支持面仍主要由 analyzer 与默认 emitter 的硬编码表维护，注册式 Handler 尚未落地。
+- 编译报告仍停留在基础 SupportReportGenerator，尚未形成可发布的样本分布报告。
 
 ---
 
@@ -82,13 +85,13 @@ RelativeLayout 常见规则等。
 
 **架构改进：**
 
-- 属性处理器插件化：每个 View 类型注册自己的 AttributeHandler
+- 属性处理器插件化：每个 View 类型注册自己的 AttributeHandler（已落地默认 Registry）
 - 引入 ViewRegistry 配置文件，支持用户自定义 View 映射
 
 **验收口径：**
 
-- demo 中新增 RelativeLayout、ImageView、Button、EditText 样例。
-- compiler-core 覆盖新增属性和 LayoutParams 生成。
+- demo 中新增 RelativeLayout、RecyclerView、fallback、ImageView、Button、EditText 样例。
+- compiler-core 覆盖新增属性、LayoutParams 生成和默认 ViewRegistry 行为。
 - 至少选取一个真实项目样本集，输出 FULL / PARTIAL / FALLBACK 分布报告。
 
 ---
