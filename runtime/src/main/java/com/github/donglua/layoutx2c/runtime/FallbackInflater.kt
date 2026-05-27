@@ -52,6 +52,15 @@ object FallbackInflater {
         return tagName == "merge" || tagName == "include" || tagName == "fragment"
     }
 
+    /**
+     * Legacy path for tags whose semantics depend on normal LayoutInflater handling.
+     *
+     * Unlike the parser-seek path above, this inflates the full original layout and detaches
+     * the requested child afterward. That keeps merge/include/fragment behavior compatible,
+     * but can be slower for complex parent layouts. Nested include content that itself expands
+     * merge is also still bounded by full-tree inflate semantics, so avoid treating this as a
+     * partial-subtree optimization.
+     */
     private fun inflateChildFromFullTree(
         context: Context,
         @LayoutRes layoutId: Int,
