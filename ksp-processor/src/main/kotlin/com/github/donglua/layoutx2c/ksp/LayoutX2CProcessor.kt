@@ -55,7 +55,8 @@ class LayoutX2CProcessor(
             if (!visitedConfigFiles.add(sourceFile.filePath)) continue
             configSources += LayoutX2CSource(
                 file = File(sourceFile.filePath),
-                packageName = annotated.packageName()
+                packageName = annotated.packageName(),
+                ksFile = sourceFile
             )
 
             val sourceText = try {
@@ -85,7 +86,8 @@ class LayoutX2CProcessor(
             annotated.containingFile?.let { sourceFile ->
                 configSources += LayoutX2CSource(
                     file = File(sourceFile.filePath),
-                    packageName = annotated.packageName()
+                    packageName = annotated.packageName(),
+                    ksFile = sourceFile
                 )
             }
         }
@@ -96,7 +98,8 @@ class LayoutX2CProcessor(
             annotated.containingFile?.let { sourceFile ->
                 configSources += LayoutX2CSource(
                     file = File(sourceFile.filePath),
-                    packageName = annotated.packageName()
+                    packageName = annotated.packageName(),
+                    ksFile = sourceFile
                 )
             }
         }
@@ -134,6 +137,8 @@ class LayoutX2CProcessor(
         // 为每个 layout 生成代码
         val codeGen = LayoutCodeGenerator(config.packageName, config.rPackageName)
         val generatedLayouts = mutableListOf<Pair<String, String>>()
+        val sourceFiles = configSources.map { it.ksFile }.distinctBy { it.filePath }
+        val layoutDependencies = LayoutX2CDependencyFactory.layout(sourceFiles)
 
         for (layoutName in layoutNames) {
             val xmlFile = File(layoutDir, "$layoutName.xml")
@@ -151,7 +156,7 @@ class LayoutX2CProcessor(
 
                 // 写入生成的 Kotlin 文件
                 val file = codeGenerator.createNewFile(
-                    Dependencies(false),
+                    layoutDependencies,
                     config.packageName,
                     fileSpec.name
                 )
@@ -160,7 +165,7 @@ class LayoutX2CProcessor(
                 }
 
                 val facadeFile = codeGenerator.createNewFile(
-                    Dependencies(false),
+                    layoutDependencies,
                     config.packageName,
                     facadeFileSpec.name
                 )
@@ -171,7 +176,7 @@ class LayoutX2CProcessor(
                 // 写入 report
                 val report = reportGenerator.generate(analyzed, layoutName)
                 val reportFile = codeGenerator.createNewFile(
-                    Dependencies(false),
+                    layoutDependencies,
                     config.packageName,
                     "${layoutName}_report",
                     "json"
@@ -186,7 +191,7 @@ class LayoutX2CProcessor(
         }
 
         if (generatedLayouts.isNotEmpty()) {
-            generateRegistry(config.packageName, config.rPackageName, generatedLayouts)
+            generateRegistry(config.packageName, config.rPackageName, generatedLayouts, sourceFiles)
         }
 
         return emptyList()
@@ -217,7 +222,8 @@ class LayoutX2CProcessor(
     private fun generateRegistry(
         packageName: String,
         rPackageName: String,
-        generatedLayouts: List<Pair<String, String>>
+        generatedLayouts: List<Pair<String, String>>,
+        sourceFiles: List<KSFile>
     ) {
         val registerFun = FunSpec.builder("register")
             .apply {
@@ -242,7 +248,7 @@ class LayoutX2CProcessor(
             .build()
 
         val file = codeGenerator.createNewFile(
-            Dependencies(false),
+            LayoutX2CDependencyFactory.registry(sourceFiles),
             packageName,
             fileSpec.name
         )
@@ -260,5 +266,26 @@ private data class LayoutX2CProcessorConfig(
 
 private data class LayoutX2CSource(
     val file: File,
-    val packageName: String?
+    val packageName: String?,
+    val ksFile: KSFile
 )
+
+internal object LayoutX2CDependencyFactory {
+
+    fun layout(sourceFiles: List<KSFile>): Dependencies = fromSources(
+        aggregating = false,
+        sourceFiles = sourceFiles
+    )
+
+    fun registry(sourceFiles: List<KSFile>): Dependencies = fromSources(
+        aggregating = true,
+        sourceFiles = sourceFiles
+    )
+
+    private fun fromSources(aggregating: Boolean, sourceFiles: List<KSFile>): Dependencies {
+        if (sourceFiles.isEmpty()) {
+            return Dependencies.ALL_FILES
+        }
+        return Dependencies(aggregating, *sourceFiles.toTypedArray())
+    }
+}
