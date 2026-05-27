@@ -108,11 +108,13 @@ RelativeLayout 常见规则等。
 
 **增量编译：**
 
-- 基于文件 hash 的缓存：layout 未变则跳过重新生成。
-- `LayoutDigest` 包含 layout 文件、include 依赖、style/dimen/color 依赖。
-- 先区分 per-layout factory 的 isolating 输入和 Registry 的 aggregating 输入。
-- 在依赖模型明确前，不承诺 KSP `isolating processor`。
-- 集成 Gradle up-to-date check。
+- Gradle 插件必须把 `src/**/res/layout/*.xml` 和 `src/**/res/values/*.xml` 声明为 KSP task 输入，避免 processor 直接读 XML 但 Gradle/KSP 不感知资源变更。
+- 插件路径传入 `layoutx2c.cacheDir` 后启用保守 digest cache；裸 KSP 不传 cacheDir 时继续全量生成，避免生成目录被清理后跳过输出。
+- `LayoutDigest` v1 包含 layout 文件、values XML、生成包名、R 包名和 digest schema version；values 先作为 coarse input，保证正确性优先。
+- digest 未变时从 cache 恢复 per-layout factory、facade 和 report 到 KSP 输出目录；digest 变化时重新 parse/analyze/codegen 并更新 cache。
+- Registry 仍是 aggregating 输出：只引用本轮成功生成或成功恢复的 layout factory；后续再做 Registry 内容 hash，避免无意义重写。
+- 先区分 per-layout factory 的可缓存输入和 Registry 的 aggregating 输入；在 XML/include/style 依赖模型完整前，不承诺 KSP `isolating processor`。
+- 后续再把 `LayoutDigest` 扩展到 include 依赖和精确 style/dimen/color/string/drawable 引用图，减少无关 values 改动带来的重跑。
 
 **FallbackInflater 优化：**
 

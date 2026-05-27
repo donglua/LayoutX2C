@@ -27,6 +27,7 @@ class LayoutX2CProcessor(
         const val OPTION_RES_DIR = "layoutx2c.resDir"
         const val OPTION_PACKAGE = "layoutx2c.packageName"
         const val OPTION_R_PACKAGE = "layoutx2c.rPackageName"
+        const val OPTION_CACHE_DIR = "layoutx2c.cacheDir"
 
         const val ANNOTATION_FAST_LAYOUT_CONFIG = "com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig"
         const val ANNOTATION_FAST_LAYOUTS = "com.github.donglua.layoutx2c.runtime.annotation.FastLayouts"
@@ -139,6 +140,7 @@ class LayoutX2CProcessor(
         val generatedLayouts = mutableListOf<Pair<String, String>>()
         val sourceFiles = configSources.map { it.ksFile }.distinctBy { it.filePath }
         val layoutDependencies = LayoutX2CDependencyFactory.layout(sourceFiles)
+        val digestStore = config.manifestFile?.let(::LayoutX2CDigestStore)
 
         for (layoutName in layoutNames) {
             val xmlFile = File(layoutDir, "$layoutName.xml")
@@ -148,6 +150,36 @@ class LayoutX2CProcessor(
             }
 
             try {
+                val layoutDigest = LayoutX2CDigestCalculator.layoutDigest(
+                    layoutFile = xmlFile,
+                    resDir = config.resDir,
+                    packageName = config.packageName,
+                    rPackageName = config.rPackageName
+                )
+                val factoryClassName = LayoutX2CNames.factoryClassName(layoutName)
+                val facadeClassName = LayoutX2CNames.facadeClassName(layoutName)
+
+                if (digestStore?.isUnchanged(layoutName, layoutDigest) == true) {
+                    val restored = restoreCachedLayoutOutputs(
+                        digestStore = digestStore,
+                        dependencies = layoutDependencies,
+                        packageName = config.packageName,
+                        layoutName = layoutName,
+                        layoutDigest = layoutDigest,
+                        outputNames = listOf(
+                            CachedOutput(factoryClassName, "kt"),
+                            CachedOutput(facadeClassName, "kt"),
+                            CachedOutput("${layoutName}_report", "json")
+                        )
+                    )
+                    if (restored) {
+                        generatedLayouts += layoutName to factoryClassName
+                        digestStore.record(layoutName, layoutDigest)
+                        logger.info("Restored unchanged layout from cache: $layoutName")
+                        continue
+                    }
+                }
+
                 val tree = parser.parse(xmlFile)
                 val analyzed = analyzer.analyze(tree.root)
                 val layoutResId = "R.layout.$layoutName"
@@ -163,6 +195,7 @@ class LayoutX2CProcessor(
                 file.writer().use { writer ->
                     fileSpec.writeTo(writer)
                 }
+                digestStore?.cacheGeneratedOutput(layoutName, layoutDigest, fileSpec.name, "kt", fileSpec.toString())
 
                 val facadeFile = codeGenerator.createNewFile(
                     layoutDependencies,
@@ -172,6 +205,7 @@ class LayoutX2CProcessor(
                 facadeFile.writer().use { writer ->
                     facadeFileSpec.writeTo(writer)
                 }
+                digestStore?.cacheGeneratedOutput(layoutName, layoutDigest, facadeFileSpec.name, "kt", facadeFileSpec.toString())
 
                 // 写入 report
                 val report = reportGenerator.generate(analyzed, layoutName)
@@ -182,8 +216,10 @@ class LayoutX2CProcessor(
                     "json"
                 )
                 reportFile.writer().use { it.write(report) }
+                digestStore?.cacheGeneratedOutput(layoutName, layoutDigest, "${layoutName}_report", "json", report)
 
                 generatedLayouts += layoutName to fileSpec.name
+                digestStore?.record(layoutName, layoutDigest)
                 logger.info("Generated factory for layout: $layoutName")
             } catch (e: Exception) {
                 logger.error("Failed to process layout $layoutName: ${e.message}")
@@ -193,6 +229,7 @@ class LayoutX2CProcessor(
         if (generatedLayouts.isNotEmpty()) {
             generateRegistry(config.packageName, config.rPackageName, generatedLayouts, sourceFiles)
         }
+        digestStore?.save()
 
         return emptyList()
     }
@@ -204,11 +241,14 @@ class LayoutX2CProcessor(
         val resDir = options[OPTION_RES_DIR]?.let(::File)
             ?: configSources.firstNotNullOfOrNull { LayoutX2CResDirResolver.inferMainResDir(it.file) }
             ?: File("src/main/res")
+        val manifestFile = options[OPTION_CACHE_DIR]?.let(::File)
+            ?.resolve("layoutx2c-digests.properties")
 
         return LayoutX2CProcessorConfig(
             resDir = resDir,
             packageName = packageName,
-            rPackageName = rPackageName
+            rPackageName = rPackageName,
+            manifestFile = manifestFile
         )
     }
 
@@ -256,12 +296,59 @@ class LayoutX2CProcessor(
             fileSpec.writeTo(writer)
         }
     }
+
+    private fun LayoutX2CDigestStore.cacheGeneratedOutput(
+        layoutName: String,
+        layoutDigest: String,
+        fileName: String,
+        extensionName: String,
+        content: String
+    ) {
+        val cacheFile = cachedFile(layoutName, layoutDigest, fileName, extensionName)
+        cacheFile.parentFile.mkdirs()
+        cacheFile.writeText(content)
+    }
+
+    private fun restoreCachedLayoutOutputs(
+        digestStore: LayoutX2CDigestStore,
+        dependencies: Dependencies,
+        packageName: String,
+        layoutName: String,
+        layoutDigest: String,
+        outputNames: List<CachedOutput>
+    ): Boolean {
+        val cachedFiles = outputNames.map {
+            it to digestStore.cachedFile(layoutName, layoutDigest, it.fileName, it.extensionName)
+        }
+        if (cachedFiles.any { !it.second.isFile }) {
+            return false
+        }
+
+        for ((output, cachedFile) in cachedFiles) {
+            val generated = codeGenerator.createNewFile(
+                dependencies,
+                packageName,
+                output.fileName,
+                output.extensionName
+            )
+            generated.writer().use { writer ->
+                writer.write(cachedFile.readText())
+            }
+        }
+        return true
+    }
 }
+
+private data class CachedOutput(
+    val fileName: String,
+    val extensionName: String
+)
 
 private data class LayoutX2CProcessorConfig(
     val resDir: File,
     val packageName: String,
-    val rPackageName: String
+    val rPackageName: String,
+    val manifestFile: File?
 )
 
 private data class LayoutX2CSource(

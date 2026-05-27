@@ -4,6 +4,11 @@ import com.android.build.api.variant.AndroidComponentsExtension
 import com.google.devtools.ksp.gradle.KspExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.process.CommandLineArgumentProvider
 
 /**
  * LayoutX2C Gradle Plugin。
@@ -60,6 +65,21 @@ class LayoutX2CPlugin : Plugin<Project> {
             project.extensions.configure(KspExtension::class.java) { ksp ->
                 ksp.addArg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
                 ksp.addArg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
+                ksp.arg(
+                    LayoutX2CResourceArgumentProvider(
+                        trackedResources = project.files(
+                            project.fileTree(project.layout.projectDirectory.dir("src")).apply {
+                                include("**/res/layout/*.xml")
+                                include("**/res/values/*.xml")
+                            }
+                        ),
+                        cacheDir = project.layout.buildDirectory
+                            .dir("layoutx2c/ksp")
+                            .get()
+                            .asFile
+                            .absolutePath
+                    )
+                )
             }
         }
     }
@@ -84,4 +104,17 @@ class LayoutX2CPlugin : Plugin<Project> {
 private object LayoutX2CProcessorOptions {
     const val PACKAGE_NAME = "layoutx2c.packageName"
     const val R_PACKAGE_NAME = "layoutx2c.rPackageName"
+    const val CACHE_DIR = "layoutx2c.cacheDir"
+}
+
+private class LayoutX2CResourceArgumentProvider(
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val trackedResources: ConfigurableFileCollection,
+    private val cacheDir: String
+) : CommandLineArgumentProvider {
+
+    override fun asArguments(): Iterable<String> {
+        return listOf("${LayoutX2CProcessorOptions.CACHE_DIR}=$cacheDir")
+    }
 }
