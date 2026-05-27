@@ -17,9 +17,11 @@
 - Demo App + BenchmarkActivity
 - 代码生成已拆分为 `ViewEmitter` / `AttrEmitter` / `LayoutParamsEmitter`
 - fallback 子树定位支持完整 child path，并对非法路径输出可诊断错误
+- fallback 子树已优先走 `XmlPullParser` seek + partial inflate，只对 `merge` / `include` / `fragment` 等保留整棵 layout inflate 的兼容路径
 - View / 属性支持面已迁移到 `DefaultViewRegistry` 和注册式 `ViewHandler` / `AttributeHandler`
 - KSP 生成输出已显式声明依赖：per-layout factory 关联触发生成的源码，聚合 Registry 关联配置源码
 - 生成代码提供 direct X2C inflate facade，demo 可直接走生成入口做 benchmark
+- Gradle 插件已传入 `layoutx2c.cacheDir`，KSP 侧已落地保守 digest cache：digest 未变时可从 cache 恢复 per-layout factory、facade 和 report
 
 支持的 View：LinearLayout, FrameLayout, RelativeLayout, ScrollView, HorizontalScrollView,
 RecyclerView（仅容器）, TextView, Button, EditText, ImageView, View
@@ -29,8 +31,8 @@ RelativeLayout 常见规则等。
 
 当前限制：
 
-- fallback 子树仍依赖「inflate 整棵 layout 后按 child path 取节点」的 MVP 实现，尚未优化为 XmlPullParser seek。
-- KSP 处理器仍会生成聚合 Registry；依赖已声明，但单 layout 变更下的增量行为还需要端到端验证。
+- `merge` / `include` / `fragment` 等 fallback 子树仍走 legacy 整棵 layout inflate 兼容路径，普通子树已不再 inflate 兄弟节点。
+- KSP 处理器仍会生成聚合 Registry；per-layout digest cache 已落地，但 Gradle task 输入声明、Registry 内容 hash 和单 layout 改动的端到端增量行为还需要验证。
 - 覆盖率指标还没有绑定真实 XML 样本集，不能直接用作发布门槛。
 - 编译报告仍停留在基础 SupportReportGenerator，尚未形成可发布的样本分布报告。
 
@@ -109,17 +111,17 @@ RelativeLayout 常见规则等。
 **增量编译：**
 
 - Gradle 插件必须把 `src/**/res/layout/*.xml` 和 `src/**/res/values/*.xml` 声明为 KSP task 输入，避免 processor 直接读 XML 但 Gradle/KSP 不感知资源变更。
-- 插件路径传入 `layoutx2c.cacheDir` 后启用保守 digest cache；裸 KSP 不传 cacheDir 时继续全量生成，避免生成目录被清理后跳过输出。
-- `LayoutDigest` v1 包含 layout 文件、values XML、生成包名、R 包名和 digest schema version；values 先作为 coarse input，保证正确性优先。
-- digest 未变时从 cache 恢复 per-layout factory、facade 和 report 到 KSP 输出目录；digest 变化时重新 parse/analyze/codegen 并更新 cache。
+- 插件路径传入 `layoutx2c.cacheDir` 后启用保守 digest cache（已落地）；裸 KSP 不传 cacheDir 时继续全量生成，避免生成目录被清理后跳过输出。
+- `LayoutDigest` v1 包含 layout 文件、values XML、生成包名、R 包名和 digest schema version（已落地）；values 先作为 coarse input，保证正确性优先。
+- digest 未变时从 cache 恢复 per-layout factory、facade 和 report 到 KSP 输出目录；digest 变化时重新 parse/analyze/codegen 并更新 cache（已落地）。
 - Registry 仍是 aggregating 输出：只引用本轮成功生成或成功恢复的 layout factory；后续再做 Registry 内容 hash，避免无意义重写。
 - 先区分 per-layout factory 的可缓存输入和 Registry 的 aggregating 输入；在 XML/include/style 依赖模型完整前，不承诺 KSP `isolating processor`。
 - 后续再把 `LayoutDigest` 扩展到 include 依赖和精确 style/dimen/color/string/drawable 引用图，减少无关 values 改动带来的重跑。
 
 **FallbackInflater 优化：**
 
-- 当前实现 inflate 整棵树再取子节点，改为 XmlPullParser seek 方式
-- 对 fallback 子树做 partial inflate（只 inflate 目标子树，不 inflate 兄弟节点）
+- 普通 fallback 子树已改为 `XmlPullParser` seek + partial inflate，不再 inflate 兄弟节点。
+- `merge` / `include` / `fragment` 仍保留整棵 layout inflate 的 legacy 路径，以避免破坏原生 `LayoutInflater` 语义。
 
 **编译报告：**
 
@@ -288,7 +290,7 @@ XML File → Parser → LayoutTree → Analyzer → AnalyzedTree
 
 2. **Emitter 分层**：将代码生成拆分为 View 创建、属性设置、LayoutParams 三个独立 Emitter，各自可扩展。
 
-3. **增量管道**：引入 `LayoutDigest`（layout 文件 hash + 依赖的 include / style / dimen / color hash），只有 digest 变化才重新生成。
+3. **增量管道**：已引入保守 `LayoutDigest`（layout 文件 + values XML + 生成包名 + R 包名 + schema version），只有 digest 变化才重新生成；include 和精确资源引用图仍是后续优化。
 
 4. **多后端**：CodeGen 抽象为接口，未来可支持 Java 代码生成（兼容纯 Java 项目）或 Compose 迁移辅助。
 
@@ -306,7 +308,7 @@ XML File → Parser → LayoutTree → Analyzer → AnalyzedTree
 | textSize/textColor | 高 | 低 | P0 |
 | 真实样本覆盖率报告 | 高 | 低 | P0 |
 | ConstraintLayout 实验子集 | 中 | 高 | P1 |
-| 增量编译 | 中 | 中 | P1 |
+| 增量编译输入声明与端到端验证 | 中 | 中 | P1 |
 | include/merge 标签 | 中 | 中 | P1 |
 | 编译报告 | 中 | 低 | P1 |
 | IDE 插件 | 中 | 高 | Post-1.0 |
