@@ -31,6 +31,10 @@ android {
         }
     }
 
+    buildFeatures {
+        dataBinding = true
+    }
+
     // =========================================================================
     // NOTE: The following configuration is ONLY used for the "Code Viewer" 
     // feature in this demo app, which displays the generated code on screen.

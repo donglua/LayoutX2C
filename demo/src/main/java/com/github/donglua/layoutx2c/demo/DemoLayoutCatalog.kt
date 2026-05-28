@@ -48,8 +48,7 @@ object DemoLayoutCatalog {
             "demo_data_binding",
             R.layout.demo_data_binding,
             "Layout_DemoDataBinding",
-            codeViewerClassName = "DemoDataBindingX2CBinding",
-            platformInflatable = false
+            codeViewerClassName = "DemoDataBindingX2CBinding"
         ) { context, parent ->
             DemoDataBindingX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
         },

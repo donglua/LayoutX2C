@@ -16,11 +16,11 @@ class DemoLayoutCatalogTest {
     }
 
     @Test
-    fun `catalog marks data binding demo as generated only`() {
+    fun `catalog includes data binding demo in platform comparisons`() {
         val bindingDemo = DemoLayoutCatalog.entries.singleOrNull { it.layoutName == "demo_data_binding" }
 
         assertEquals("Binding", bindingDemo?.label)
         assertEquals("DemoDataBindingX2CBinding", bindingDemo?.codeViewerClassName)
-        assertEquals(false, bindingDemo?.platformInflatable)
+        assertEquals(true, bindingDemo?.platformInflatable)
     }
 }
