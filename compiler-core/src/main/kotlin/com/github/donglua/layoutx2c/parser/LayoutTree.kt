@@ -5,7 +5,14 @@ package com.github.donglua.layoutx2c.parser
  */
 data class LayoutTree(
     val root: LayoutNode,
-    val fileName: String
+    val fileName: String,
+    val rootMetadata: LayoutRootMetadata = LayoutRootMetadata(root.tagName)
+)
+
+data class LayoutRootMetadata(
+    val originalRootTagName: String,
+    val isDataBindingLayout: Boolean = originalRootTagName == "layout",
+    val isMalformedDataBindingLayout: Boolean = false
 )
 
 data class LayoutNode(

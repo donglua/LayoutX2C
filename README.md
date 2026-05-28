@@ -110,6 +110,19 @@ DataBinding 的 `<layout>` 根标签会透明解包到真实 View 根节点参�
 wrapper 会作为 `DATA_BINDING_WRAPPER` 单独归因。LayoutX2C 不替代生成的 Binding
 class、变量绑定或 binding expression 运行时语义。
 
+对于根节点是 `<layout>` 的 XML，LayoutX2C 会额外生成 `{Name}X2CBinding`：
+
+```kotlin
+val binding = DemoDataBindingX2CBinding.inflate(inflater, parent, false)
+binding.root
+binding.titleText
+```
+
+`{Name}X2CBinding` 是 LayoutX2C 的 binding-like facade，只提供 `inflate()`、
+`bind()`、`root` 和按 `android:id` 生成的字段。普通非 `<layout>` XML 不生成
+该类。包含 `@{}` / `@={}` 表达式或其他整棵 fallback 语义的布局会生成 fallback-only
+facade；迁移后不会执行 DataBinding 变量绑定、BindingAdapter 或 lifecycle 逻辑。
+
 ## License
 
 Apache License 2.0

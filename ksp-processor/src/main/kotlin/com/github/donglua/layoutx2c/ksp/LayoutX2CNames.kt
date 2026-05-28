@@ -13,4 +13,10 @@ internal object LayoutX2CNames {
             it.replaceFirstChar { char -> char.uppercaseChar() }
         } + "X2C"
     }
+
+    fun bindingFacadeClassName(layoutName: String): String {
+        return layoutName.split("_").joinToString("") {
+            it.replaceFirstChar { char -> char.uppercaseChar() }
+        } + "X2CBinding"
+    }
 }

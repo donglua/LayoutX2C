@@ -1,6 +1,8 @@
 package com.github.donglua.layoutx2c.ksp
 
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
+import com.github.donglua.layoutx2c.codegen.BindingFacadeEligibility
+import com.github.donglua.layoutx2c.codegen.BindingFacadeGenerator
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.report.SupportReportGenerator
@@ -139,6 +141,7 @@ class LayoutX2CProcessor(
 
         // 为每个 layout 生成代码
         val codeGen = LayoutCodeGenerator(config.packageName, config.rPackageName)
+        val bindingFacadeGen = BindingFacadeGenerator(config.packageName, config.rPackageName)
         val generatedLayouts = mutableListOf<Pair<String, String>>()
         val sourceFiles = configSources.map { it.ksFile }.distinctBy { it.filePath }
         val layoutDependencies = LayoutX2CDependencyFactory.layout(sourceFiles)
@@ -160,19 +163,30 @@ class LayoutX2CProcessor(
                 )
                 val factoryClassName = LayoutX2CNames.factoryClassName(layoutName)
                 val facadeClassName = LayoutX2CNames.facadeClassName(layoutName)
+                val bindingFacadeClassName = LayoutX2CNames.bindingFacadeClassName(layoutName)
 
                 if (digestStore?.isUnchanged(layoutName, layoutDigest) == true) {
+                    val cachedOutputs = mutableListOf(
+                        CachedOutput(factoryClassName, "kt"),
+                        CachedOutput(facadeClassName, "kt"),
+                        CachedOutput("${layoutName}_report", "json")
+                    )
+                    val cachedBindingFacade = digestStore.cachedFile(
+                        layoutName,
+                        layoutDigest,
+                        bindingFacadeClassName,
+                        "kt"
+                    )
+                    if (cachedBindingFacade.isFile) {
+                        cachedOutputs += CachedOutput(bindingFacadeClassName, "kt")
+                    }
                     val restored = restoreCachedLayoutOutputs(
                         digestStore = digestStore,
                         dependencies = layoutDependencies,
                         packageName = config.packageName,
                         layoutName = layoutName,
                         layoutDigest = layoutDigest,
-                        outputNames = listOf(
-                            CachedOutput(factoryClassName, "kt"),
-                            CachedOutput(facadeClassName, "kt"),
-                            CachedOutput("${layoutName}_report", "json")
-                        )
+                        outputNames = cachedOutputs
                     )
                     if (restored) {
                         generatedLayouts += layoutName to factoryClassName
@@ -184,6 +198,7 @@ class LayoutX2CProcessor(
 
                 val tree = parser.parse(xmlFile)
                 val analyzed = analyzer.analyze(tree.root)
+                val bindingFacadeEligibility = BindingFacadeEligibility.evaluate(tree, analyzed)
                 val layoutResId = "R.layout.$layoutName"
                 val fileSpec = codeGen.generate(analyzed, layoutName, layoutResId)
                 val facadeFileSpec = codeGen.generateFacade(layoutName)
@@ -209,8 +224,32 @@ class LayoutX2CProcessor(
                 }
                 digestStore?.cacheGeneratedOutput(layoutName, layoutDigest, facadeFileSpec.name, "kt", facadeFileSpec.toString())
 
+                if (bindingFacadeEligibility.shouldGenerate) {
+                    val bindingFacadeFileSpec = bindingFacadeGen.generate(
+                        analyzedRoot = analyzed,
+                        layoutName = layoutName,
+                        layoutResId = layoutResId,
+                        useFastPath = bindingFacadeEligibility.useFastPath
+                    )
+                    val bindingFacadeFile = codeGenerator.createNewFile(
+                        layoutDependencies,
+                        config.packageName,
+                        bindingFacadeFileSpec.name
+                    )
+                    bindingFacadeFile.writer().use { writer ->
+                        bindingFacadeFileSpec.writeTo(writer)
+                    }
+                    digestStore?.cacheGeneratedOutput(
+                        layoutName,
+                        layoutDigest,
+                        bindingFacadeFileSpec.name,
+                        "kt",
+                        bindingFacadeFileSpec.toString()
+                    )
+                }
+
                 // 写入 report
-                val report = reportGenerator.generate(analyzed, layoutName)
+                val report = reportGenerator.generate(analyzed, layoutName, tree)
                 val reportFile = codeGenerator.createNewFile(
                     layoutDependencies,
                     config.packageName,

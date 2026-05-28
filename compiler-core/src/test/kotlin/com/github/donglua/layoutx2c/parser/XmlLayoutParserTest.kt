@@ -26,6 +26,8 @@ class XmlLayoutParserTest {
         val tree = parser.parse(xml, "simple_layout")
 
         assertThat(tree.fileName).isEqualTo("simple_layout")
+        assertThat(tree.rootMetadata.isDataBindingLayout).isFalse()
+        assertThat(tree.rootMetadata.isMalformedDataBindingLayout).isFalse()
         assertThat(tree.root.tagName).isEqualTo("LinearLayout")
         assertThat(tree.root.attributes["android:orientation"]).isEqualTo("vertical")
         assertThat(tree.root.children).hasSize(1)
@@ -84,9 +86,32 @@ class XmlLayoutParserTest {
 
         val tree = parser.parse(xml, "data_binding_layout")
 
+        assertThat(tree.rootMetadata.originalRootTagName).isEqualTo("layout")
+        assertThat(tree.rootMetadata.isDataBindingLayout).isTrue()
+        assertThat(tree.rootMetadata.isMalformedDataBindingLayout).isFalse()
         assertThat(tree.root.tagName).isEqualTo("LinearLayout")
         assertThat(tree.root.indexInParent).isEqualTo(0)
         assertThat(tree.root.children).hasSize(1)
         assertThat(tree.root.children[0].tagName).isEqualTo("TextView")
+    }
+
+    @Test
+    fun `keeps malformed data binding layout root and marks metadata`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                </data>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "malformed_data_binding_layout")
+
+        assertThat(tree.rootMetadata.originalRootTagName).isEqualTo("layout")
+        assertThat(tree.rootMetadata.isDataBindingLayout).isTrue()
+        assertThat(tree.rootMetadata.isMalformedDataBindingLayout).isTrue()
+        assertThat(tree.root.tagName).isEqualTo("layout")
     }
 }

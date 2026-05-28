@@ -16,8 +16,12 @@ class XmlLayoutParser {
         val document = builder.parse(xmlFile)
         val rootElement = document.documentElement
 
-        val rootNode = parseLayoutRoot(rootElement)
-        return LayoutTree(root = rootNode, fileName = xmlFile.nameWithoutExtension)
+        val parsedRoot = parseLayoutRoot(rootElement)
+        return LayoutTree(
+            root = parsedRoot.node,
+            fileName = xmlFile.nameWithoutExtension,
+            rootMetadata = parsedRoot.metadata
+        )
     }
 
     fun parse(xmlContent: String, fileName: String): LayoutTree {
@@ -26,19 +30,33 @@ class XmlLayoutParser {
         val document = builder.parse(xmlContent.byteInputStream())
         val rootElement = document.documentElement
 
-        val rootNode = parseLayoutRoot(rootElement)
-        return LayoutTree(root = rootNode, fileName = fileName)
+        val parsedRoot = parseLayoutRoot(rootElement)
+        return LayoutTree(
+            root = parsedRoot.node,
+            fileName = fileName,
+            rootMetadata = parsedRoot.metadata
+        )
     }
 
-    private fun parseLayoutRoot(rootElement: Element): LayoutNode {
+    private fun parseLayoutRoot(rootElement: Element): ParsedLayoutRoot {
         if (rootElement.tagName != "layout") {
-            return parseElement(rootElement, 0)
+            return ParsedLayoutRoot(
+                node = parseElement(rootElement, 0),
+                metadata = LayoutRootMetadata(originalRootTagName = rootElement.tagName)
+            )
         }
 
         val elementChildren = rootElement.elementChildren()
         val viewRoot = elementChildren.singleOrNull { it.element.tagName != "data" }
-            ?: return parseElement(rootElement, 0)
-        return parseElement(viewRoot.element, 0)
+        val isMalformed = viewRoot == null
+        return ParsedLayoutRoot(
+            node = if (viewRoot == null) parseElement(rootElement, 0) else parseElement(viewRoot.element, 0),
+            metadata = LayoutRootMetadata(
+                originalRootTagName = rootElement.tagName,
+                isDataBindingLayout = true,
+                isMalformedDataBindingLayout = isMalformed
+            )
+        )
     }
 
     private fun parseElement(element: Element, indexInParent: Int): LayoutNode {
@@ -87,5 +105,10 @@ class XmlLayoutParser {
     private data class IndexedElement(
         val index: Int,
         val element: Element
+    )
+
+    private data class ParsedLayoutRoot(
+        val node: LayoutNode,
+        val metadata: LayoutRootMetadata
     )
 }

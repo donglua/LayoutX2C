@@ -96,6 +96,27 @@ class LayoutX2CDigestStoreTest {
     }
 
     @Test
+    fun `layout digest schema is bumped for binding facade generation`() {
+        val projectDir = tempDir.newFolder("layoutx2c-schema-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutFile = resDir.resolve("layout/demo.xml")
+        layoutFile.parentFile.mkdirs()
+        layoutFile.writeText("<LinearLayout android:id=\"@+id/root\" />")
+
+        val digest = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(digest).isNotEmpty()
+        assertThat(digest).isNotEqualTo(
+            "91b2c11d8e6f5d98b00be1f5e18ab1a3c41d18d5808d73f4037beacfb050bb75"
+        )
+    }
+
+    @Test
     fun `manifest reports unchanged only for persisted digest`() {
         val manifestFile = tempDir.newFolder("layoutx2c-manifest")
             .resolve("manifest.properties")

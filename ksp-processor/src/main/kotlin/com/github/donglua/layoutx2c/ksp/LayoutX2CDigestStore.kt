@@ -61,7 +61,7 @@ internal class LayoutX2CDigestStore(private val manifestFile: File) {
 internal object LayoutX2CDigestCalculator {
 
     // Bump this when the digest inputs or hashing semantics change.
-    private const val SCHEMA_VERSION = "v1"
+    private const val SCHEMA_VERSION = "v2"
 
     fun layoutDigest(
         layoutFile: File,

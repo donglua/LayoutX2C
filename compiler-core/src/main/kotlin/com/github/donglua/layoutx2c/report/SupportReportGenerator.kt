@@ -2,6 +2,9 @@ package com.github.donglua.layoutx2c.report
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.analyzer.SupportLevel
+import com.github.donglua.layoutx2c.codegen.BindingFacadeEligibility
+import com.github.donglua.layoutx2c.codegen.BindingFacadeStatus
+import com.github.donglua.layoutx2c.parser.LayoutTree
 
 /**
  * 生成支持度报告，输出 JSON 格式。
@@ -17,13 +20,17 @@ class SupportReportGenerator {
         val reason: String?
     )
 
-    fun generate(analyzedRoot: AnalyzedNode, layoutName: String): String {
+    fun generate(analyzedRoot: AnalyzedNode, layoutName: String, tree: LayoutTree? = null): String {
         val entries = mutableListOf<ReportEntry>()
         collectEntries(analyzedRoot, "", entries)
+        val bindingFacadeStatus = tree
+            ?.let { BindingFacadeEligibility.evaluate(it, analyzedRoot).status }
+            ?: BindingFacadeStatus.NOT_DATA_BINDING_LAYOUT
 
         val sb = StringBuilder()
         sb.appendLine("{")
         sb.appendLine("  \"layout\": \"$layoutName\",")
+        sb.appendLine("  \"bindingFacade\": \"${bindingFacadeStatus.name}\",")
         sb.appendLine("  \"nodes\": [")
 
         entries.forEachIndexed { index, entry ->
