@@ -117,6 +117,7 @@ class LayoutX2CProcessor(
             return emptyList()
         }
 
+        val patternLayoutNames = mutableSetOf<String>()
         for (annotated in patternAnnotated) {
             val annotation = annotated.annotations.first {
                 it.annotationType.resolve().declaration.qualifiedName?.asString() == ANNOTATION_FAST_LAYOUT_PATTERN
@@ -129,10 +130,11 @@ class LayoutX2CProcessor(
                 layoutDir.listFiles()?.filter {
                     it.isFile && it.extension == "xml" && it.nameWithoutExtension.startsWith(prefix)
                 }?.forEach {
-                    layoutNames.add(it.nameWithoutExtension)
+                    patternLayoutNames.add(it.nameWithoutExtension)
                 }
             }
         }
+        layoutNames.addAll(patternLayoutNames.sorted())
 
 
         // 为每个 layout 生成代码

@@ -9,6 +9,10 @@ val agpVersion: String by rootProject.extra
 dependencies {
     implementation("com.android.tools.build:gradle:$agpVersion")
     implementation("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:$kspVersion")
+
+    testImplementation(gradleTestKit())
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("com.google.truth:truth:1.4.5")
 }
 
 gradlePlugin {

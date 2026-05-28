@@ -1,0 +1,274 @@
+package com.github.donglua.layoutx2c.plugin
+
+import com.google.common.truth.Truth.assertThat
+import org.gradle.testkit.runner.GradleRunner
+import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
+import java.util.Properties
+
+class LayoutX2CPluginFunctionalTest {
+
+    @get:Rule
+    val tempDir = TemporaryFolder()
+
+    @Test
+    fun `digest cache restores deleted outputs and invalidates changed resources`() {
+        val fixture = createAndroidFixture()
+
+        fixture.runKsp()
+        val firstSnapshot = fixture.generatedSnapshot()
+        val firstManifest = fixture.digestManifest()
+        val firstRegistry = fixture.registryFile.readText()
+
+        assertThat(firstSnapshot.keys).containsAtLeast(
+            "kotlin/com/example/generated/DemoOneX2C.kt",
+            "kotlin/com/example/generated/DemoTwoX2C.kt",
+            "kotlin/com/example/generated/PatternAlphaX2C.kt",
+            "kotlin/com/example/generated/PatternBetaX2C.kt",
+            "kotlin/com/example/generated/Layout_DemoOne.kt",
+            "kotlin/com/example/generated/Layout_DemoTwo.kt",
+            "kotlin/com/example/generated/Layout_PatternAlpha.kt",
+            "kotlin/com/example/generated/Layout_PatternBeta.kt",
+            "kotlin/com/example/generated/LayoutX2CGenerated.kt",
+            "resources/com/example/generated/demo_one_report.json",
+            "resources/com/example/generated/demo_two_report.json",
+            "resources/com/example/generated/pattern_alpha_report.json",
+            "resources/com/example/generated/pattern_beta_report.json"
+        )
+        assertThat(registryEntries(firstRegistry)).containsExactly(
+            "LayoutX2CRegistry.register(R.layout.demo_one, Layout_DemoOne())",
+            "LayoutX2CRegistry.register(R.layout.demo_two, Layout_DemoTwo())",
+            "LayoutX2CRegistry.register(R.layout.pattern_alpha, Layout_PatternAlpha())",
+            "LayoutX2CRegistry.register(R.layout.pattern_beta, Layout_PatternBeta())"
+        ).inOrder()
+
+        fixture.generatedSourceDir.deleteRecursively()
+        fixture.runKsp()
+
+        assertThat(fixture.generatedSnapshot()).isEqualTo(firstSnapshot)
+        assertThat(fixture.registryFile.readText()).isEqualTo(firstRegistry)
+
+        fixture.layout("demo_one").writeText(layoutXml("First changed"))
+        fixture.runKsp()
+
+        val afterLayoutManifest = fixture.digestManifest()
+        val afterLayoutSnapshot = fixture.generatedSnapshot()
+        assertThat(afterLayoutManifest.getProperty("demo_one"))
+            .isNotEqualTo(firstManifest.getProperty("demo_one"))
+        assertThat(afterLayoutManifest.getProperty("demo_two"))
+            .isEqualTo(firstManifest.getProperty("demo_two"))
+        assertThat(afterLayoutManifest.getProperty("pattern_alpha"))
+            .isEqualTo(firstManifest.getProperty("pattern_alpha"))
+        assertThat(afterLayoutManifest.getProperty("pattern_beta"))
+            .isEqualTo(firstManifest.getProperty("pattern_beta"))
+        assertThat(afterLayoutSnapshot["kotlin/com/example/generated/Layout_DemoOne.kt"])
+            .isNotEqualTo(firstSnapshot["kotlin/com/example/generated/Layout_DemoOne.kt"])
+        assertThat(afterLayoutSnapshot["kotlin/com/example/generated/Layout_DemoTwo.kt"])
+            .isEqualTo(firstSnapshot["kotlin/com/example/generated/Layout_DemoTwo.kt"])
+        assertThat(afterLayoutSnapshot["kotlin/com/example/generated/Layout_PatternAlpha.kt"])
+            .isEqualTo(firstSnapshot["kotlin/com/example/generated/Layout_PatternAlpha.kt"])
+        assertThat(afterLayoutSnapshot["kotlin/com/example/generated/Layout_PatternBeta.kt"])
+            .isEqualTo(firstSnapshot["kotlin/com/example/generated/Layout_PatternBeta.kt"])
+        assertThat(fixture.registryFile.readText()).isEqualTo(firstRegistry)
+
+        fixture.generatedSourceDir.deleteRecursively()
+        fixture.runKsp()
+
+        assertThat(fixture.generatedSnapshot()).isEqualTo(afterLayoutSnapshot)
+        assertThat(fixture.registryFile.readText()).isEqualTo(firstRegistry)
+
+        fixture.valuesFile.writeText(valuesXml("#00ff00"))
+        fixture.runKsp()
+
+        val afterValuesManifest = fixture.digestManifest()
+        assertThat(afterValuesManifest.getProperty("demo_one"))
+            .isNotEqualTo(afterLayoutManifest.getProperty("demo_one"))
+        assertThat(afterValuesManifest.getProperty("demo_two"))
+            .isNotEqualTo(afterLayoutManifest.getProperty("demo_two"))
+        assertThat(afterValuesManifest.getProperty("pattern_alpha"))
+            .isNotEqualTo(afterLayoutManifest.getProperty("pattern_alpha"))
+        assertThat(afterValuesManifest.getProperty("pattern_beta"))
+            .isNotEqualTo(afterLayoutManifest.getProperty("pattern_beta"))
+        assertThat(fixture.cacheDir("demo_one", afterLayoutManifest.getProperty("demo_one")).exists()).isFalse()
+        assertThat(fixture.cacheDir("demo_two", afterLayoutManifest.getProperty("demo_two")).exists()).isFalse()
+        assertThat(fixture.cacheDir("pattern_alpha", afterLayoutManifest.getProperty("pattern_alpha")).exists()).isFalse()
+        assertThat(fixture.cacheDir("pattern_beta", afterLayoutManifest.getProperty("pattern_beta")).exists()).isFalse()
+        assertThat(fixture.registryFile.readText()).isEqualTo(firstRegistry)
+    }
+
+    private fun createAndroidFixture(): AndroidFixture {
+        val projectDir = tempDir.newFolder("layoutx2c-functional")
+        val repoRoot = File(System.getProperty("user.dir")).parentFile
+        val repoPath = repoRoot.invariantSeparatorsPath
+
+        projectDir.resolve("settings.gradle.kts").writeText(
+            """
+            pluginManagement {
+                repositories {
+                    google()
+                    mavenCentral()
+                    gradlePluginPortal()
+                }
+            }
+
+            dependencyResolutionManagement {
+                repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+                repositories {
+                    google()
+                    mavenCentral()
+                }
+            }
+
+            includeBuild("$repoPath") {
+                dependencySubstitution {
+                    substitute(module("com.github.donglua.layoutx2c:runtime")).using(project(":runtime"))
+                    substitute(module("com.github.donglua.layoutx2c:ksp-processor")).using(project(":ksp-processor"))
+                }
+            }
+
+            rootProject.name = "layoutx2c-functional"
+            include(":app")
+            """.trimIndent()
+        )
+        projectDir.resolve("build.gradle.kts").writeText("")
+
+        val appDir = projectDir.resolve("app")
+        appDir.mkdirs()
+        appDir.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                id("com.android.application") version "9.2.1"
+                id("com.github.donglua.layoutx2c")
+            }
+
+            android {
+                namespace = "com.example"
+                compileSdk = 36
+
+                defaultConfig {
+                    applicationId = "com.example"
+                    minSdk = 23
+                    targetSdk = 36
+                    versionCode = 1
+                    versionName = "1.0"
+                }
+            }
+
+            layoutX2C {
+                packageName.set("com.example.generated")
+            }
+            """.trimIndent()
+        )
+
+        appDir.resolve("src/main/AndroidManifest.xml").apply {
+            parentFile.mkdirs()
+            writeText("""<manifest xmlns:android="http://schemas.android.com/apk/res/android" />""")
+        }
+        appDir.resolve("src/main/kotlin/com/example/LayoutX2CConfig.kt").apply {
+            parentFile.mkdirs()
+            writeText(
+                """
+                package com.example
+
+                import com.github.donglua.layoutx2c.runtime.annotation.FastLayouts
+                import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutPattern
+
+                @FastLayouts("demo_one", "demo_two")
+                @FastLayoutPattern(rClass = R::class, layoutPrefix = "pattern_")
+                interface LayoutX2CConfig
+                """.trimIndent()
+            )
+        }
+
+        appDir.resolve("src/main/res/layout").mkdirs()
+        appDir.resolve("src/main/res/layout/demo_one.xml").writeText(layoutXml("First"))
+        appDir.resolve("src/main/res/layout/demo_two.xml").writeText(
+            """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Second"
+                android:textColor="@color/accent" />
+            """.trimIndent()
+        )
+        appDir.resolve("src/main/res/layout/pattern_beta.xml").writeText(layoutXml("Pattern beta"))
+        appDir.resolve("src/main/res/layout/pattern_alpha.xml").writeText(layoutXml("Pattern alpha"))
+        appDir.resolve("src/main/res/values/colors.xml").apply {
+            parentFile.mkdirs()
+            writeText(valuesXml("#ff0000"))
+        }
+
+        return AndroidFixture(projectDir, appDir)
+    }
+
+    private fun registryEntries(registry: String): List<String> {
+        return registry.lineSequence()
+            .map { it.trim() }
+            .filter { it.startsWith("LayoutX2CRegistry.register") }
+            .toList()
+    }
+
+    private fun layoutXml(text: String): String {
+        return """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="$text" />
+        """.trimIndent()
+    }
+
+    private fun valuesXml(accent: String): String {
+        return """<resources><color name="accent">$accent</color></resources>"""
+    }
+
+    private data class AndroidFixture(
+        val projectDir: File,
+        val appDir: File
+    ) {
+        val generatedSourceDir: File
+            get() = appDir.resolve("build/generated/ksp/debug/kotlin/com/example/generated")
+
+        val generatedKspDir: File
+            get() = appDir.resolve("build/generated/ksp/debug")
+
+        val registryFile: File
+            get() = generatedSourceDir.resolve("LayoutX2CGenerated.kt")
+
+        val valuesFile: File
+            get() = appDir.resolve("src/main/res/values/colors.xml")
+
+        fun layout(name: String): File = appDir.resolve("src/main/res/layout/$name.xml")
+
+        fun cacheDir(layoutName: String, digest: String): File {
+            return appDir.resolve("build/layoutx2c/ksp/generated/$layoutName/$digest")
+        }
+
+        fun runKsp() {
+            val result = GradleRunner.create()
+                .withProjectDir(projectDir)
+                .withArguments(":app:kspDebugKotlin", "--stacktrace")
+                .withPluginClasspath()
+                .build()
+
+            assertThat(result.task(":app:kspDebugKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+            assertThat(registryFile.isFile).isTrue()
+        }
+
+        fun generatedSnapshot(): Map<String, String> {
+            return generatedKspDir.walkTopDown()
+                .filter { it.isFile }
+                .associate { it.relativeTo(generatedKspDir).invariantSeparatorsPath to it.readText() }
+        }
+
+        fun digestManifest(): Properties {
+            val manifest = appDir.resolve("build/layoutx2c/ksp/layoutx2c-digests.properties")
+            assertThat(manifest.isFile).isTrue()
+            return Properties().apply {
+                manifest.inputStream().use(::load)
+            }
+        }
+    }
+}
