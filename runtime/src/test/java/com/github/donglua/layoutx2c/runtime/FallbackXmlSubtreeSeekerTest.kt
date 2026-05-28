@@ -67,6 +67,30 @@ class FallbackXmlSubtreeSeekerTest {
     }
 
     @Test
+    fun `data binding wrapper paths start at the unwrapped view root`() {
+        val parser = parserFor(
+            Event(XmlPullParser.START_TAG, "layout", 1),
+            Event(XmlPullParser.START_TAG, "data", 2),
+            Event(XmlPullParser.START_TAG, "variable", 3),
+            Event(XmlPullParser.END_TAG, "variable", 3),
+            Event(XmlPullParser.END_TAG, "data", 2),
+            Event(XmlPullParser.START_TAG, "LinearLayout", 2),
+            Event(XmlPullParser.START_TAG, "TextView", 3),
+            Event(XmlPullParser.END_TAG, "TextView", 3),
+            Event(XmlPullParser.START_TAG, "com.example.CustomView", 3),
+            Event(XmlPullParser.END_TAG, "com.example.CustomView", 3),
+            Event(XmlPullParser.END_TAG, "LinearLayout", 2),
+            Event(XmlPullParser.END_TAG, "layout", 1),
+        )
+
+        val subtree = FallbackXmlSubtreeSeeker.seekToChild(parser, intArrayOf(1), "demo_data_binding")
+
+        assertThat(subtree.tagName).isEqualTo("com.example.CustomView")
+        assertThat(parser.eventType).isEqualTo(XmlPullParser.START_TAG)
+        assertThat(parser.depth).isEqualTo(3)
+    }
+
+    @Test
     fun `out of bounds path reports layout path and child count`() {
         val parser = parserFor(
             Event(XmlPullParser.START_TAG, "FrameLayout", 1),

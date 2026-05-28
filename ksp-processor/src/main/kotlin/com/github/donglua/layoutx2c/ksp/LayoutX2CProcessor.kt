@@ -2,6 +2,7 @@ package com.github.donglua.layoutx2c.ksp
 
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
 import com.github.donglua.layoutx2c.codegen.BindingFacadeEligibility
+import com.github.donglua.layoutx2c.codegen.BindingFacadeStatus
 import com.github.donglua.layoutx2c.codegen.BindingFacadeGenerator
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
@@ -200,6 +201,21 @@ class LayoutX2CProcessor(
                 val tree = parser.parse(xmlFile)
                 val analyzed = analyzer.analyze(tree.root)
                 val bindingFacadeEligibility = BindingFacadeEligibility.evaluate(tree, analyzed)
+                val report = reportGenerator.generate(analyzed, layoutName, tree)
+                if (bindingFacadeEligibility.status == BindingFacadeStatus.BINDING_FACADE_SKIPPED_MALFORMED_LAYOUT) {
+                    val reportFile = codeGenerator.createNewFile(
+                        layoutDependencies,
+                        config.packageName,
+                        "${layoutName}_report",
+                        "json"
+                    )
+                    reportFile.writer().use { it.write(report) }
+                    digestStore?.cacheGeneratedOutput(layoutName, layoutDigest, "${layoutName}_report", "json", report)
+                    digestStore?.record(layoutName, layoutDigest)
+                    logger.info("Skipped LayoutX2C factory generation for malformed DataBinding layout: $layoutName")
+                    continue
+                }
+
                 val layoutResId = "R.layout.$layoutName"
                 val fileSpec = codeGen.generate(analyzed, layoutName, layoutResId)
                 val facadeFileSpec = codeGen.generateFacade(layoutName)
@@ -250,7 +266,6 @@ class LayoutX2CProcessor(
                 }
 
                 // 写入 report
-                val report = reportGenerator.generate(analyzed, layoutName, tree)
                 val reportFile = codeGenerator.createNewFile(
                     layoutDependencies,
                     config.packageName,
