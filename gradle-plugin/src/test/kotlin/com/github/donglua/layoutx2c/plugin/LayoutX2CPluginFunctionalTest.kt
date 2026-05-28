@@ -106,6 +106,9 @@ class LayoutX2CPluginFunctionalTest {
         val projectDir = tempDir.newFolder("layoutx2c-functional")
         val repoRoot = File(System.getProperty("user.dir")).parentFile
         val repoPath = repoRoot.invariantSeparatorsPath
+        repoRoot.resolve("local.properties")
+            .takeIf { it.isFile }
+            ?.copyTo(projectDir.resolve("local.properties"), overwrite = true)
 
         projectDir.resolve("settings.gradle.kts").writeText(
             """
@@ -179,7 +182,7 @@ class LayoutX2CPluginFunctionalTest {
                 import com.github.donglua.layoutx2c.runtime.annotation.FastLayouts
                 import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutPattern
 
-                @FastLayouts("demo_one", "demo_two")
+                @FastLayouts("demo_one", "demo_two", "malformed_binding")
                 @FastLayoutPattern(rClass = R::class, layoutPrefix = "pattern_")
                 interface LayoutX2CConfig
                 """.trimIndent()
@@ -195,6 +198,13 @@ class LayoutX2CPluginFunctionalTest {
                 android:layout_height="wrap_content"
                 android:text="Second"
                 android:textColor="@color/accent" />
+            """.trimIndent()
+        )
+        appDir.resolve("src/main/res/layout/malformed_binding.xml").writeText(
+            """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data />
+            </layout>
             """.trimIndent()
         )
         appDir.resolve("src/main/res/layout/pattern_beta.xml").writeText(layoutXml("Pattern beta"))
