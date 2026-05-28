@@ -22,6 +22,7 @@
 - KSP 生成输出已显式声明依赖：per-layout factory 关联触发生成的源码，聚合 Registry 关联配置源码
 - 生成代码提供 direct X2C inflate facade，demo 可直接走生成入口做 benchmark
 - Gradle 插件已传入 `layoutx2c.cacheDir`，KSP 侧已落地保守 digest cache：digest 未变时可从 cache 恢复 per-layout factory、facade 和 report
+- 编译报告已为 DataBinding `<layout>` 根标签输出 `DATA_BINDING_WRAPPER`，避免把绑定包装层误归因为普通不支持 View
 
 支持的 View：LinearLayout, FrameLayout, RelativeLayout, ScrollView, HorizontalScrollView,
 RecyclerView（仅容器）, TextView, Button, EditText, ImageView, View
@@ -33,8 +34,8 @@ RelativeLayout 常见规则等。
 
 - `merge` / `include` / `fragment` 等 fallback 子树仍走 legacy 整棵 layout inflate 兼容路径，普通子树已不再 inflate 兄弟节点。
 - KSP 处理器仍会生成聚合 Registry；per-layout digest cache 已落地，但 Gradle task 输入声明、Registry 内容 hash 和单 layout 改动的端到端增量行为还需要验证。
-- 覆盖率指标还没有绑定真实 XML 样本集，不能直接用作发布门槛。
-- 编译报告仍停留在基础 SupportReportGenerator，尚未形成可发布的样本分布报告。
+- 真实 XML 样本覆盖率基线下放到 v0.3，不再作为 v0.2 发布门槛。
+- 编译报告已有节点级 JSON，但尚未形成可发布的样本分布报告和 top fallback reason 汇总。
 
 ---
 
@@ -94,7 +95,7 @@ RelativeLayout 常见规则等。
 
 - demo 中新增 RelativeLayout、RecyclerView、fallback、ImageView、Button、EditText 样例。
 - compiler-core 覆盖新增属性、LayoutParams 生成和默认 ViewRegistry 行为。
-- 至少选取一个真实项目样本集，输出 FULL / PARTIAL / FALLBACK 分布报告。
+- demo 覆盖 generated inflate 等价性最小验收；真实样本分布报告下放到 v0.3。
 
 ---
 
@@ -166,8 +167,6 @@ RelativeLayout 常见规则等。
 **兼容性：**
 
 - ViewBinding 共存：不干扰 ViewBinding 生成流程，不承诺实现 ViewBinding 生成类或内部接口。
-- DataBinding 布局自动跳过（检测 `<layout>` 根标签），报告中单独归因为
-  `DATA_BINDING_WRAPPER`。
 - DataBinding runtime 语义不替代：`DataBindingUtil.inflate()`、生成的 Binding class、
   `<data>` 变量和 binding expression 继续由原生 DataBinding 处理，遇到时保守
   fallback。
@@ -190,8 +189,7 @@ RelativeLayout 常见规则等。
 **验收口径：**
 
 - merge / include / ViewStub 各有独立集成测试，覆盖嵌套场景。
-- DataBinding 布局（`<layout>` 根标签）自动跳过且不影响编译，报告中可按
-  `DATA_BINDING_WRAPPER` 汇总。
+- DataBinding 布局（`<layout>` 根标签）自动跳过且不影响编译；若后续支持透明解包，必须先证明不替代 DataBinding runtime 语义。
 - 自定义 View 白名单 DSL 有文档和 demo。
 - Style 内联仅在 `styles.xml` 可静态解析时生效，不可解析时 fallback 而非报错。
 
@@ -311,7 +309,7 @@ XML File → Parser → LayoutTree → Analyzer → AnalyzedTree
 | RelativeLayout 支持 | 高 | 中 | P0 |
 | background 属性 | 高 | 中 | P0 |
 | textSize/textColor | 高 | 低 | P0 |
-| 真实样本覆盖率报告 | 高 | 低 | P0 |
+| 真实样本覆盖率报告 | 高 | 低 | P1 |
 | ConstraintLayout 实验子集 | 中 | 高 | P1 |
 | 增量编译输入声明与端到端验证 | 中 | 中 | P1 |
 | include/merge 标签 | 中 | 中 | P1 |
