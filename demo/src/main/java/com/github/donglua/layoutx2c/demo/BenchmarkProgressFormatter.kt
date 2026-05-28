@@ -17,6 +17,11 @@ internal class BenchmarkProgressFormatter(
         return this
     }
 
+    fun onInflaterUnavailable(): BenchmarkProgressFormatter {
+        entries.lastOrNull()?.inflaterUnavailable = true
+        return this
+    }
+
     fun onGeneratedMeasured(totalMs: Long): BenchmarkProgressFormatter {
         entries.lastOrNull()?.generatedMs = totalMs
         return this
@@ -35,10 +40,15 @@ internal class BenchmarkProgressFormatter(
 
             val inflaterMs = entry.inflaterMs
             if (inflaterMs == null) {
+                if (entry.inflaterUnavailable) {
+                    sb.appendLine("  LayoutInflater  unavailable")
+                } else {
                 sb.appendLine("  LayoutInflater  running…")
                 return@forEachIndexed
+                }
+            } else {
+                sb.appendLine("  LayoutInflater  ${inflaterMs}ms  avg ${fmtAvg(inflaterMs)}ms")
             }
-            sb.appendLine("  LayoutInflater  ${inflaterMs}ms  avg ${fmtAvg(inflaterMs)}ms")
 
             val generatedMs = entry.generatedMs
             if (generatedMs == null) {
@@ -47,12 +57,16 @@ internal class BenchmarkProgressFormatter(
             }
             sb.appendLine("  LayoutX2C      ${generatedMs}ms  avg ${fmtAvg(generatedMs)}ms")
 
-            val speedup = if (generatedMs > 0) {
+            val speedup = if (inflaterMs == null) {
+                null
+            } else if (generatedMs > 0) {
                 String.format("%.1fx", inflaterMs.toFloat() / generatedMs)
             } else {
                 "∞"
             }
-            sb.appendLine("  Speedup: $speedup faster")
+            if (speedup != null) {
+                sb.appendLine("  Speedup: $speedup faster")
+            }
         }
 
         if (complete) {
@@ -70,5 +84,6 @@ internal class BenchmarkProgressFormatter(
         val layoutName: String,
         var inflaterMs: Long? = null,
         var generatedMs: Long? = null,
+        var inflaterUnavailable: Boolean = false,
     )
 }

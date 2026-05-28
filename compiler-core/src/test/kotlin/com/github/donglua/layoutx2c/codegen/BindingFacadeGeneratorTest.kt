@@ -46,10 +46,39 @@ class BindingFacadeGeneratorTest {
         assertThat(generated).contains("inflater: LayoutInflater")
         assertThat(generated).contains("val root = ItemDemoX2C.inflate(inflater.context, parent, attachToParent)")
         assertThat(generated).contains("return bind(root)")
-        assertThat(generated).contains("public fun bind(root: View): ItemDemoX2CBinding")
-        assertThat(generated).contains("val titleText = root.findViewById<TextView>(R.id.title_text)")
+        assertThat(generated).contains("public fun bind(rootView: View): ItemDemoX2CBinding")
+        assertThat(generated).contains("val titleText = rootView.findViewById<TextView>(R.id.title_text)")
         assertThat(generated).contains("?: error(\"Missing required view with ID: title_text\")")
         assertThat(generated).doesNotContain("ItemDemoBinding")
+    }
+
+    @Test
+    fun `bind root parameter is not shadowed by root id field`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <TextView
+                        android:id="@+id/root"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+        val tree = parser.parse(xml, "item_root")
+        val analyzed = analyzer.analyze(tree.root)
+
+        val generated = generator.generate(
+            analyzedRoot = analyzed,
+            layoutName = "item_root",
+            layoutResId = "R.layout.item_root",
+            useFastPath = true
+        ).toString()
+
+        assertThat(generated).contains("public fun bind(rootView: View): ItemRootX2CBinding")
+        assertThat(generated).contains("val root = rootView.findViewById<TextView>(R.id.root)")
+        assertThat(generated).contains("return ItemRootX2CBinding(rootView, root)")
     }
 
     @Test

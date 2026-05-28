@@ -61,11 +61,15 @@ class BenchmarkActivity : AppCompatActivity() {
                 }
                 BenchmarkStage.INFLATE_XML -> {
                     val demo = DemoLayoutCatalog.entries[index]
-                    val inflaterTime = benchmark {
-                        LayoutInflater.from(this).inflate(demo.layoutResId, container, false)
-                        container.removeAllViews()
+                    if (demo.platformInflatable) {
+                        val inflaterTime = benchmark {
+                            LayoutInflater.from(this).inflate(demo.layoutResId, container, false)
+                            container.removeAllViews()
+                        }
+                        formatter.onInflaterMeasured(inflaterTime)
+                    } else {
+                        formatter.onInflaterUnavailable()
                     }
-                    formatter.onInflaterMeasured(inflaterTime)
                     render()
                     stage = BenchmarkStage.INFLATE_GENERATED
                     resultView.post(::step)

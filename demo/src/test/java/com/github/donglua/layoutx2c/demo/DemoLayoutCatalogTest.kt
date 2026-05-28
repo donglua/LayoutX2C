@@ -14,4 +14,13 @@ class DemoLayoutCatalogTest {
         assertEquals("Layout_DemoFallback", fallbackDemo?.generatedClassName)
         assertTrue(DemoLayoutCatalog.entries.map { it.layoutName }.contains("demo_fallback"))
     }
+
+    @Test
+    fun `catalog marks data binding demo as generated only`() {
+        val bindingDemo = DemoLayoutCatalog.entries.singleOrNull { it.layoutName == "demo_data_binding" }
+
+        assertEquals("Binding", bindingDemo?.label)
+        assertEquals("DemoDataBindingX2CBinding", bindingDemo?.codeViewerClassName)
+        assertEquals(false, bindingDemo?.platformInflatable)
+    }
 }

@@ -39,7 +39,8 @@ class CodeViewerActivity : AppCompatActivity() {
             findViewById<Button>(R.id.btn_demo_form),
             findViewById<Button>(R.id.btn_demo_relative),
             findViewById<Button>(R.id.btn_demo_recycler),
-            findViewById<Button>(R.id.btn_demo_fallback)
+            findViewById<Button>(R.id.btn_demo_fallback),
+            findViewById<Button>(R.id.btn_demo_binding)
         )
         buttons.zip(demos).forEach { (button, demo) ->
             button.setOnClickListener { showDemo(demo) }
@@ -81,10 +82,10 @@ class CodeViewerActivity : AppCompatActivity() {
     }
 
     private fun loadKotlin(demo: DemoLayoutCatalog.Entry) {
-        val code = readAsset("code/kotlin/${demo.generatedClassName}.kt")
+        val code = readAsset("code/kotlin/${demo.codeViewerClassName}.kt")
             ?: getString(R.string.code_viewer_no_source)
         bindCode(
-            title = "${demo.generatedClassName}.kt",
+            title = "${demo.codeViewerClassName}.kt",
             formatted = CodeFormatter.withLineNumbers(code),
             titleViewId = R.id.title_kotlin,
             summaryViewId = R.id.summary_kotlin,
@@ -134,7 +135,8 @@ class CodeViewerActivity : AppCompatActivity() {
             R.id.btn_demo_form to demos[2],
             R.id.btn_demo_relative to demos[3],
             R.id.btn_demo_recycler to demos[4],
-            R.id.btn_demo_fallback to demos[5]
+            R.id.btn_demo_fallback to demos[5],
+            R.id.btn_demo_binding to demos[6]
         )
         buttonPairs.forEach { (buttonId, demo) ->
             findViewById<Button>(buttonId).isSelected = demo == currentDemo

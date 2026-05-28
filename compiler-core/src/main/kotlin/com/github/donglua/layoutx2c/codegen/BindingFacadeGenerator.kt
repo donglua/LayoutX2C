@@ -100,7 +100,7 @@ class BindingFacadeGenerator(
             .build()
 
         val bindFun = FunSpec.builder("bind")
-            .addParameter("root", viewClass)
+            .addParameter("rootView", viewClass)
             .returns(ClassName(packageName, bindingClassName))
             .addCode(bindBody(bindingClassName, fields))
             .build()
@@ -115,7 +115,7 @@ class BindingFacadeGenerator(
         val builder = CodeBlock.builder()
         fields.forEach { field ->
             builder.addStatement(
-                "val %L = root.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
+                "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
                 field.propertyName,
                 field.viewClass,
                 field.idName,
@@ -125,7 +125,7 @@ class BindingFacadeGenerator(
         builder.addStatement(
             "return %N(%L)",
             bindingClassName,
-            (listOf("root") + fields.map { it.propertyName }).joinToString(", ")
+            (listOf("rootView") + fields.map { it.propertyName }).joinToString(", ")
         )
         return builder.build()
     }

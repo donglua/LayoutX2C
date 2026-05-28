@@ -47,7 +47,7 @@ class GeneratedInflateEquivalenceTest(
 ) {
 
     fun generatedDemoLayoutsMatchPlatformInflatedViewTrees() {
-        for (entry in DemoLayoutCatalog.entries) {
+        for (entry in DemoLayoutCatalog.entries.filter { it.platformInflatable }) {
             val platformInflated = inflatePlatform(entry)
             val generated = inflateGenerated(entry)
 
@@ -61,9 +61,12 @@ class GeneratedInflateEquivalenceTest(
         for (entry in DemoLayoutCatalog.entries) {
             requireTrue("${entry.layoutName} should be registered", LayoutX2CRegistry.has(context, entry.layoutResId))
 
-            val platformInflated = inflatePlatform(entry)
             val registryInflated = LayoutX2CRegistry.inflate(context, entry.layoutResId, parentFor(entry), attachToRoot = false)
+            if (!entry.platformInflatable) {
+                continue
+            }
 
+            val platformInflated = inflatePlatform(entry)
             assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(registryInflated))
         }
     }

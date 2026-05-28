@@ -1,8 +1,10 @@
 package com.github.donglua.layoutx2c.demo
 
 import android.content.Context
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoFallbackX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoFormX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoNestedX2C
@@ -17,6 +19,8 @@ object DemoLayoutCatalog {
         val layoutName: String,
         val layoutResId: Int,
         val generatedClassName: String,
+        val codeViewerClassName: String = generatedClassName,
+        val platformInflatable: Boolean = true,
         val generatedInflater: (Context, ViewGroup?) -> View
     )
 
@@ -38,6 +42,16 @@ object DemoLayoutCatalog {
         },
         Entry("Fallback", "demo_fallback", R.layout.demo_fallback, "Layout_DemoFallback") { context, parent ->
             DemoFallbackX2C.inflate(context, parent)
+        },
+        Entry(
+            "Binding",
+            "demo_data_binding",
+            R.layout.demo_data_binding,
+            "Layout_DemoDataBinding",
+            codeViewerClassName = "DemoDataBindingX2CBinding",
+            platformInflatable = false
+        ) { context, parent ->
+            DemoDataBindingX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
         },
     )
 }
