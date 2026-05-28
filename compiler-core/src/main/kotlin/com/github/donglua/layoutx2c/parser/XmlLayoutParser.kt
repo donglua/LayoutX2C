@@ -47,6 +47,11 @@ class XmlLayoutParser {
         }
 
         val elementChildren = rootElement.elementChildren()
+        val variables = elementChildren
+            .firstOrNull { it.element.tagName == "data" }
+            ?.element
+            ?.dataBindingVariables()
+            .orEmpty()
         val viewRoot = elementChildren.singleOrNull { it.element.tagName != "data" }
         val isMalformed = viewRoot == null
         return ParsedLayoutRoot(
@@ -54,7 +59,8 @@ class XmlLayoutParser {
             metadata = LayoutRootMetadata(
                 originalRootTagName = rootElement.tagName,
                 isDataBindingLayout = true,
-                isMalformedDataBindingLayout = isMalformed
+                isMalformedDataBindingLayout = isMalformed,
+                dataBindingVariables = variables
             )
         )
     }
@@ -100,6 +106,23 @@ class XmlLayoutParser {
             }
         }
         return children
+    }
+
+    private fun Element.dataBindingVariables(): List<DataBindingVariable> {
+        return elementChildren()
+            .asSequence()
+            .map { it.element }
+            .filter { it.tagName == "variable" }
+            .mapNotNull { element ->
+                val name = element.getAttribute("name").trim()
+                val type = element.getAttribute("type").trim()
+                if (name.isEmpty() || type.isEmpty()) {
+                    null
+                } else {
+                    DataBindingVariable(name, type)
+                }
+            }
+            .toList()
     }
 
     private data class IndexedElement(

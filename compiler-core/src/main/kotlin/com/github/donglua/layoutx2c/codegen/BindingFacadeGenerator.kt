@@ -1,6 +1,8 @@
 package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
+import com.github.donglua.layoutx2c.parser.DataBindingVariable
+import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
@@ -19,13 +21,15 @@ class BindingFacadeGenerator(
         analyzedRoot: AnalyzedNode,
         layoutName: String,
         layoutResId: String,
-        useFastPath: Boolean
+        useFastPath: Boolean,
+        dataBindingVariables: List<DataBindingVariable> = emptyList()
     ): FileSpec {
         val bindingClassName = layoutNameToBindingClassName(layoutName)
         val fields = when (val result = fieldCollector.collect(analyzedRoot.node)) {
             is BindingFieldResult.Success -> result.fields
             is BindingFieldResult.DuplicateIds -> emptyList()
         }
+        val dataBindingProperties = dataBindingVariables.toCompatibilityProperties(fields)
 
         val constructor = FunSpec.constructorBuilder()
             .addModifiers(KModifier.PRIVATE)
@@ -52,7 +56,22 @@ class BindingFacadeGenerator(
                             .build()
                     )
                 }
+                dataBindingProperties.forEach { variable ->
+                    addProperty(
+                        PropertySpec.builder(variable.name, ANY.copy(nullable = true))
+                            .mutable(true)
+                            .initializer("null")
+                            .build()
+                    )
+                }
             }
+            .addProperty(
+                PropertySpec.builder("lifecycleOwner", ANY.copy(nullable = true))
+                    .mutable(true)
+                    .initializer("null")
+                    .build()
+            )
+            .addFunction(FunSpec.builder("executePendingBindings").build())
             .addType(companionObject(layoutName, layoutResId, bindingClassName, fields, useFastPath))
             .build()
 
@@ -136,6 +155,63 @@ class BindingFacadeGenerator(
 
     private fun layoutNameToBindingClassName(layoutName: String): String {
         return layoutName.toPascalCase() + "X2CBinding"
+    }
+
+    private fun List<DataBindingVariable>.toCompatibilityProperties(fields: List<BindingField>): List<DataBindingVariable> {
+        val reservedNames = mutableSetOf(
+            "root",
+            "Companion",
+            "lifecycleOwner",
+            "executePendingBindings",
+            "inflate",
+            "bind"
+        )
+        reservedNames += fields.map { it.propertyName }
+
+        return filter { variable ->
+            variable.name.isKotlinIdentifier() && reservedNames.add(variable.name)
+        }
+    }
+
+    private fun String.isKotlinIdentifier(): Boolean {
+        if (isEmpty()) return false
+        if (all { it == '_' }) return false
+        if (this in KOTLIN_KEYWORDS) return false
+        if (!first().isLetter() && first() != '_') return false
+        return drop(1).all { it.isLetterOrDigit() || it == '_' }
+    }
+
+    private companion object {
+        private val KOTLIN_KEYWORDS = setOf(
+            "as",
+            "break",
+            "class",
+            "continue",
+            "do",
+            "else",
+            "false",
+            "for",
+            "fun",
+            "if",
+            "in",
+            "interface",
+            "is",
+            "null",
+            "object",
+            "package",
+            "return",
+            "super",
+            "this",
+            "throw",
+            "true",
+            "try",
+            "typealias",
+            "typeof",
+            "val",
+            "var",
+            "when",
+            "while"
+        )
     }
 
     private fun String.toPascalCase(): String {

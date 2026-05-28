@@ -12,7 +12,13 @@ data class LayoutTree(
 data class LayoutRootMetadata(
     val originalRootTagName: String,
     val isDataBindingLayout: Boolean = originalRootTagName == "layout",
-    val isMalformedDataBindingLayout: Boolean = false
+    val isMalformedDataBindingLayout: Boolean = false,
+    val dataBindingVariables: List<DataBindingVariable> = emptyList()
+)
+
+data class DataBindingVariable(
+    val name: String,
+    val type: String
 )
 
 data class LayoutNode(

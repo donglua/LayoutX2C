@@ -89,6 +89,8 @@ class XmlLayoutParserTest {
         assertThat(tree.rootMetadata.originalRootTagName).isEqualTo("layout")
         assertThat(tree.rootMetadata.isDataBindingLayout).isTrue()
         assertThat(tree.rootMetadata.isMalformedDataBindingLayout).isFalse()
+        assertThat(tree.rootMetadata.dataBindingVariables.map { it.name }).containsExactly("title")
+        assertThat(tree.rootMetadata.dataBindingVariables.map { it.type }).containsExactly("java.lang.String")
         assertThat(tree.root.tagName).isEqualTo("LinearLayout")
         assertThat(tree.root.indexInParent).isEqualTo(0)
         assertThat(tree.root.children).hasSize(1)
@@ -112,6 +114,36 @@ class XmlLayoutParserTest {
         assertThat(tree.rootMetadata.originalRootTagName).isEqualTo("layout")
         assertThat(tree.rootMetadata.isDataBindingLayout).isTrue()
         assertThat(tree.rootMetadata.isMalformedDataBindingLayout).isTrue()
+        assertThat(tree.rootMetadata.dataBindingVariables.map { it.name }).containsExactly("title")
+        assertThat(tree.rootMetadata.dataBindingVariables.map { it.type }).containsExactly("java.lang.String")
         assertThat(tree.root.tagName).isEqualTo("layout")
+    }
+
+    @Test
+    fun `ignores malformed data binding variables`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                    <variable
+                        name=""
+                        type="java.lang.String" />
+                    <variable
+                        type="java.lang.Integer" />
+                    <variable
+                        name="missingType" />
+                </data>
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "data_binding_variables")
+
+        assertThat(tree.rootMetadata.dataBindingVariables.map { it.name }).containsExactly("title")
+        assertThat(tree.rootMetadata.dataBindingVariables.map { it.type }).containsExactly("java.lang.String")
     }
 }

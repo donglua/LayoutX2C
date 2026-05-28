@@ -118,10 +118,12 @@ binding.root
 binding.titleText
 ```
 
-`{Name}X2CBinding` 是 LayoutX2C 的 binding-like facade，只提供 `inflate()`、
-`bind()`、`root` 和按 `android:id` 生成的字段。普通非 `<layout>` XML 不生成
+`{Name}X2CBinding` 是 LayoutX2C 的 binding-like facade，提供 `inflate()`、
+`bind()`、`root`、按 `android:id` 生成的字段，以及迁移期编译兼容用的 `<data>`
+变量属性、`lifecycleOwner` 字段和 `executePendingBindings()` 空方法。普通非 `<layout>` XML 不生成
 该类。包含 `@{}` / `@={}` 表达式或其他整棵 fallback 语义的布局会生成 fallback-only
-facade；迁移后不会执行 DataBinding 变量绑定、BindingAdapter 或 lifecycle 逻辑。
+facade；迁移后不会执行 DataBinding 表达式、BindingAdapter、dirty flag 或 lifecycle
+观察者逻辑。
 
 ## License
 

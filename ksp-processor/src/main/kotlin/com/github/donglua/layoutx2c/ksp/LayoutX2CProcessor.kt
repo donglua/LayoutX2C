@@ -246,7 +246,8 @@ class LayoutX2CProcessor(
                         analyzedRoot = analyzed,
                         layoutName = layoutName,
                         layoutResId = layoutResId,
-                        useFastPath = bindingFacadeEligibility.useFastPath
+                        useFastPath = bindingFacadeEligibility.useFastPath,
+                        dataBindingVariables = tree.rootMetadata.dataBindingVariables
                     )
                     val bindingFacadeFile = codeGenerator.createNewFile(
                         layoutDependencies,
