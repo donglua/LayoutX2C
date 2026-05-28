@@ -34,7 +34,7 @@ RelativeLayout 常见规则等。
 当前限制：
 
 - `merge` / `include` / `fragment` 等 fallback 子树仍走 legacy 整棵 layout inflate 兼容路径，普通子树已不再 inflate 兄弟节点。
-- KSP 处理器仍会生成聚合 Registry；Gradle task 资源输入声明和单 layout 改动的端到端行为已有 functional test 覆盖，剩余 Registry 内容 hash / 跳过无意义重写仍待落地。
+- KSP 处理器仍会生成聚合 Registry；Gradle task 资源输入声明、单 layout 改动的端到端行为和 Registry 内容 digest/cache 已有 functional test 覆盖。
 - 真实 XML 样本覆盖率基线下放到 v0.3，不再作为 v0.2 发布门槛。
 - 编译报告已有节点级 JSON，但尚未形成可发布的样本分布报告和 top fallback reason 汇总。
 
@@ -116,7 +116,7 @@ RelativeLayout 常见规则等。
 - 插件路径传入 `layoutx2c.cacheDir` 后启用保守 digest cache（已落地）；裸 KSP 不传 cacheDir 时继续全量生成，避免生成目录被清理后跳过输出。
 - `LayoutDigest` v1 包含 layout 文件、values XML、生成包名、R 包名和 digest schema version（已落地）；values 先作为 coarse input，保证正确性优先。
 - digest 未变时从 cache 恢复 per-layout factory、facade 和 report 到 KSP 输出目录；digest 变化时重新 parse/analyze/codegen 并更新 cache（已落地，单 layout 改动只更新对应 digest / factory 的 functional test 已覆盖）。
-- Registry 仍是 aggregating 输出：只引用本轮成功生成或成功恢复的 layout factory；后续再做 Registry 内容 hash，避免无意义重写。
+- Registry 仍是 aggregating 输出：只引用本轮成功生成或成功恢复的 layout factory；已通过内容 digest/cache 避免 Registry 内容未变时重复走完整生成路径。
 - 先区分 per-layout factory 的可缓存输入和 Registry 的 aggregating 输入；在 XML/include/style 依赖模型完整前，不承诺 KSP `isolating processor`。
 - 后续再把 `LayoutDigest` 扩展到 include 依赖和精确 style/dimen/color/string/drawable 引用图，减少无关 values 改动带来的重跑。
 

@@ -34,6 +34,7 @@ class LayoutX2CProcessor(
         const val ANNOTATION_FAST_LAYOUT_CONFIG = "com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig"
         const val ANNOTATION_FAST_LAYOUTS = "com.github.donglua.layoutx2c.runtime.annotation.FastLayouts"
         const val ANNOTATION_FAST_LAYOUT_PATTERN = "com.github.donglua.layoutx2c.runtime.annotation.FastLayoutPattern"
+        private const val REGISTRY_DIGEST_KEY = "__registry__"
     }
 
     private val parser = XmlLayoutParser()
@@ -268,7 +269,13 @@ class LayoutX2CProcessor(
         }
 
         if (generatedLayouts.isNotEmpty()) {
-            generateRegistry(config.packageName, config.rPackageName, generatedLayouts, sourceFiles)
+            generateRegistry(
+                config.packageName,
+                config.rPackageName,
+                generatedLayouts,
+                sourceFiles,
+                digestStore
+            )
         }
         digestStore?.save()
 
@@ -304,7 +311,8 @@ class LayoutX2CProcessor(
         packageName: String,
         rPackageName: String,
         generatedLayouts: List<Pair<String, String>>,
-        sourceFiles: List<KSFile>
+        sourceFiles: List<KSFile>,
+        digestStore: LayoutX2CDigestStore?
     ) {
         val registerFun = FunSpec.builder("register")
             .apply {
@@ -328,14 +336,45 @@ class LayoutX2CProcessor(
             )
             .build()
 
+        val content = fileSpec.toString()
+        val registryDigest = LayoutX2CDigestCalculator.contentDigest(
+            content = content,
+            packageName = packageName,
+            rPackageName = rPackageName
+        )
+
+        if (digestStore?.isUnchanged(REGISTRY_DIGEST_KEY, registryDigest) == true) {
+            val cachedRegistry = digestStore.cachedFile(
+                REGISTRY_DIGEST_KEY,
+                registryDigest,
+                fileSpec.name,
+                "kt"
+            )
+            if (cachedRegistry.isFile) {
+                val file = codeGenerator.createNewFile(
+                    LayoutX2CDependencyFactory.registry(sourceFiles),
+                    packageName,
+                    fileSpec.name
+                )
+                file.writer().use { writer ->
+                    writer.write(cachedRegistry.readText())
+                }
+                digestStore.record(REGISTRY_DIGEST_KEY, registryDigest)
+                logger.info("Restored unchanged registry from cache: ${fileSpec.name}")
+                return
+            }
+        }
+
         val file = codeGenerator.createNewFile(
             LayoutX2CDependencyFactory.registry(sourceFiles),
             packageName,
             fileSpec.name
         )
         file.writer().use { writer ->
-            fileSpec.writeTo(writer)
+            writer.write(content)
         }
+        digestStore?.cacheGeneratedOutput(REGISTRY_DIGEST_KEY, registryDigest, fileSpec.name, "kt", content)
+        digestStore?.record(REGISTRY_DIGEST_KEY, registryDigest)
     }
 
     private fun LayoutX2CDigestStore.cacheGeneratedOutput(

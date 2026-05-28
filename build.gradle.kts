@@ -15,4 +15,51 @@ plugins {
     id("org.jetbrains.kotlin.android") version "${extra["kotlinVersion"]}" apply false
     id("org.jetbrains.kotlin.jvm") version "${extra["kotlinVersion"]}" apply false
     id("com.google.devtools.ksp") version "${extra["kspVersion"]}" apply false
+    id("com.vanniktech.maven.publish") version "0.36.0" apply false
+    id("com.gradle.plugin-publish") version "2.1.1" apply false
+}
+
+subprojects {
+    group = rootProject.extra["groupId"] as String
+    version = rootProject.extra["versionName"] as String
+
+    if (rootProject.providers.gradleProperty("layoutx2c.enablePublishing").isPresent) {
+        pluginManager.apply("com.vanniktech.maven.publish")
+    }
+}
+
+plugins.withId("com.vanniktech.maven.publish") {
+    configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
+        publishToMavenCentral()
+        signAllPublications()
+        coordinates(
+            groupId = rootProject.extra["groupId"] as String,
+            artifactId = project.name,
+            version = rootProject.extra["versionName"] as String
+        )
+        pom {
+            name.set("LayoutX2C ${project.name}")
+            description.set("Compile-time XML layout to Kotlin code generation for Android")
+            inceptionYear.set("2026")
+            url.set("https://github.com/donglua/LayoutX2C")
+            licenses {
+                license {
+                    name.set("The Apache License, Version 2.0")
+                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    distribution.set("repo")
+                }
+            }
+            developers {
+                developer {
+                    id.set("donglua")
+                    name.set("donglua")
+                }
+            }
+            scm {
+                connection.set("scm:git:git://github.com/donglua/LayoutX2C.git")
+                developerConnection.set("scm:git:ssh://github.com/donglua/LayoutX2C.git")
+                url.set("https://github.com/donglua/LayoutX2C")
+            }
+        }
+    }
 }

@@ -22,6 +22,7 @@ class LayoutX2CPluginFunctionalTest {
         val firstSnapshot = fixture.generatedSnapshot()
         val firstManifest = fixture.digestManifest()
         val firstRegistry = fixture.registryFile.readText()
+        val firstRegistryDigest = firstManifest.getProperty("registry")
 
         assertThat(firstSnapshot.keys).containsAtLeast(
             "kotlin/com/example/generated/DemoOneX2C.kt",
@@ -56,6 +57,8 @@ class LayoutX2CPluginFunctionalTest {
 
         val afterLayoutManifest = fixture.digestManifest()
         val afterLayoutSnapshot = fixture.generatedSnapshot()
+        assertThat(afterLayoutManifest.getProperty("registry"))
+            .isEqualTo(firstRegistryDigest)
         assertThat(afterLayoutManifest.getProperty("demo_one"))
             .isNotEqualTo(firstManifest.getProperty("demo_one"))
         assertThat(afterLayoutManifest.getProperty("demo_two"))

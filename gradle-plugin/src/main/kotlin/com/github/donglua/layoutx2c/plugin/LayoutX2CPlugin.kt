@@ -61,7 +61,7 @@ class LayoutX2CPlugin : Plugin<Project> {
         val androidComponents = project.extensions
             .findByType(AndroidComponentsExtension::class.java) ?: return
 
-        androidComponents.onVariants {
+        androidComponents.onVariants { variant ->
             project.extensions.configure(KspExtension::class.java) { ksp ->
                 ksp.addArg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
                 ksp.addArg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())

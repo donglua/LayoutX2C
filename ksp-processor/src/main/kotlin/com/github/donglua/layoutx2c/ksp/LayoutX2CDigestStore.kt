@@ -86,6 +86,19 @@ internal object LayoutX2CDigestCalculator {
         return digest.digest().joinToString(separator = "") { "%02x".format(it) }
     }
 
+    fun contentDigest(
+        content: String,
+        packageName: String,
+        rPackageName: String
+    ): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        digest.updateString(SCHEMA_VERSION)
+        digest.updateString(packageName)
+        digest.updateString(rPackageName)
+        digest.updateString(content)
+        return digest.digest().joinToString(separator = "") { "%02x".format(it) }
+    }
+
     private fun MessageDigest.updateFile(file: File, resDir: File) {
         updateString(file.relativeTo(resDir).invariantSeparatorsPath)
         update(file.readBytes())
