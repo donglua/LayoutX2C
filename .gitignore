@@ -16,6 +16,8 @@ local.properties
 .omx/
 .qoder/
 .worktrees/
+docs/superpowers/plans/
+docs/superpowers/specs/
 
 # Kotlin compiler daemon session files
 .kotlin/
