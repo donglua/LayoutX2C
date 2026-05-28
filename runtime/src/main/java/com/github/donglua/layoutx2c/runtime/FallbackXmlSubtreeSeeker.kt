@@ -9,6 +9,9 @@ internal data class FallbackXmlSubtree(
 internal object FallbackXmlSubtreeSeeker {
     fun seekToChild(parser: XmlPullParser, childPath: IntArray, layoutName: String): FallbackXmlSubtree {
         seekToRoot(parser, layoutName)
+        if (parser.name == "layout") {
+            seekToDataBindingViewRoot(parser, childPath, layoutName)
+        }
 
         val traversed = mutableListOf<Int>()
         for (index in childPath) {
@@ -25,6 +28,46 @@ internal object FallbackXmlSubtreeSeeker {
                 XmlPullParser.START_TAG -> return
                 XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException(
                     "Fallback child path <root> is invalid for $layoutName: layout has no root tag"
+                )
+            }
+        }
+    }
+
+    private fun seekToDataBindingViewRoot(parser: XmlPullParser, childPath: IntArray, layoutName: String) {
+        val parentDepth = parser.depth
+        var viewRootSeen = false
+        while (true) {
+            when (parser.next()) {
+                XmlPullParser.START_TAG -> {
+                    if (parser.depth == parentDepth + 1) {
+                        if (parser.name == "data") {
+                            skipCurrentTag(parser)
+                        } else {
+                            if (viewRootSeen) {
+                                throw invalidPath(
+                                    childPath,
+                                    layoutName,
+                                    "data binding wrapper has multiple view roots"
+                                )
+                            }
+                            viewRootSeen = true
+                            return
+                        }
+                    }
+                }
+                XmlPullParser.END_TAG -> {
+                    if (parser.depth == parentDepth) {
+                        throw invalidPath(
+                            childPath,
+                            layoutName,
+                            "data binding wrapper has no view root"
+                        )
+                    }
+                }
+                XmlPullParser.END_DOCUMENT -> throw invalidPath(
+                    childPath,
+                    layoutName,
+                    "data binding wrapper has no view root"
                 )
             }
         }
