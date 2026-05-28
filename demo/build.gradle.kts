@@ -16,8 +16,8 @@ android {
         minSdk = rootProject.extra["minSdk"] as Int
         targetSdk = rootProject.extra["targetSdk"] as Int
         versionCode = 1
-        versionName = "0.1.0"
-        testInstrumentationRunner = "com.github.donglua.layoutx2c.demo.GeneratedInflateTestRunner"
+        versionName = rootProject.extra["versionName"] as String
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
@@ -88,4 +88,6 @@ dependencies {
     implementation("com.google.android.material:material:1.14.0")
 
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }

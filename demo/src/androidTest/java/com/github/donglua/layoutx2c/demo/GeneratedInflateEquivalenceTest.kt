@@ -1,8 +1,6 @@
 package com.github.donglua.layoutx2c.demo
 
 import android.content.Context
-import android.app.Instrumentation
-import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,38 +12,21 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.recyclerview.widget.RecyclerView
 import com.github.donglua.layoutx2c.runtime.LayoutX2CRegistry
 import kotlin.math.abs
+import org.junit.Test
+import org.junit.runner.RunWith
 
-class GeneratedInflateTestRunner : Instrumentation() {
+@RunWith(AndroidJUnit4::class)
+class GeneratedInflateEquivalenceTest {
 
-    override fun onCreate(arguments: Bundle) {
-        super.onCreate(arguments)
-        start()
-    }
-
-    override fun onStart() {
-        super.onStart()
-
-        val result = Bundle()
-        try {
-            val test = GeneratedInflateEquivalenceTest(targetContext)
-            test.generatedDemoLayoutsMatchPlatformInflatedViewTrees()
-            test.registryFacadeInflatesEveryGeneratedDemoLayout()
-            result.putString("stream", "GeneratedInflateEquivalenceTest: 2 tests passed\n")
-            finish(0, result)
-        } catch (throwable: Throwable) {
-            result.putString("stream", "GeneratedInflateEquivalenceTest failed:\n${throwable.stackTraceToString()}\n")
-            finish(-1, result)
-        }
-    }
-}
-
-class GeneratedInflateEquivalenceTest(
     private val context: Context
-) {
+        get() = InstrumentationRegistry.getInstrumentation().targetContext
 
+    @Test
     fun generatedDemoLayoutsMatchPlatformInflatedViewTrees() {
         for (entry in DemoLayoutCatalog.entries.filter { it.platformInflatable }) {
             val platformInflated = inflatePlatform(entry)
@@ -55,6 +36,7 @@ class GeneratedInflateEquivalenceTest(
         }
     }
 
+    @Test
     fun registryFacadeInflatesEveryGeneratedDemoLayout() {
         requireTrue(LayoutX2CRegistry.initialize(context))
 
