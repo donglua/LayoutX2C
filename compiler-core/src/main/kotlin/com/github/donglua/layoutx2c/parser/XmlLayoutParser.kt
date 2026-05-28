@@ -16,7 +16,7 @@ class XmlLayoutParser {
         val document = builder.parse(xmlFile)
         val rootElement = document.documentElement
 
-        val rootNode = parseElement(rootElement, 0)
+        val rootNode = parseLayoutRoot(rootElement)
         return LayoutTree(root = rootNode, fileName = xmlFile.nameWithoutExtension)
     }
 
@@ -26,8 +26,19 @@ class XmlLayoutParser {
         val document = builder.parse(xmlContent.byteInputStream())
         val rootElement = document.documentElement
 
-        val rootNode = parseElement(rootElement, 0)
+        val rootNode = parseLayoutRoot(rootElement)
         return LayoutTree(root = rootNode, fileName = fileName)
+    }
+
+    private fun parseLayoutRoot(rootElement: Element): LayoutNode {
+        if (rootElement.tagName != "layout") {
+            return parseElement(rootElement, 0)
+        }
+
+        val elementChildren = rootElement.elementChildren()
+        val viewRoot = elementChildren.singleOrNull { it.element.tagName != "data" }
+            ?: return parseElement(rootElement, 0)
+        return parseElement(viewRoot.element, 0)
     }
 
     private fun parseElement(element: Element, indexInParent: Int): LayoutNode {
@@ -58,4 +69,23 @@ class XmlLayoutParser {
             indexInParent = indexInParent
         )
     }
+
+    private fun Element.elementChildren(): List<IndexedElement> {
+        val children = mutableListOf<IndexedElement>()
+        var childIndex = 0
+        val childNodes = childNodes
+        for (i in 0 until childNodes.length) {
+            val child = childNodes.item(i)
+            if (child.nodeType == Node.ELEMENT_NODE) {
+                children.add(IndexedElement(childIndex, child as Element))
+                childIndex++
+            }
+        }
+        return children
+    }
+
+    private data class IndexedElement(
+        val index: Int,
+        val element: Element
+    )
 }

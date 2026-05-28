@@ -22,7 +22,7 @@
 - KSP 生成输出已显式声明依赖：per-layout factory 关联触发生成的源码，聚合 Registry 关联配置源码
 - 生成代码提供 direct X2C inflate facade，demo 可直接走生成入口做 benchmark
 - Gradle 插件已传入 `layoutx2c.cacheDir`，KSP 侧已落地保守 digest cache：digest 未变时可从 cache 恢复 per-layout factory、facade 和 report
-- 编译报告已为 DataBinding `<layout>` 根标签输出 `DATA_BINDING_WRAPPER`，避免把绑定包装层误归因为普通不支持 View
+- DataBinding `<layout>` 根标签已透明解包到真实 View 根节点；异常 wrapper 仍输出 `DATA_BINDING_WRAPPER`，避免把绑定包装层误归因为普通不支持 View
 
 支持的 View：LinearLayout, FrameLayout, RelativeLayout, ScrollView, HorizontalScrollView,
 RecyclerView（仅容器）, TextView, Button, EditText, ImageView, View
@@ -167,9 +167,8 @@ RelativeLayout 常见规则等。
 **兼容性：**
 
 - ViewBinding 共存：不干扰 ViewBinding 生成流程，不承诺实现 ViewBinding 生成类或内部接口。
-- DataBinding runtime 语义不替代：`DataBindingUtil.inflate()`、生成的 Binding class、
-  `<data>` 变量和 binding expression 继续由原生 DataBinding 处理，遇到时保守
-  fallback。
+- DataBinding runtime 语义不替代：生成的 Binding class、`<data>` 变量和 binding
+  expression 继续由原生 DataBinding 处理；LayoutX2C 只透明解包 `<layout>` 包装层并生成真实 View 根。
 - 自定义 View 白名单：用户声明哪些自定义 View 可以安全生成
 
 **自定义 View 白名单约束：**
@@ -189,7 +188,7 @@ RelativeLayout 常见规则等。
 **验收口径：**
 
 - merge / include / ViewStub 各有独立集成测试，覆盖嵌套场景。
-- DataBinding 布局（`<layout>` 根标签）自动跳过且不影响编译；若后续支持透明解包，必须先证明不替代 DataBinding runtime 语义。
+- DataBinding 布局（`<layout>` 根标签）透明解包且不影响编译；异常 wrapper 保留专门报告归因，不替代 DataBinding runtime 语义。
 - 自定义 View 白名单 DSL 有文档和 demo。
 - Style 内联仅在 `styles.xml` 可静态解析时生效，不可解析时 fallback 而非报错。
 

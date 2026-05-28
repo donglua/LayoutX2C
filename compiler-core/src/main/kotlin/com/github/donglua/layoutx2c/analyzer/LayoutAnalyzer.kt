@@ -21,7 +21,10 @@ class LayoutAnalyzer(
     }
 
     fun analyze(node: LayoutNode): AnalyzedNode {
-        if (hasUnsupportedLayoutParam(node) || hasInvalidRelativeLayoutParam(node)) {
+        if (hasUnsupportedLayoutParam(node) ||
+            hasInvalidRelativeLayoutParam(node) ||
+            hasDataBindingExpression(node)
+        ) {
             return markAsFallback(node, parentTagName = null)
         }
         return analyzeNode(node, parentTagName = null)
@@ -38,6 +41,11 @@ class LayoutAnalyzer(
     private fun hasInvalidRelativeLayoutParam(node: LayoutNode, parentTagName: String? = null): Boolean {
         return viewRegistry.hasInvalidRelativeLayoutParamForNode(node, parentTagName) ||
             node.children.any { child -> hasInvalidRelativeLayoutParam(child, node.tagName) }
+    }
+
+    private fun hasDataBindingExpression(node: LayoutNode): Boolean {
+        return node.attributes.values.any { it.contains("@{") || it.contains("@={") } ||
+            node.children.any(::hasDataBindingExpression)
     }
 
     private fun analyzeNode(node: LayoutNode, parentTagName: String?): AnalyzedNode {

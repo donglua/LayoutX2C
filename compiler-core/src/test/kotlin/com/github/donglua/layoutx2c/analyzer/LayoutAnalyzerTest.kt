@@ -32,6 +32,92 @@ class LayoutAnalyzerTest {
     }
 
     @Test
+    fun `data binding wrapper analyzes the real view root`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Hello" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.node.tagName).isEqualTo("LinearLayout")
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children).hasSize(1)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+    }
+
+    @Test
+    fun `data binding expression falls back the unwrapped root`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@{title}" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.node.tagName).isEqualTo("LinearLayout")
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.children).isEmpty()
+    }
+
+    @Test
+    fun `two way data binding expression falls back the unwrapped root`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <EditText
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@={title}" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.node.tagName).isEqualTo("LinearLayout")
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.children).isEmpty()
+    }
+
+    @Test
     fun `unsupported view type returns FALLBACK`() {
         val xml = """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"

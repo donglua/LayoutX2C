@@ -158,7 +158,7 @@ class LayoutCodeGenerator(
                 varName,
                 layoutResId,
                 isRoot = false,
-                childPath = childPath + index
+                childPath = childPath + child.indexInParent
             )
             builder.addStatement("%L.addView(%L)", varName, childVarName)
         }

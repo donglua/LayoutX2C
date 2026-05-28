@@ -62,4 +62,31 @@ class XmlLayoutParserTest {
         assertThat(tree.root.children[1].indexInParent).isEqualTo(1)
         assertThat(tree.root.children[1].children).hasSize(1)
     }
+
+    @Test
+    fun `unwraps data binding layout root to first view child`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "data_binding_layout")
+
+        assertThat(tree.root.tagName).isEqualTo("LinearLayout")
+        assertThat(tree.root.indexInParent).isEqualTo(0)
+        assertThat(tree.root.children).hasSize(1)
+        assertThat(tree.root.children[0].tagName).isEqualTo("TextView")
+    }
 }

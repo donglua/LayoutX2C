@@ -73,6 +73,70 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `data binding wrapper generates the real view root`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Hello" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "data_binding_layout").root)
+        val generated = generator.generate(analyzed, "data_binding_layout", "R.layout.data_binding_layout").toString()
+
+        assertThat(generated).contains("val root = LinearLayout(context).apply {")
+        assertThat(generated).contains("orientation = LinearLayout.VERTICAL")
+        assertThat(generated).contains("val root_child0 = AppCompatTextView(context).apply {")
+        assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.data_binding_layout, parent)")
+        assertThat(generated).doesNotContain("val root = layout")
+    }
+
+    @Test
+    fun `data binding wrapper uses unwrapped root path for nested fallback`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                    <com.example.CustomView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "data_binding_nested_fallback").root)
+        val generated = generator.generate(
+            analyzed,
+            "data_binding_nested_fallback",
+            "R.layout.data_binding_nested_fallback"
+        ).toString()
+
+        assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.data_binding_nested_fallback,")
+        assertThat(generated).contains("intArrayOf(1), root)")
+    }
+
+    @Test
     fun `scroll view emits fill viewport and frame layout params for its child`() {
         val xml = """
             <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
