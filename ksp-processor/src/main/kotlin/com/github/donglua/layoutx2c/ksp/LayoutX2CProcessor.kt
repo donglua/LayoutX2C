@@ -3,7 +3,7 @@ package com.github.donglua.layoutx2c.ksp
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
 import com.github.donglua.layoutx2c.codegen.BindingFacadeEligibility
 import com.github.donglua.layoutx2c.codegen.BindingFacadeStatus
-import com.github.donglua.layoutx2c.codegen.BindingFacadeGenerator
+import com.github.donglua.layoutx2c.codegen.BindingFacadeGeneratorV2
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.report.SupportReportGenerator
@@ -143,7 +143,7 @@ class LayoutX2CProcessor(
 
         // 为每个 layout 生成代码
         val codeGen = LayoutCodeGenerator(config.packageName, config.rPackageName)
-        val bindingFacadeGen = BindingFacadeGenerator(config.packageName, config.rPackageName)
+        val bindingFacadeGen = BindingFacadeGeneratorV2(config.packageName, config.rPackageName)
         val generatedLayouts = mutableListOf<Pair<String, String>>()
         val sourceFiles = configSources.map { it.ksFile }.distinctBy { it.filePath }
         val layoutDependencies = LayoutX2CDependencyFactory.layout(sourceFiles)
