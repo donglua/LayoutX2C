@@ -13,9 +13,10 @@ import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBin
  * - 类型化变量：binding.title 是 String?，binding.count 是 Int?
  * - View 字段类型安全：binding.titleText 是 TextView
  * - lifecycleOwner 是 LifecycleOwner?（而不是 Any?）
- * - executePendingBindings() 可调用
+ * - 简单 @{} 表达式自动绑定：android:text="@{title}" 由 executePendingBindings() 处理
+ * - 属性访问 @{viewModel.name} 自动展开为 viewModel?.name ?: ""
  *
- * 布局中没有 @{} 表达式，走 fast path 代码生成。
+ * 布局中的 @{} 表达式由 V2 Analyzer 识别为简单表达式，仍走 fast path。
  */
 class DataBindingEnhancedActivity : AppCompatActivity() {
 
@@ -70,18 +71,14 @@ class DataBindingEnhancedActivity : AppCompatActivity() {
 
     /**
      * 将 binding 上的类型化变量同步到视图。
-     * V2 生成器让变量有实际类型，不再需要 cast。
+     * V2 生成器在 executePendingBindings() 中自动处理 @{} 绑定，
+     * 不再需要手动 binding.titleText.text = binding.title。
+     *
+     * count 字段在 layout 里没用 @{count}（int → text 需要 toString），
+     * 所以单独手动同步一次。
      */
     private fun applyBindingsToViews() {
-        // 直接访问，无需 cast — title 是 String?
-        binding.titleText.text = binding.title ?: ""
-        binding.descriptionText.text = binding.description ?: ""
         binding.countText.text = (binding.count ?: 0).toString()
-
-        // viewModel 是 ItemViewModel?，可以直接访问属性
-        binding.vmNameText.text = binding.viewModel?.name ?: ""
-        binding.vmStatusText.text = binding.viewModel?.status ?: ""
-
         binding.executePendingBindings()
     }
 }
