@@ -26,5 +26,10 @@ data class AnalyzedNode(
     val indexInParent: Int,
     val parentTagName: String?,
     /** 简单 @{} 表达式属性，由 BindingFacade 在 executePendingBindings() 中处理，不参与静态 codegen */
-    val dataBindingAttributes: Set<String> = emptySet()
+    val dataBindingAttributes: Set<String> = emptySet(),
+    /**
+     * 双向绑定 @={} 属性子集（同时也属于 [dataBindingAttributes]）。
+     * 由 BindingFacade 额外生成反向监听器（TextWatcher / OnCheckedChangeListener 等）。
+     */
+    val twoWayBindingAttributes: Set<String> = emptySet()
 )

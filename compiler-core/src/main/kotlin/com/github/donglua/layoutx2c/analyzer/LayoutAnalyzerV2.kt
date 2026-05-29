@@ -63,10 +63,11 @@ class LayoutAnalyzerV2(
             return markAsFallback(node, parentTagName)
         }
 
-        // 4. 分类属性 - 现在支持简单的 @{} 表达式
+        // 4. 分类属性 - 现在支持简单的 @{} 和 @={} 表达式
         val supported = mutableSetOf<String>()
         val unsupported = mutableSetOf<String>()
         val dataBinding = mutableSetOf<String>()
+        val twoWayBinding = mutableSetOf<String>()
 
         for (attrName in node.attributes.keys) {
             when {
@@ -75,16 +76,21 @@ class LayoutAnalyzerV2(
                 viewRegistry.isSupportedAttribute(node, parentTagName, attrName) -> {
                     // 检查属性值中的表达式
                     val attrValue = node.attributes[attrName] ?: ""
-                    if (attrValue.contains("@{") || attrValue.contains("@={")) {
-                        if (hasComplexDataBindingExpression(attrValue)) {
-                            unsupported.add(attrName)
-                        } else {
-                            // 简单 @{} 表达式 - 由 BindingFacade 在 executePendingBindings() 中处理
-                            // 不参与 X2C 静态 codegen
-                            dataBinding.add(attrName)
+                    val isTwoWay = attrValue.startsWith("@={") && attrValue.endsWith("}")
+                    val isOneWay = !isTwoWay && attrValue.startsWith("@{") && attrValue.endsWith("}")
+
+                    when {
+                        isTwoWay || isOneWay -> {
+                            if (hasComplexDataBindingExpression(attrValue)) {
+                                unsupported.add(attrName)
+                            } else {
+                                // 简单表达式 - 由 BindingFacade 在 executePendingBindings()
+                                // 中生成正向赋值；双向绑定额外生成反向监听器，不参与 X2C 静态 codegen。
+                                dataBinding.add(attrName)
+                                if (isTwoWay) twoWayBinding.add(attrName)
+                            }
                         }
-                    } else {
-                        supported.add(attrName)
+                        else -> supported.add(attrName)
                     }
                 }
                 else -> unsupported.add(attrName)
@@ -104,32 +110,27 @@ class LayoutAnalyzerV2(
             children = analyzedChildren,
             indexInParent = node.indexInParent,
             parentTagName = parentTagName,
-            dataBindingAttributes = dataBinding
+            dataBindingAttributes = dataBinding,
+            twoWayBindingAttributes = twoWayBinding
         )
     }
 
     private fun hasComplexDataBindingExpression(attrValue: String): Boolean {
-        // 简单的 @{variable} 或 @{variable.property} 是可以支持的
-        // 复杂的表达式（包含操作符、方法调用等）需要 fallback
-        if (!attrValue.contains("@{") && !attrValue.contains("@={")) {
+        // 简单的 @{variable} / @{variable.property} / @={variable} / @={variable.property} 可以支持
+        // 复杂表达式（操作符、方法调用、三元等）需要 fallback
+        val expr = when {
+            attrValue.startsWith("@={") && attrValue.endsWith("}") ->
+                attrValue.substring(3, attrValue.length - 1).trim()
+            attrValue.startsWith("@{") && attrValue.endsWith("}") ->
+                attrValue.substring(2, attrValue.length - 1).trim()
+            else -> return true // 不是合法的绑定表达式包装，按 fallback 处理
+        }
+
+        // 简单变量引用或属性访问
+        if (expr.matches(Regex("""[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*"""))) {
             return false
         }
 
-        // 提取表达式内容
-        val exprStart = attrValue.indexOf("@{")
-        val exprEnd = attrValue.lastIndexOf("}")
-        if (exprStart < 0 || exprEnd <= exprStart) {
-            return true // 格式错误，需要 fallback
-        }
-
-        val expr = attrValue.substring(exprStart + 2, exprEnd).trim()
-
-        // 简单变量引用或属性访问是可以支持的
-        if (expr.matches(Regex("""[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*"""))) {
-            return false // 简单表达式，不需要 fallback
-        }
-
-        // 其他情况（操作符、方法调用、三元表达式等）需要 fallback
         return true
     }
 

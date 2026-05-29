@@ -119,8 +119,10 @@ class BindingFacadeGeneratorV2Test {
             dataBindingVariables = tree.rootMetadata.dataBindingVariables
         ).toString()
 
-        // bind 方法只传 rootView + view 字段，不传变量
-        assertThat(generated).contains("return ItemBindX2CBinding(rootView, titleText)")
+        // bind 方法构造 binding 实例，调用 setupTwoWayBindings，然后返回
+        assertThat(generated).contains("val binding = ItemBindX2CBinding(rootView, titleText)")
+        assertThat(generated).contains("binding.setupTwoWayBindings()")
+        assertThat(generated).contains("return binding")
         // 构造函数不包含变量参数
         assertThat(generated).contains("private constructor(\n    root: View,\n    titleText: TextView")
         assertThat(generated).doesNotContain("private constructor(\n    root: View,\n    titleText: TextView,\n    title:")

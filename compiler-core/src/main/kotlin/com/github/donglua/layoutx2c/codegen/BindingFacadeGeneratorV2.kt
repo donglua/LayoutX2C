@@ -87,6 +87,7 @@ class BindingFacadeGeneratorV2(
                     .build()
             )
             .addFunction(buildExecutePendingBindings(analyzedRoot, fields, dataBindingVariables))
+            .addFunction(buildSetupTwoWayBindings(analyzedRoot, fields))
             .addType(companionObject(layoutName, layoutResId, bindingClassName, fields, useFastPath))
             .build()
 
@@ -157,10 +158,12 @@ class BindingFacadeGeneratorV2(
             )
         }
         builder.addStatement(
-            "return %N(%L)",
+            "val binding = %N(%L)",
             bindingClassName,
             (listOf("rootView") + fields.map { it.propertyName }).joinToString(", ")
         )
+        builder.addStatement("binding.setupTwoWayBindings()")
+        builder.addStatement("return binding")
         return builder.build()
     }
 
@@ -202,7 +205,39 @@ class BindingFacadeGeneratorV2(
     }
 
     /**
-     * 收集所有有 @{} 表达式的属性绑定。
+     * 构建 setupTwoWayBindings() 方法，给视图安装反向监听器，
+     * 把视图变化回写到 MutableLiveData 类型的目标变量。
+     *
+     * 仅对 [DataBindingAttributeMapper.isTwoWayBindingSupported] 白名单内的
+     * (viewType, attrName) 组合生效。其他双向绑定属性目前不会生成监听器代码。
+     */
+    private fun buildSetupTwoWayBindings(
+        analyzedRoot: AnalyzedNode,
+        fields: List<BindingField>
+    ): FunSpec {
+        val builder = FunSpec.builder("setupTwoWayBindings")
+
+        val bindings = collectDataBindingExpressions(analyzedRoot, fields)
+            .filter { it.isTwoWay }
+
+        bindings.forEach { binding ->
+            val code = DataBindingAttributeMapper.generateTwoWayListenerCode(
+                viewTagName = binding.viewTagName,
+                viewFieldName = binding.viewFieldName,
+                attrName = binding.attributeName,
+                variableName = binding.variableName,
+                propertyPath = binding.propertyPath
+            )
+            if (code != null) {
+                builder.addCode("%L\n", code)
+            }
+        }
+
+        return builder.build()
+    }
+
+    /**
+     * 收集所有有 @{} / @={} 表达式的属性绑定。
      */
     private fun collectDataBindingExpressions(
         node: AnalyzedNode,
@@ -228,7 +263,9 @@ class BindingFacadeGeneratorV2(
                         viewFieldName = viewField.propertyName,
                         attributeName = attrName,
                         variableName = expr.first,
-                        propertyPath = expr.second
+                        propertyPath = expr.second,
+                        isTwoWay = attrName in analyzed.twoWayBindingAttributes,
+                        viewTagName = analyzed.node.tagName
                     )
                 )
             }
@@ -242,15 +279,17 @@ class BindingFacadeGeneratorV2(
     }
 
     /**
-     * 解析 @{variable} 或 @{variable.property} 表达式。
+     * 解析 @{variable} / @{variable.property} / @={variable} / @={variable.property} 表达式。
      * 返回 Pair(variableName, propertyPath) 或 null 如果格式不正确。
      */
     private fun parseDataBindingExpression(attrValue: String): Pair<String, String?>? {
-        val exprStart = attrValue.indexOf("@{")
-        val exprEnd = attrValue.lastIndexOf("}")
-        if (exprStart < 0 || exprEnd <= exprStart) return null
-
-        val expr = attrValue.substring(exprStart + 2, exprEnd).trim()
+        val expr = when {
+            attrValue.startsWith("@={") && attrValue.endsWith("}") ->
+                attrValue.substring(3, attrValue.length - 1).trim()
+            attrValue.startsWith("@{") && attrValue.endsWith("}") ->
+                attrValue.substring(2, attrValue.length - 1).trim()
+            else -> return null
+        }
 
         // 简单变量引用或属性访问
         val parts = expr.split(".")
@@ -269,7 +308,9 @@ class BindingFacadeGeneratorV2(
         val viewFieldName: String,
         val attributeName: String,
         val variableName: String,
-        val propertyPath: String?
+        val propertyPath: String?,
+        val isTwoWay: Boolean = false,
+        val viewTagName: String = ""
     )
 
 

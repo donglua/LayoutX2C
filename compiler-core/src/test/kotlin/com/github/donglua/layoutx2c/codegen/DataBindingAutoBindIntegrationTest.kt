@@ -181,4 +181,143 @@ class DataBindingAutoBindIntegrationTest {
         assertThat(textViewNode.supportedAttributes).doesNotContain("android:text")
         assertThat(textViewNode.dataBindingAttributes).contains("android:text")
     }
+
+    @Test
+    fun `simple two-way binding is recognized and tracked separately from one-way`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable name="title" type="androidx.lifecycle.MutableLiveData&lt;String&gt;" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <EditText
+                        android:id="@+id/title_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@={title}" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "item_two_way")
+        val analyzed = analyzer.analyze(tree.root)
+
+        // 找到 EditText 节点
+        fun findById(node: com.github.donglua.layoutx2c.analyzer.AnalyzedNode, id: String):
+            com.github.donglua.layoutx2c.analyzer.AnalyzedNode? {
+            if (node.node.attributes["android:id"] == id) return node
+            return node.children.firstNotNullOfOrNull { findById(it, id) }
+        }
+
+        val editText = findById(analyzed, "@+id/title_input")!!
+
+        // 双向属性同时进 dataBindingAttributes 和 twoWayBindingAttributes
+        assertThat(editText.dataBindingAttributes).contains("android:text")
+        assertThat(editText.twoWayBindingAttributes).contains("android:text")
+        assertThat(editText.unsupportedAttributes).doesNotContain("android:text")
+    }
+
+    @Test
+    fun `one-way binding is not marked as two-way`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable name="title" type="java.lang.String" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:id="@+id/title_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@{title}" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "item_one_way_only")
+        val analyzed = analyzer.analyze(tree.root)
+
+        fun findById(node: com.github.donglua.layoutx2c.analyzer.AnalyzedNode, id: String):
+            com.github.donglua.layoutx2c.analyzer.AnalyzedNode? {
+            if (node.node.attributes["android:id"] == id) return node
+            return node.children.firstNotNullOfOrNull { findById(it, id) }
+        }
+
+        val textView = findById(analyzed, "@+id/title_text")!!
+
+        assertThat(textView.dataBindingAttributes).contains("android:text")
+        assertThat(textView.twoWayBindingAttributes).isEmpty()
+    }
+
+    @Test
+    fun `two-way binding with property access is recognized`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable name="vm" type="com.example.FormViewModel" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <EditText
+                        android:id="@+id/name_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@={vm.name}" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "item_two_way_prop")
+        val analyzed = analyzer.analyze(tree.root)
+
+        fun findById(node: com.github.donglua.layoutx2c.analyzer.AnalyzedNode, id: String):
+            com.github.donglua.layoutx2c.analyzer.AnalyzedNode? {
+            if (node.node.attributes["android:id"] == id) return node
+            return node.children.firstNotNullOfOrNull { findById(it, id) }
+        }
+
+        val editText = findById(analyzed, "@+id/name_input")!!
+
+        assertThat(editText.twoWayBindingAttributes).contains("android:text")
+    }
+
+    @Test
+    fun `complex two-way expression is rejected as unsupported`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable name="vm" type="com.example.FormViewModel" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <EditText
+                        android:id="@+id/name_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@={vm.name + ``}" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "item_two_way_complex")
+        val analyzed = analyzer.analyze(tree.root)
+
+        fun findById(node: com.github.donglua.layoutx2c.analyzer.AnalyzedNode, id: String):
+            com.github.donglua.layoutx2c.analyzer.AnalyzedNode? {
+            if (node.node.attributes["android:id"] == id) return node
+            return node.children.firstNotNullOfOrNull { findById(it, id) }
+        }
+
+        val editText = findById(analyzed, "@+id/name_input")!!
+
+        // 复杂表达式：进 unsupported，不进 twoWayBindingAttributes
+        assertThat(editText.twoWayBindingAttributes).doesNotContain("android:text")
+        assertThat(editText.unsupportedAttributes).contains("android:text")
+    }
 }
