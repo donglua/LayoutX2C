@@ -1,6 +1,6 @@
 package com.github.donglua.layoutx2c.ksp
 
-import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
+import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
 import com.github.donglua.layoutx2c.codegen.BindingFacadeEligibility
 import com.github.donglua.layoutx2c.codegen.BindingFacadeStatus
 import com.github.donglua.layoutx2c.codegen.BindingFacadeGeneratorV2
@@ -39,7 +39,7 @@ class LayoutX2CProcessor(
     }
 
     private val parser = XmlLayoutParser()
-    private val analyzer = LayoutAnalyzer()
+    private val analyzer = LayoutAnalyzerV2()
     private val reportGenerator = SupportReportGenerator()
     private var processed = false
 

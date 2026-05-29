@@ -1,6 +1,6 @@
 package com.github.donglua.layoutx2c.codegen
 
-import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
+import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
 import com.github.donglua.layoutx2c.parser.DataBindingVariable
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.google.common.truth.Truth.assertThat
@@ -12,7 +12,7 @@ import org.junit.Test
 class BindingFacadeGeneratorV2Test {
 
     private val parser = XmlLayoutParser()
-    private val analyzer = LayoutAnalyzer()
+    private val analyzer = LayoutAnalyzerV2()
     private val generator = BindingFacadeGeneratorV2(
         packageName = "com.example.generated",
         rPackageName = "com.example"
