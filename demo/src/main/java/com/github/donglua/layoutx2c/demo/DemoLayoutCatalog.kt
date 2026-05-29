@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
+import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoFallbackX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoFormX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoNestedX2C
@@ -51,6 +52,15 @@ object DemoLayoutCatalog {
             codeViewerClassName = "DemoDataBindingX2CBinding"
         ) { context, parent ->
             DemoDataBindingX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
+        },
+        Entry(
+            "Binding Enhanced",
+            "demo_data_binding_enhanced",
+            R.layout.demo_data_binding_enhanced,
+            "Layout_DemoDataBindingEnhanced",
+            codeViewerClassName = "DemoDataBindingEnhancedX2CBinding"
+        ) { context, parent ->
+            DemoDataBindingEnhancedX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
         },
     )
 }

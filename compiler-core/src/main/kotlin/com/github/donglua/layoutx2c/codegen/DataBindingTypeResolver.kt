@@ -24,26 +24,28 @@ object DataBindingTypeResolver {
     )
 
     private val commonTypes = mapOf(
-        "String" to ClassName("java.lang", "String"),
-        "java.lang.String" to ClassName("java.lang", "String"),
-        "Integer" to ClassName("java.lang", "Integer"),
-        "java.lang.Integer" to ClassName("java.lang", "Integer"),
-        "Long" to ClassName("java.lang", "Long"),
-        "java.lang.Long" to ClassName("java.lang", "Long"),
-        "Float" to ClassName("java.lang", "Float"),
-        "java.lang.Float" to ClassName("java.lang", "Float"),
-        "Double" to ClassName("java.lang", "Double"),
-        "java.lang.Double" to ClassName("java.lang", "Double"),
-        "Boolean" to ClassName("java.lang", "Boolean"),
-        "java.lang.Boolean" to ClassName("java.lang", "Boolean"),
-        "List" to ClassName("java.util", "List"),
-        "java.util.List" to ClassName("java.util", "List"),
+        "String" to String::class.asTypeName(),
+        "java.lang.String" to String::class.asTypeName(),
+        "Integer" to Int::class.asTypeName(),
+        "java.lang.Integer" to Int::class.asTypeName(),
+        "Long" to Long::class.asTypeName(),
+        "java.lang.Long" to Long::class.asTypeName(),
+        "Float" to Float::class.asTypeName(),
+        "java.lang.Float" to Float::class.asTypeName(),
+        "Double" to Double::class.asTypeName(),
+        "java.lang.Double" to Double::class.asTypeName(),
+        "Boolean" to Boolean::class.asTypeName(),
+        "java.lang.Boolean" to Boolean::class.asTypeName(),
+        "List" to ClassName("kotlin.collections", "List"),
+        "java.util.List" to ClassName("kotlin.collections", "List"),
         "ArrayList" to ClassName("java.util", "ArrayList"),
         "java.util.ArrayList" to ClassName("java.util", "ArrayList"),
-        "Map" to ClassName("java.util", "Map"),
-        "java.util.Map" to ClassName("java.util", "Map"),
+        "Map" to ClassName("kotlin.collections", "Map"),
+        "java.util.Map" to ClassName("kotlin.collections", "Map"),
         "HashMap" to ClassName("java.util", "HashMap"),
-        "java.util.HashMap" to ClassName("java.util", "HashMap")
+        "java.util.HashMap" to ClassName("java.util", "HashMap"),
+        "MutableList" to ClassName("kotlin.collections", "MutableList"),
+        "MutableMap" to ClassName("kotlin.collections", "MutableMap")
     )
 
     /**

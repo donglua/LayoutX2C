@@ -12,5 +12,6 @@ object LayoutX2CConfig {
         R.layout.demo_recycler,
         R.layout.demo_fallback,
         R.layout.demo_data_binding,
+        R.layout.demo_data_binding_enhanced,
     )
 }

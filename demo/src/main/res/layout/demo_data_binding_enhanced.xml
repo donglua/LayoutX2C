@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+        <variable
+            name="title"
+            type="java.lang.String" />
+        <variable
+            name="description"
+            type="java.lang.String" />
+        <variable
+            name="count"
+            type="int" />
+        <variable
+            name="isVisible"
+            type="boolean" />
+        <variable
+            name="viewModel"
+            type="com.github.donglua.layoutx2c.demo.ItemViewModel" />
+    </data>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/title_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"
+            android:text="DataBinding Enhanced Demo" />
+
+        <TextView
+            android:id="@+id/description_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp"
+            android:text="Variables · TypedFields · ExpressionParse" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Click count:" />
+
+            <TextView
+                android:id="@+id/count_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:text="0" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/vm_name_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp"
+            android:text="-" />
+
+        <TextView
+            android:id="@+id/vm_status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="12dp"
+            android:text="-" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_horizontal">
+
+            <Button
+                android:id="@+id/btn_update"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="Update" />
+
+            <Button
+                android:id="@+id/btn_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Toggle" />
+        </LinearLayout>
+    </LinearLayout>
+</layout>

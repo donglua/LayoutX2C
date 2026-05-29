@@ -34,5 +34,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_code_viewer).setOnClickListener {
             startActivity(Intent(this, CodeViewerActivity::class.java))
         }
+        findViewById<Button>(R.id.btn_databinding_enhanced).setOnClickListener {
+            startActivity(Intent(this, DataBindingEnhancedActivity::class.java))
+        }
     }
 }

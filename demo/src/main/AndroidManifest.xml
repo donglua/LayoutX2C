@@ -17,6 +17,7 @@
 
         <activity android:name=".BenchmarkActivity" />
         <activity android:name=".CodeViewerActivity" />
+        <activity android:name=".DataBindingEnhancedActivity" />
 
     </application>
 
