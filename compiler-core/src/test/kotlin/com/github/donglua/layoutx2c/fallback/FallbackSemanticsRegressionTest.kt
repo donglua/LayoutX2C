@@ -146,4 +146,47 @@ class FallbackSemanticsRegressionTest {
         )
         assertThat(generated).doesNotContain("addRule(RelativeLayout.BELOW")
     }
+
+    @Test
+    fun `constraint layout complex attribute triggers subtree-level fallback not tree-level`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Safe sibling" />
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintWidth_percent="0.5"
+                        app:layout_constraintStart_toStartOf="parent" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "constraint_subtree_fallback").root)
+        val generated = generator.generate(
+            analyzed,
+            "constraint_subtree_fallback",
+            "R.layout.constraint_subtree_fallback"
+        ).toString()
+
+        // Root LinearLayout is still FULL — not escalated
+        assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(analyzed.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+        // ConstraintLayout subtree is FALLBACK
+        assertThat(analyzed.children[1].supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        // Generated code: sibling is generated, ConstraintLayout subtree uses FallbackInflater
+        assertThat(generated).contains("val root = LinearLayout(context).apply {")
+        assertThat(generated).contains("val root_child0 = AppCompatTextView(context).apply {")
+        assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.constraint_subtree_fallback,")
+        assertThat(generated).doesNotContain("val root_child1 = ConstraintLayout(context)")
+    }
 }

@@ -23,4 +23,14 @@ class DemoLayoutCatalogTest {
         assertEquals("DemoDataBindingX2CBinding", bindingDemo?.codeViewerClassName)
         assertEquals(true, bindingDemo?.platformInflatable)
     }
+
+    @Test
+    fun `catalog includes constraint demo for safe subset showcase`() {
+        val constraintDemo = DemoLayoutCatalog.entries.singleOrNull { it.layoutName == "demo_constraint" }
+
+        assertEquals("Constraint", constraintDemo?.label)
+        assertEquals("Layout_DemoConstraint", constraintDemo?.generatedClassName)
+        assertEquals(true, constraintDemo?.platformInflatable)
+        assertTrue(DemoLayoutCatalog.entries.map { it.layoutName }.contains("demo_constraint"))
+    }
 }

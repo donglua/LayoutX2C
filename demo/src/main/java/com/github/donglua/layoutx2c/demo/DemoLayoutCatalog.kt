@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.github.donglua.layoutx2c.demo.generated.DemoConstraintX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoFallbackX2C
@@ -37,6 +38,9 @@ object DemoLayoutCatalog {
         },
         Entry("Relative", "demo_relative", R.layout.demo_relative, "Layout_DemoRelative") { context, parent ->
             DemoRelativeX2C.inflate(context, parent)
+        },
+        Entry("Constraint", "demo_constraint", R.layout.demo_constraint, "Layout_DemoConstraint") { context, parent ->
+            DemoConstraintX2C.inflate(context, parent)
         },
         Entry("Recycler", "demo_recycler", R.layout.demo_recycler, "Layout_DemoRecycler") { context, parent ->
             DemoRecyclerX2C.inflate(context, parent)

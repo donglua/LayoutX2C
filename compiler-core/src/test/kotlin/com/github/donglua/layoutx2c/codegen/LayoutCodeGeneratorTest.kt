@@ -746,4 +746,120 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("parent?.let { parentView ->")
         assertThat(generated).contains("is RelativeLayout -> RelativeLayout.LayoutParams(")
     }
+
+    @Test
+    fun `constraint layout emits constraint layout params and anchor field assignments`() {
+        val xml = """
+            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintHorizontal_bias="0.25"
+                    android:text="Title" />
+                <TextView
+                    android:id="@+id/subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintTop_toBottomOf="@id/title"
+                    app:layout_constraintStart_toStartOf="@id/title"
+                    android:text="Subtitle" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "constraint_basic").root)
+        val generated = generator.generate(analyzed, "constraint_basic", "R.layout.constraint_basic").toString()
+
+        assertThat(generated).contains("import androidx.constraintlayout.widget.ConstraintLayout")
+        assertThat(generated).contains("val root = ConstraintLayout(context)")
+        assertThat(generated).contains("root_child0.layoutParams = ConstraintLayout.LayoutParams(")
+        // 0dp under ConstraintLayout maps to MATCH_CONSTRAINT
+        assertThat(generated).contains("ConstraintLayout.LayoutParams.MATCH_CONSTRAINT")
+        // anchors to parent become PARENT_ID
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).startToStart =")
+        assertThat(generated).contains("ConstraintLayout.LayoutParams.PARENT_ID")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).endToEnd =")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).topToTop =")
+        // bias becomes a float assignment
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).horizontalBias = 0.25f")
+        // anchors to id reference R.id
+        assertThat(generated).contains("(root_child1.layoutParams as ConstraintLayout.LayoutParams).topToBottom = R.id.title")
+        assertThat(generated).contains("(root_child1.layoutParams as ConstraintLayout.LayoutParams).startToStart = R.id.title")
+    }
+
+    @Test
+    fun `constraint layout helper child triggers subtree fallback in codegen`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <androidx.constraintlayout.widget.Guideline
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintGuide_percent="0.5" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "constraint_helper").root)
+        val generated = generator.generate(analyzed, "constraint_helper", "R.layout.constraint_helper").toString()
+
+        // Helper-tagged subtree falls back via FallbackInflater
+        assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.constraint_helper,")
+        assertThat(generated).doesNotContain("ConstraintLayout.LayoutParams")
+    }
+
+    @Test
+    fun `root layout params use constraint layout when parent is constraint layout`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Title" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "constraint_root_params").root)
+        val generated = generator.generate(
+            analyzed,
+            "constraint_root_params",
+            "R.layout.constraint_root_params"
+        ).toString()
+
+        assertThat(generated).contains("parent?.let { parentView ->")
+        assertThat(generated).contains("is ConstraintLayout -> ConstraintLayout.LayoutParams(")
+    }
+
+    @Test
+    fun `constraint layout 0dp dimension under non-constraint parent uses dp conversion`() {
+        // Outside ConstraintLayout, 0dp should NOT become MATCH_CONSTRAINT
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "linear_zero_dp").root)
+        val generated = generator.generate(analyzed, "linear_zero_dp", "R.layout.linear_zero_dp").toString()
+
+        assertThat(generated).doesNotContain("MATCH_CONSTRAINT")
+        assertThat(generated).contains("LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("1.0f)")
+    }
 }

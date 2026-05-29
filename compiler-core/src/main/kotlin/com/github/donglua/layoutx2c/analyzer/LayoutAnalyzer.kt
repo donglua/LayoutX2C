@@ -1,6 +1,8 @@
 package com.github.donglua.layoutx2c.analyzer
 
 import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.isConstraintLayout
+import com.github.donglua.layoutx2c.registry.ConstraintLayoutRules
 import com.github.donglua.layoutx2c.registry.DefaultViewRegistry
 import com.github.donglua.layoutx2c.registry.ViewAnalysisRegistry
 
@@ -48,6 +50,29 @@ class LayoutAnalyzer(
             node.children.any(::hasDataBindingExpression)
     }
 
+    /**
+     * ConstraintLayout 子树级别的 fallback 检测：
+     * - 子节点含有复杂约束属性（chain、ratio、percent 等）
+     * - 子节点含有不合法的锚点/bias 值
+     * - 子节点是 ConstraintLayout helper 标签
+     * 任何一项命中，整个 ConstraintLayout 子树 fallback。
+     */
+    private fun hasInvalidConstraintLayoutSubtree(node: LayoutNode): Boolean {
+        if (!node.isConstraintLayout()) return false
+        return hasConstraintLayoutIssueInChildren(node)
+    }
+
+    private fun hasConstraintLayoutIssueInChildren(parent: LayoutNode): Boolean {
+        for (child in parent.children) {
+            if (ConstraintLayoutRules.isHelperTag(child.tagName)) return true
+            if (ConstraintLayoutRules.hasComplexConstraintAttribute(child)) return true
+            if (viewRegistry.hasInvalidConstraintLayoutParamForNode(child, parent.tagName)) return true
+            // 递归检查嵌套的 ConstraintLayout 子树中的孙节点不需要，
+            // 因为 analyzeNode 会在遇到嵌套 ConstraintLayout 时再次触发此检查。
+        }
+        return false
+    }
+
     private fun analyzeNode(node: LayoutNode, parentTagName: String?): AnalyzedNode {
         // 1. 检查 View 类型是否支持
         if (viewRegistry.viewHandlerFor(node.tagName) == null) {
@@ -70,7 +95,12 @@ class LayoutAnalyzer(
             return markAsFallback(node, parentTagName)
         }
 
-        // 4. 分类属性
+        // 4. ConstraintLayout 子树级别 fallback
+        if (hasInvalidConstraintLayoutSubtree(node)) {
+            return markAsFallback(node, parentTagName)
+        }
+
+        // 5. 分类属性
         val supported = mutableSetOf<String>()
         val unsupported = mutableSetOf<String>()
 
@@ -85,7 +115,7 @@ class LayoutAnalyzer(
 
         val supportLevel = if (unsupported.isEmpty()) SupportLevel.FULL else SupportLevel.PARTIAL
 
-        // 5. 递归分析子节点
+        // 6. 递归分析子节点
         val analyzedChildren = node.children.map { analyzeNode(it, parentTagName = node.tagName) }
 
         return AnalyzedNode(

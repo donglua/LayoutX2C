@@ -23,6 +23,7 @@ interface ViewAnalysisRegistry {
     fun isSupportedAttribute(node: LayoutNode, parentTagName: String?, attrName: String): Boolean
     fun hasUnsupportedAttributeValue(node: LayoutNode, parentTagName: String?): Boolean
     fun hasInvalidRelativeLayoutParamForNode(node: LayoutNode, parentTagName: String?): Boolean
+    fun hasInvalidConstraintLayoutParamForNode(node: LayoutNode, parentTagName: String?): Boolean
 }
 
 interface ViewEmitRegistry {
@@ -72,6 +73,10 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         ViewHandler(
             setOf("androidx.recyclerview.widget.RecyclerView"),
             ClassName("androidx.recyclerview.widget", "RecyclerView")
+        ),
+        ViewHandler(
+            setOf("androidx.constraintlayout.widget.ConstraintLayout"),
+            ClassName("androidx.constraintlayout.widget", "ConstraintLayout")
         ),
         ViewHandler(
             setOf("ScrollView", "android.widget.ScrollView"),
@@ -142,7 +147,7 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         "android:layout_marginEnd",
         "android:layout_weight",
         "android:layout_gravity"
-    ) + relativeLayoutRuleAttributes
+    ) + relativeLayoutRuleAttributes + ConstraintLayoutRules.supportedAttributes
 
     override fun viewHandlerFor(tagName: String): ViewHandler? {
         return tagToHandler[tagName]
@@ -154,7 +159,15 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
 
     override fun isSupportedAttribute(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
         if (attrName in layoutAttributeNames) {
-            return attrName !in relativeLayoutRuleAttributes || isRelativeLayoutTag(parentTagName)
+            if (attrName in relativeLayoutRuleAttributes && !isRelativeLayoutTag(parentTagName)) {
+                return false
+            }
+            if (attrName in ConstraintLayoutRules.supportedAttributes &&
+                !ConstraintLayoutRules.parentIsConstraintLayout(parentTagName)
+            ) {
+                return false
+            }
+            return true
         }
 
         val handler = attributeHandlerByName[attrName] ?: return false
@@ -176,6 +189,19 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
     override fun hasInvalidRelativeLayoutParamForNode(node: LayoutNode, parentTagName: String?): Boolean {
         for ((attrName, value) in node.attributes) {
             if (attrName in relativeLayoutRuleAttributes && hasUnsupportedRelativeLayoutRuleValue(attrName, value, parentTagName)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    override fun hasInvalidConstraintLayoutParamForNode(node: LayoutNode, parentTagName: String?): Boolean {
+        if (!ConstraintLayoutRules.parentIsConstraintLayout(parentTagName)) return false
+        for ((attrName, value) in node.attributes) {
+            if (attrName in ConstraintLayoutRules.anchorAttributes && !ConstraintLayoutRules.isSupportedAnchorValue(value)) {
+                return true
+            }
+            if (attrName in ConstraintLayoutRules.biasAttributes && !ConstraintLayoutRules.isSupportedBiasValue(value)) {
                 return true
             }
         }

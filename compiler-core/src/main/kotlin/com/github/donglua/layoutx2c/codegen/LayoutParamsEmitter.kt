@@ -2,10 +2,12 @@ package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.isConstraintLayout
 import com.github.donglua.layoutx2c.parser.isFrameLayout
 import com.github.donglua.layoutx2c.parser.isLinearLayout
 import com.github.donglua.layoutx2c.parser.isRelativeLayout
 import com.github.donglua.layoutx2c.parser.isScrollView
+import com.github.donglua.layoutx2c.registry.ConstraintLayoutRules
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 
@@ -36,6 +38,7 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
         emitLayoutParams(builder, varName, node, parentVarName)
         emitLayoutGravity(builder, varName, node)
         emitRelativeLayoutRules(builder, varName, node)
+        emitConstraintLayoutRules(builder, varName, node)
     }
 
     override fun emitRoot(
@@ -54,8 +57,8 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
         parentVarName: String
     ) {
         val attrs = node.node.attributes
-        val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content")
-        val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content")
+        val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content", node)
+        val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content", node)
 
         builder.addStatement("%L.layoutParams = %L", varName, layoutParamsToCode(node, parentVarName, width, height))
         emitMargins(builder, varName, attrs)
@@ -68,12 +71,13 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
         parentVarName: String
     ) {
         val attrs = node.node.attributes
-        val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content")
-        val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content")
+        val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content", node)
+        val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content", node)
 
         builder.beginControlFlow("%L?.let { parentView ->", parentVarName)
         builder.addStatement(
             "%L.layoutParams = when (parentView) {\n" +
+                "  is %T -> %T(%L, %L)\n" +
                 "  is %T -> %T(%L, %L)\n" +
                 "  is %T -> %T(%L, %L)\n" +
                 "  is %T -> %T(%L, %L)\n" +
@@ -90,6 +94,10 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
             height,
             relativeLayoutClass,
             relativeLayoutParamsClass,
+            width,
+            height,
+            constraintLayoutClass,
+            constraintLayoutParamsClass,
             width,
             height,
             viewGroupMarginLayoutParamsClass,
@@ -173,6 +181,8 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
                 CodeBlock.of("%T(%L, %L)", frameLayoutParamsClass, width, height)
             node.parentIs(LayoutNode::isRelativeLayout) ->
                 CodeBlock.of("%T(%L, %L)", relativeLayoutParamsClass, width, height)
+            node.parentIs(LayoutNode::isConstraintLayout) ->
+                CodeBlock.of("%T(%L, %L)", constraintLayoutParamsClass, width, height)
             else ->
                 CodeBlock.of("%T(%L, %L)", viewGroupMarginLayoutParamsClass, width, height)
         }
@@ -222,14 +232,64 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
         }
     }
 
+    private fun emitConstraintLayoutRules(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode) {
+        if (!node.parentIs(LayoutNode::isConstraintLayout)) return
+
+        for ((attrName, value) in node.node.attributes) {
+            val anchorField = ConstraintLayoutRules.anchorFieldByAttribute[attrName]
+            if (anchorField != null) {
+                builder.addStatement(
+                    "(%L.layoutParams as %T).%L = %L",
+                    varName,
+                    constraintLayoutParamsClass,
+                    anchorField,
+                    constraintAnchorReference(value)
+                )
+                continue
+            }
+
+            if (attrName == "app:layout_constraintHorizontal_bias") {
+                value.toFloatOrNull()?.let { bias ->
+                    builder.addStatement(
+                        "(%L.layoutParams as %T).horizontalBias = %Lf",
+                        varName,
+                        constraintLayoutParamsClass,
+                        bias
+                    )
+                }
+            } else if (attrName == "app:layout_constraintVertical_bias") {
+                value.toFloatOrNull()?.let { bias ->
+                    builder.addStatement(
+                        "(%L.layoutParams as %T).verticalBias = %Lf",
+                        varName,
+                        constraintLayoutParamsClass,
+                        bias
+                    )
+                }
+            }
+        }
+    }
+
+    private fun constraintAnchorReference(value: String): CodeBlock {
+        return when (value) {
+            "parent" -> CodeBlock.of("%T.PARENT_ID", constraintLayoutParamsClass)
+            else -> CodeBlock.of("R.id.%L", idName(value))
+        }
+    }
+
     private fun idName(value: String): String {
         return value.removePrefix("@+id/").removePrefix("@id/")
     }
 
-    private fun layoutDimensionToCode(value: String): CodeBlock {
+    private fun layoutDimensionToCode(value: String, node: AnalyzedNode): CodeBlock {
         return when (value) {
             "match_parent", "fill_parent" -> CodeBlock.of("%T.MATCH_PARENT", viewGroupLayoutParamsClass)
             "wrap_content" -> CodeBlock.of("%T.WRAP_CONTENT", viewGroupLayoutParamsClass)
+            "0dp" -> if (node.parentIs(LayoutNode::isConstraintLayout)) {
+                CodeBlock.of("%T.MATCH_CONSTRAINT", constraintLayoutParamsClass)
+            } else {
+                CodeBlock.of("%L", dimensionToCode(value))
+            }
             else -> CodeBlock.of("%L", dimensionToCode(value))
         }
     }
@@ -243,6 +303,8 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
         val frameLayoutParamsClass = ClassName("android.widget", "FrameLayout", "LayoutParams")
         val relativeLayoutClass = ClassName("android.widget", "RelativeLayout")
         val relativeLayoutParamsClass = ClassName("android.widget", "RelativeLayout", "LayoutParams")
+        val constraintLayoutClass = ClassName("androidx.constraintlayout.widget", "ConstraintLayout")
+        val constraintLayoutParamsClass = ClassName("androidx.constraintlayout.widget", "ConstraintLayout", "LayoutParams")
         val relativeLayoutIdRules = mapOf(
             "android:layout_above" to "ABOVE",
             "android:layout_below" to "BELOW",

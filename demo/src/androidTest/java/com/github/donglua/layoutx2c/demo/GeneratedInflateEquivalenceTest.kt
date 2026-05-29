@@ -12,6 +12,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintLayout.LayoutParams as ConstraintLayoutParams
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.recyclerview.widget.RecyclerView
@@ -65,6 +67,7 @@ class GeneratedInflateEquivalenceTest {
         return when (entry.layoutName) {
             "demo_relative" -> RelativeLayout(context)
             "demo_nested" -> LinearLayout(context)
+            "demo_constraint" -> ConstraintLayout(context)
             else -> FrameLayout(context)
         }
     }
@@ -138,7 +141,21 @@ class GeneratedInflateEquivalenceTest {
             },
             linearWeight = (layoutParams as? LinearLayout.LayoutParams)?.weight,
             gravity = gravityOf(layoutParams),
-            relativeRules = (layoutParams as? RelativeLayout.LayoutParams)?.rules?.toList()
+            relativeRules = (layoutParams as? RelativeLayout.LayoutParams)?.rules?.toList(),
+            constraintAnchors = (layoutParams as? ConstraintLayoutParams)?.let {
+                ConstraintAnchorSnapshot(
+                    startToStart = it.startToStart,
+                    startToEnd = it.startToEnd,
+                    endToStart = it.endToStart,
+                    endToEnd = it.endToEnd,
+                    topToTop = it.topToTop,
+                    topToBottom = it.topToBottom,
+                    bottomToTop = it.bottomToTop,
+                    bottomToBottom = it.bottomToBottom,
+                    horizontalBias = it.horizontalBias,
+                    verticalBias = it.verticalBias
+                )
+            }
         )
     }
 
@@ -229,6 +246,7 @@ class GeneratedInflateEquivalenceTest {
         checkField(path, "layoutParams.linearWeight", this?.linearWeight, actual?.linearWeight, differences)
         checkField(path, "layoutParams.gravity", this?.gravity, actual?.gravity, differences)
         checkField(path, "layoutParams.relativeRules", this?.relativeRules, actual?.relativeRules, differences)
+        checkField(path, "layoutParams.constraintAnchors", this?.constraintAnchors, actual?.constraintAnchors, differences)
     }
 
     private fun checkField(
@@ -302,7 +320,8 @@ class GeneratedInflateEquivalenceTest {
         val margins: MarginSnapshot?,
         val linearWeight: Float?,
         val gravity: Int?,
-        val relativeRules: List<Int>?
+        val relativeRules: List<Int>?,
+        val constraintAnchors: ConstraintAnchorSnapshot?
     )
 
     private data class MarginSnapshot(
@@ -310,5 +329,18 @@ class GeneratedInflateEquivalenceTest {
         val top: Int,
         val right: Int,
         val bottom: Int
+    )
+
+    private data class ConstraintAnchorSnapshot(
+        val startToStart: Int,
+        val startToEnd: Int,
+        val endToStart: Int,
+        val endToEnd: Int,
+        val topToTop: Int,
+        val topToBottom: Int,
+        val bottomToTop: Int,
+        val bottomToBottom: Int,
+        val horizontalBias: Float,
+        val verticalBias: Float
     )
 }

@@ -48,3 +48,7 @@ internal fun LayoutNode.isScrollView(): Boolean {
 internal fun LayoutNode.isRecyclerView(): Boolean {
     return tagName == "androidx.recyclerview.widget.RecyclerView"
 }
+
+internal fun LayoutNode.isConstraintLayout(): Boolean {
+    return tagName == "androidx.constraintlayout.widget.ConstraintLayout"
+}
