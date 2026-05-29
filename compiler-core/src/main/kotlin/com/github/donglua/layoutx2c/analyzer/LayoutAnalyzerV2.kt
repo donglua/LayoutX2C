@@ -66,6 +66,7 @@ class LayoutAnalyzerV2(
         // 4. 分类属性 - 现在支持简单的 @{} 表达式
         val supported = mutableSetOf<String>()
         val unsupported = mutableSetOf<String>()
+        val dataBinding = mutableSetOf<String>()
 
         for (attrName in node.attributes.keys) {
             when {
@@ -74,8 +75,14 @@ class LayoutAnalyzerV2(
                 viewRegistry.isSupportedAttribute(node, parentTagName, attrName) -> {
                     // 检查属性值中的表达式
                     val attrValue = node.attributes[attrName] ?: ""
-                    if (hasComplexDataBindingExpression(attrValue)) {
-                        unsupported.add(attrName)
+                    if (attrValue.contains("@{") || attrValue.contains("@={")) {
+                        if (hasComplexDataBindingExpression(attrValue)) {
+                            unsupported.add(attrName)
+                        } else {
+                            // 简单 @{} 表达式 - 由 BindingFacade 在 executePendingBindings() 中处理
+                            // 不参与 X2C 静态 codegen
+                            dataBinding.add(attrName)
+                        }
                     } else {
                         supported.add(attrName)
                     }
@@ -96,7 +103,8 @@ class LayoutAnalyzerV2(
             unsupportedAttributes = unsupported,
             children = analyzedChildren,
             indexInParent = node.indexInParent,
-            parentTagName = parentTagName
+            parentTagName = parentTagName,
+            dataBindingAttributes = dataBinding
         )
     }
 

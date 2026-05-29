@@ -211,26 +211,26 @@ class BindingFacadeGeneratorV2(
         val bindings = mutableListOf<DataBindingExpressionBinding>()
 
         fun traverse(analyzed: AnalyzedNode) {
-            // 检查该节点的属性中是否有 @{} 表达式
-            analyzed.node.attributes.forEach { (attrName, attrValue) ->
-                if (attrValue.contains("@{") && DataBindingAttributeMapper.isSupportedAttribute(attrName)) {
-                    // 解析表达式
-                    val expr = parseDataBindingExpression(attrValue)
-                    if (expr != null) {
-                        // 找到对应的 View 字段
-                        val viewField = fields.find { it.idName == analyzed.node.attributes["android:id"]?.removePrefix("@+id/") }
-                        if (viewField != null) {
-                            bindings.add(
-                                DataBindingExpressionBinding(
-                                    viewFieldName = viewField.propertyName,
-                                    attributeName = attrName,
-                                    variableName = expr.first,
-                                    propertyPath = expr.second
-                                )
-                            )
-                        }
-                    }
-                }
+            // 只看 V2 Analyzer 标记为 dataBindingAttributes 的属性
+            analyzed.dataBindingAttributes.forEach { attrName ->
+                if (!DataBindingAttributeMapper.isSupportedAttribute(attrName)) return@forEach
+
+                val attrValue = analyzed.node.attributes[attrName] ?: return@forEach
+                val expr = parseDataBindingExpression(attrValue) ?: return@forEach
+
+                // 找到对应的 View 字段（按 android:id 匹配）
+                val rawId = analyzed.node.attributes["android:id"] ?: return@forEach
+                val idName = rawId.removePrefix("@+id/").removePrefix("@id/")
+                val viewField = fields.find { it.idName == idName } ?: return@forEach
+
+                bindings.add(
+                    DataBindingExpressionBinding(
+                        viewFieldName = viewField.propertyName,
+                        attributeName = attrName,
+                        variableName = expr.first,
+                        propertyPath = expr.second
+                    )
+                )
             }
 
             // 递归处理子节点

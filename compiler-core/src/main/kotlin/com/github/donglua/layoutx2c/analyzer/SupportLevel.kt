@@ -24,5 +24,7 @@ data class AnalyzedNode(
     val unsupportedAttributes: Set<String>,
     val children: List<AnalyzedNode>,
     val indexInParent: Int,
-    val parentTagName: String?
+    val parentTagName: String?,
+    /** 简单 @{} 表达式属性，由 BindingFacade 在 executePendingBindings() 中处理，不参与静态 codegen */
+    val dataBindingAttributes: Set<String> = emptySet()
 )
