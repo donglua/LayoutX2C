@@ -86,7 +86,7 @@ class BindingFacadeGeneratorV2(
                     .initializer("null")
                     .build()
             )
-            .addFunction(FunSpec.builder("executePendingBindings").build())
+            .addFunction(buildExecutePendingBindings(analyzedRoot, fields, dataBindingVariables))
             .addType(companionObject(layoutName, layoutResId, bindingClassName, fields, useFastPath))
             .build()
 
@@ -171,6 +171,107 @@ class BindingFacadeGeneratorV2(
     private fun layoutNameToBindingClassName(layoutName: String): String {
         return layoutName.toPascalCase() + "X2CBinding"
     }
+
+    /**
+     * 构建 executePendingBindings() 方法，生成 @{} 表达式的绑定代码。
+     */
+    private fun buildExecutePendingBindings(
+        analyzedRoot: AnalyzedNode,
+        fields: List<BindingField>,
+        dataBindingVariables: List<DataBindingVariable>
+    ): FunSpec {
+        val builder = FunSpec.builder("executePendingBindings")
+
+        // 收集所有有 @{} 表达式的属性绑定
+        val bindings = collectDataBindingExpressions(analyzedRoot, fields)
+
+        // 为每个绑定生成代码
+        bindings.forEach { binding ->
+            val code = DataBindingAttributeMapper.generateBindingCode(
+                viewFieldName = binding.viewFieldName,
+                attrName = binding.attributeName,
+                variableName = binding.variableName,
+                propertyPath = binding.propertyPath
+            )
+            if (code != null) {
+                builder.addStatement(code)
+            }
+        }
+
+        return builder.build()
+    }
+
+    /**
+     * 收集所有有 @{} 表达式的属性绑定。
+     */
+    private fun collectDataBindingExpressions(
+        node: AnalyzedNode,
+        fields: List<BindingField>
+    ): List<DataBindingExpressionBinding> {
+        val bindings = mutableListOf<DataBindingExpressionBinding>()
+
+        fun traverse(analyzed: AnalyzedNode) {
+            // 检查该节点的属性中是否有 @{} 表达式
+            analyzed.node.attributes.forEach { (attrName, attrValue) ->
+                if (attrValue.contains("@{") && DataBindingAttributeMapper.isSupportedAttribute(attrName)) {
+                    // 解析表达式
+                    val expr = parseDataBindingExpression(attrValue)
+                    if (expr != null) {
+                        // 找到对应的 View 字段
+                        val viewField = fields.find { it.idName == analyzed.node.attributes["android:id"]?.removePrefix("@+id/") }
+                        if (viewField != null) {
+                            bindings.add(
+                                DataBindingExpressionBinding(
+                                    viewFieldName = viewField.propertyName,
+                                    attributeName = attrName,
+                                    variableName = expr.first,
+                                    propertyPath = expr.second
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 递归处理子节点
+            analyzed.children.forEach { traverse(it) }
+        }
+
+        traverse(node)
+        return bindings
+    }
+
+    /**
+     * 解析 @{variable} 或 @{variable.property} 表达式。
+     * 返回 Pair(variableName, propertyPath) 或 null 如果格式不正确。
+     */
+    private fun parseDataBindingExpression(attrValue: String): Pair<String, String?>? {
+        val exprStart = attrValue.indexOf("@{")
+        val exprEnd = attrValue.lastIndexOf("}")
+        if (exprStart < 0 || exprEnd <= exprStart) return null
+
+        val expr = attrValue.substring(exprStart + 2, exprEnd).trim()
+
+        // 简单变量引用或属性访问
+        val parts = expr.split(".")
+        if (parts.isEmpty()) return null
+
+        val variableName = parts[0]
+        val propertyPath = if (parts.size > 1) parts.drop(1).joinToString(".") else null
+
+        return variableName to propertyPath
+    }
+
+    /**
+     * 数据绑定表达式绑定信息。
+     */
+    private data class DataBindingExpressionBinding(
+        val viewFieldName: String,
+        val attributeName: String,
+        val variableName: String,
+        val propertyPath: String?
+    )
+
 
     private fun List<DataBindingVariable>.toCompatibilityProperties(fields: List<BindingField>): List<DataBindingVariable> {
         val reservedNames = mutableSetOf(
