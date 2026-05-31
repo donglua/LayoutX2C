@@ -7,8 +7,13 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * 解析 Android layout XML 文件为 LayoutTree。
+ *
+ * @param includeResolver 可选的 include 解析器，用于递归解析 <include> 引用的布局文件。
+ *                        为 null 时 include 节点将保持为普通节点。
  */
-class XmlLayoutParser {
+class XmlLayoutParser(
+    private val includeResolver: IncludeResolver? = null
+) {
 
     fun parse(xmlFile: File): LayoutTree {
         val factory = DocumentBuilderFactory.newInstance()
@@ -86,12 +91,83 @@ class XmlLayoutParser {
             }
         }
 
+        val nodeType = resolveNodeType(tagName, attributes)
+
+        // For <include> with a resolver: attempt to resolve the included layout
+        if (nodeType is LayoutNodeType.Include && includeResolver != null) {
+            val resolved = includeResolver.resolveInclude(nodeType.layoutRef)
+            if (resolved != null) {
+                val includedRoot = resolved.root
+                
+                // If the included root is a <merge> tag, native Android ignores 
+                // the layout_* and id attributes on the <include> tag.
+                if (includedRoot.tagName == "merge") {
+                    return LayoutNode(
+                        tagName = "merge",
+                        attributes = includedRoot.attributes,
+                        children = includedRoot.children,
+                        indexInParent = indexInParent,
+                        nodeType = nodeType
+                    )
+                }
+
+                // Merge layout_* attrs from include tag onto the included root
+                val mergedAttrs = includedRoot.attributes.toMutableMap()
+                attributes.forEach { (key, value) ->
+                    if (key.startsWith("android:layout_")) {
+                        mergedAttrs[key] = value
+                    }
+                }
+                // Carry over android:id from include tag if present
+                attributes["android:id"]?.let { mergedAttrs["android:id"] = it }
+                // Carry over android:visibility from include tag if present
+                attributes["android:visibility"]?.let { mergedAttrs["android:visibility"] = it }
+
+                return LayoutNode(
+                    tagName = includedRoot.tagName,
+                    attributes = mergedAttrs,
+                    children = includedRoot.children,
+                    indexInParent = indexInParent,
+                    nodeType = nodeType
+                )
+            }
+        }
+
         return LayoutNode(
             tagName = tagName,
             attributes = attributes,
             children = children,
-            indexInParent = indexInParent
+            indexInParent = indexInParent,
+            nodeType = nodeType
         )
+    }
+
+    /**
+     * Determines the [LayoutNodeType] based on tag name and attributes.
+     */
+    private fun resolveNodeType(tagName: String, attributes: Map<String, String>): LayoutNodeType {
+        return when (tagName) {
+            "include" -> {
+                val layoutRef = extractLayoutRef(attributes["layout"])
+                if (layoutRef != null) LayoutNodeType.Include(layoutRef) else LayoutNodeType.Regular
+            }
+            "merge" -> LayoutNodeType.Merge
+            "ViewStub" -> {
+                val layoutRef = extractLayoutRef(attributes["android:layout"])
+                if (layoutRef != null) LayoutNodeType.ViewStub(layoutRef) else LayoutNodeType.Regular
+            }
+            else -> LayoutNodeType.Regular
+        }
+    }
+
+    /**
+     * Extracts layout resource name from a `@layout/xxx` reference.
+     * Returns null if the format is invalid.
+     */
+    private fun extractLayoutRef(raw: String?): String? {
+        if (raw == null) return null
+        val trimmed = raw.trim()
+        return if (trimmed.startsWith("@layout/")) trimmed.removePrefix("@layout/") else null
     }
 
     private fun Element.elementChildren(): List<IndexedElement> {

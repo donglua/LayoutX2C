@@ -26,5 +26,7 @@ data class LayoutNode(
     val attributes: Map<String, String>,
     val children: List<LayoutNode>,
     /** 在父节点中的 index */
-    val indexInParent: Int = 0
+    val indexInParent: Int = 0,
+    /** 节点语义类型：普通 View / include / merge / ViewStub */
+    val nodeType: LayoutNodeType = LayoutNodeType.Regular
 )

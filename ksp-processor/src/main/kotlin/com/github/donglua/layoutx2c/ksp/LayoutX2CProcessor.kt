@@ -5,6 +5,7 @@ import com.github.donglua.layoutx2c.codegen.BindingFacadeEligibility
 import com.github.donglua.layoutx2c.codegen.BindingFacadeStatus
 import com.github.donglua.layoutx2c.codegen.BindingFacadeGeneratorV2
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
+import com.github.donglua.layoutx2c.parser.IncludeResolver
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.report.SupportReportGenerator
 import com.google.devtools.ksp.containingFile
@@ -38,7 +39,6 @@ class LayoutX2CProcessor(
         private const val REGISTRY_DIGEST_KEY = "__registry__"
     }
 
-    private val parser = XmlLayoutParser()
     private val analyzer = LayoutAnalyzerV2()
     private val reportGenerator = SupportReportGenerator()
     private var processed = false
@@ -140,6 +140,10 @@ class LayoutX2CProcessor(
         }
         layoutNames.addAll(patternLayoutNames.sorted())
 
+
+        // 创建带 include 解析能力的 parser，layoutDir 用于查找被 include 的 XML
+        val includeResolver = IncludeResolver(layoutDir)
+        val parser = XmlLayoutParser(includeResolver = includeResolver)
 
         // 为每个 layout 生成代码
         val codeGen = LayoutCodeGenerator(config.packageName, config.rPackageName)

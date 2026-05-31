@@ -1,5 +1,16 @@
 package com.github.donglua.layoutx2c.parser
 
+/**
+ * Describes the semantic type of a layout node.
+ * Regular views use [Regular]; special tags (include, merge, ViewStub) carry extra metadata.
+ */
+sealed class LayoutNodeType {
+    object Regular : LayoutNodeType()
+    data class Include(val layoutRef: String) : LayoutNodeType()
+    object Merge : LayoutNodeType()
+    data class ViewStub(val layoutRef: String) : LayoutNodeType()
+}
+
 internal fun LayoutNode.isLinearLayout(): Boolean {
     return tagName == "LinearLayout" || tagName == "android.widget.LinearLayout"
 }

@@ -146,4 +146,130 @@ class XmlLayoutParserTest {
         assertThat(tree.rootMetadata.dataBindingVariables.map { it.name }).containsExactly("title")
         assertThat(tree.rootMetadata.dataBindingVariables.map { it.type }).containsExactly("java.lang.String")
     }
+
+    // --- include / merge / ViewStub node type detection ---
+
+    @Test
+    fun `parses include tag with layout ref as LayoutNodeType Include`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <include
+                    layout="@layout/toolbar_common"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "include_layout")
+
+        assertThat(tree.root.tagName).isEqualTo("LinearLayout")
+        assertThat(tree.root.nodeType).isEqualTo(LayoutNodeType.Regular)
+        assertThat(tree.root.children).hasSize(1)
+
+        val includeNode = tree.root.children[0]
+        assertThat(includeNode.tagName).isEqualTo("include")
+        assertThat(includeNode.nodeType).isEqualTo(LayoutNodeType.Include("toolbar_common"))
+        assertThat(includeNode.attributes["android:layout_width"]).isEqualTo("match_parent")
+    }
+
+    @Test
+    fun `include without layout attribute is treated as Regular`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <include android:id="@+id/no_layout" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "include_no_layout")
+
+        val includeNode = tree.root.children[0]
+        assertThat(includeNode.tagName).isEqualTo("include")
+        assertThat(includeNode.nodeType).isEqualTo(LayoutNodeType.Regular)
+    }
+
+    @Test
+    fun `parses merge tag as LayoutNodeType Merge`() {
+        val xml = """
+            <merge xmlns:android="http://schemas.android.com/apk/res/android">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+                <Button
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </merge>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "merge_layout")
+
+        assertThat(tree.root.tagName).isEqualTo("merge")
+        assertThat(tree.root.nodeType).isEqualTo(LayoutNodeType.Merge)
+        assertThat(tree.root.children).hasSize(2)
+        assertThat(tree.root.children[0].tagName).isEqualTo("TextView")
+        assertThat(tree.root.children[1].tagName).isEqualTo("Button")
+    }
+
+    @Test
+    fun `parses ViewStub tag with layout ref as LayoutNodeType ViewStub`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <ViewStub
+                    android:id="@+id/stub_import"
+                    android:layout="@layout/stub_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </FrameLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "viewstub_layout")
+
+        val viewStubNode = tree.root.children[0]
+        assertThat(viewStubNode.tagName).isEqualTo("ViewStub")
+        assertThat(viewStubNode.nodeType).isEqualTo(LayoutNodeType.ViewStub("stub_content"))
+        assertThat(viewStubNode.attributes["android:id"]).isEqualTo("@+id/stub_import")
+    }
+
+    @Test
+    fun `ViewStub without layout attribute is treated as Regular`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <ViewStub
+                    android:id="@+id/stub_no_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </FrameLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "viewstub_no_layout")
+
+        val viewStubNode = tree.root.children[0]
+        assertThat(viewStubNode.tagName).isEqualTo("ViewStub")
+        assertThat(viewStubNode.nodeType).isEqualTo(LayoutNodeType.Regular)
+    }
+
+    @Test
+    fun `existing nodes default to LayoutNodeType Regular`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "regular_nodes")
+
+        assertThat(tree.root.nodeType).isEqualTo(LayoutNodeType.Regular)
+        assertThat(tree.root.children[0].nodeType).isEqualTo(LayoutNodeType.Regular)
+    }
 }

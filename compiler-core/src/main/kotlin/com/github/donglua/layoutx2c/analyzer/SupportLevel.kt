@@ -31,5 +31,11 @@ data class AnalyzedNode(
      * 双向绑定 @={} 属性子集（同时也属于 [dataBindingAttributes]）。
      * 由 BindingFacade 额外生成反向监听器（TextWatcher / OnCheckedChangeListener 等）。
      */
-    val twoWayBindingAttributes: Set<String> = emptySet()
+    val twoWayBindingAttributes: Set<String> = emptySet(),
+    /** 对于 include 节点，被包含的布局资源名（如 "toolbar_common"） */
+    val includedLayoutRef: String? = null,
+    /** 是否为 merge 虚拟容器节点 */
+    val isMerge: Boolean = false,
+    /** 是否为 ViewStub 延迟加载节点 */
+    val isViewStub: Boolean = false
 )
