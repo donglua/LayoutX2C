@@ -1,7 +1,12 @@
 package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
+import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
+
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
+import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.LayoutNodeType
+
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -861,5 +866,87 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).doesNotContain("MATCH_CONSTRAINT")
         assertThat(generated).contains("LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
         assertThat(generated).contains("1.0f)")
+    }
+
+    @Test
+    fun `include node generates factory instantiation`() {
+        val child = LayoutNode(
+            tagName = "LinearLayout",
+            attributes = emptyMap(),
+            children = emptyList(),
+            indexInParent = 0,
+            nodeType = LayoutNodeType.Include("title_bar")
+        )
+        val rootNode = LayoutNode(
+            tagName = "FrameLayout",
+            attributes = mapOf("android:layout_width" to "match_parent", "android:layout_height" to "match_parent"),
+            children = listOf(child),
+            indexInParent = 0
+        )
+        val analyzerV2 = LayoutAnalyzerV2()
+        val analyzed = analyzerV2.analyze(rootNode)
+        val generated = generator.generate(analyzed, "include_test", "R.layout.include_test").toString()
+        
+        assertThat(generated).contains("val root_child0 = Layout_TitleBar().create(context, root)")
+        assertThat(generated).contains("root.addView(root_child0)")
+    }
+
+    @Test
+    fun `merge node children are generated sequentially and added to parent`() {
+        val child1 = LayoutNode(
+            tagName = "TextView",
+            attributes = mapOf("android:text" to "First"),
+            children = emptyList(),
+            indexInParent = 0
+        )
+        val child2 = LayoutNode(
+            tagName = "TextView",
+            attributes = mapOf("android:text" to "Second"),
+            children = emptyList(),
+            indexInParent = 1
+        )
+        val mergeNode = LayoutNode(
+            tagName = "merge",
+            attributes = emptyMap(),
+            children = listOf(child1, child2),
+            indexInParent = 0,
+            nodeType = LayoutNodeType.Merge
+        )
+        val analyzerV2 = LayoutAnalyzerV2()
+        val analyzed = analyzerV2.analyze(mergeNode)
+        val generated = generator.generate(analyzed, "merge_test", "R.layout.merge_test").toString()
+        
+        assertThat(generated).contains("requireNotNull(parent) { \"Merge layout must have a non-null parent\" }")
+        assertThat(generated).contains("val child0 = AppCompatTextView(context).apply {")
+        assertThat(generated).contains("text = \"First\"")
+        assertThat(generated).contains("parent.addView(child0)")
+        assertThat(generated).contains("val child1 = AppCompatTextView(context).apply {")
+        assertThat(generated).contains("text = \"Second\"")
+        assertThat(generated).contains("parent.addView(child1)")
+        assertThat(generated).contains("return parent")
+    }
+
+    @Test
+    fun `viewstub node generates properly`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <ViewStub
+                    android:id="@+id/stub"
+                    android:layout="@layout/my_layout"
+                    android:inflatedId="@+id/inflated"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </FrameLayout>
+        """.trimIndent()
+        
+        val analyzerV2 = LayoutAnalyzerV2()
+        val analyzed = analyzerV2.analyze(parser.parse(xml, "viewstub_test").root)
+        val generated = generator.generate(analyzed, "viewstub_test", "R.layout.viewstub_test").toString()
+        
+        assertThat(generated).contains("val root_child0 = ViewStub(context).apply {")
+        assertThat(generated).contains("layoutResource = R.layout.my_layout")
+        assertThat(generated).contains("inflatedId = R.id.inflated")
     }
 }

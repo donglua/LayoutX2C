@@ -85,6 +85,10 @@ class LayoutCodeGenerator(
     private fun generateCreateBody(node: AnalyzedNode, layoutResId: String): CodeBlock {
         val builder = CodeBlock.builder()
 
+        if (node.isMerge) {
+            builder.addStatement("requireNotNull(parent) { %S }", "Merge layout must have a non-null parent")
+        }
+
         if (usesDensity(node)) {
             builder.addStatement("val density = context.resources.displayMetrics.density")
             builder.add("\n")
@@ -93,7 +97,11 @@ class LayoutCodeGenerator(
         generateNodeCode(builder, node, "root", "parent", layoutResId, isRoot = true, childPath = emptyList())
 
         builder.add("\n")
-        builder.addStatement("return root")
+        if (node.isMerge) {
+            builder.addStatement("return parent")
+        } else {
+            builder.addStatement("return root")
+        }
 
         return builder.build()
     }
@@ -126,6 +134,41 @@ class LayoutCodeGenerator(
                     childPathToCode(childPath),
                     parentVarName
                 )
+                layoutParamsEmitter.emit(builder, varName, node, parentVarName)
+            }
+            return
+        }
+
+        if (node.isMerge) {
+            for ((index, child) in node.children.withIndex()) {
+                val childVarName = if (isRoot) "child$index" else "${varName}_child$index"
+                builder.add("\n")
+                generateNodeCode(
+                    builder,
+                    child,
+                    childVarName,
+                    parentVarName,
+                    layoutResId,
+                    isRoot = false,
+                    childPath = childPath + child.indexInParent
+                )
+                if (isRoot) {
+                    builder.addStatement("parent.addView(%L)", childVarName)
+                } else {
+                    builder.addStatement("%L.addView(%L)", parentVarName, childVarName)
+                }
+            }
+            return
+        }
+
+        if (node.includedLayoutRef != null) {
+            val layoutName = node.includedLayoutRef.removePrefix("@layout/")
+            val factoryClassName = layoutNameToClassName(layoutName)
+            builder.addStatement("val %L = %N().create(context, %L)", varName, factoryClassName, parentVarName)
+            
+            if (isRoot) {
+                layoutParamsEmitter.emitRoot(builder, varName, node, parentVarName)
+            } else {
                 layoutParamsEmitter.emit(builder, varName, node, parentVarName)
             }
             return

@@ -105,6 +105,10 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         ViewHandler(
             setOf("View", "android.view.View"),
             ClassName("android.view", "View")
+        ),
+        ViewHandler(
+            setOf("ViewStub", "android.view.ViewStub"),
+            ClassName("android.view", "ViewStub")
         )
     )
 
@@ -129,7 +133,8 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         PaddingAttributeHandler,
         GravityAttributeHandler,
         FillViewportAttributeHandler,
-        RecyclerViewLayoutManagerAttributeHandler
+        RecyclerViewLayoutManagerAttributeHandler,
+        ViewStubAttributeHandler
     )
 
     private val attributeHandlerByName: Map<String, AttributeHandler> =
@@ -599,6 +604,29 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
 
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) = Unit
+    }
+
+    private object ViewStubAttributeHandler : AttributeHandler {
+        override val names = setOf("android:layout", "android:inflatedId")
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return node.tagName == "ViewStub" || node.tagName == "android.view.ViewStub"
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            node.node.attributes["android:layout"]?.let { value ->
+                if (value.startsWith("@layout/")) {
+                    val resName = value.removePrefix("@layout/")
+                    builder.addStatement("layoutResource = R.layout.%L", resName)
+                }
+            }
+            node.node.attributes["android:inflatedId"]?.let { value ->
+                if (value.startsWith("@+id/") || value.startsWith("@id/")) {
+                    val idName = value.substringAfter("/")
+                    builder.addStatement("inflatedId = R.id.%L", idName)
+                }
+            }
+        }
     }
 }
 
