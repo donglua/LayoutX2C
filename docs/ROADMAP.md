@@ -4,7 +4,7 @@
 
 ---
 
-## 当前状态（v0.2.0）
+## 当前状态（v0.4.0 P0 已落地）
 
 已完成的基础骨架：
 
@@ -17,26 +17,29 @@
 - Demo App + BenchmarkActivity
 - 代码生成已拆分为 `ViewEmitter` / `AttrEmitter` / `LayoutParamsEmitter`
 - fallback 子树定位支持完整 child path，并对非法路径输出可诊断错误
-- fallback 子树已优先走 `XmlPullParser` seek + partial inflate，只对 `merge` / `include` / `fragment` 等保留整棵 layout inflate 的兼容路径
+- fallback 子树已优先走 `XmlPullParser` seek + partial inflate；`fragment` 和无法安全局部生成的特殊节点保留整棵 layout inflate 的兼容路径
 - View / 属性支持面已迁移到 `DefaultViewRegistry` 和注册式 `ViewHandler` / `AttributeHandler`
 - KSP 生成输出已显式声明依赖：per-layout factory 关联触发生成的源码，聚合 Registry 关联配置源码
 - 生成代码提供 direct X2C inflate facade，demo 可直接走生成入口做 benchmark
 - Gradle 插件已传入 `layoutx2c.cacheDir`，KSP 侧已落地保守 digest cache：digest 未变时可从 cache 恢复 per-layout factory、facade 和 report
 - DataBinding `<layout>` 根标签已透明解包到真实 View 根节点；异常 wrapper 仍输出 `DATA_BINDING_WRAPPER`，避免把绑定包装层误归因为普通不支持 View
 - DataBinding `<layout>` 布局会生成独立 `{Name}X2CBinding`，提供 `inflate()`、`bind()`、`root`、ID 字段和迁移期编译兼容成员；表达式和 DataBinding runtime 语义不替代
+- `include` 已支持递归解析被引用 layout，并处理 include 标签上的 LayoutParams、`android:id` 和 `android:visibility` 覆盖语义
+- `merge` 已作为虚拟容器处理，子节点会按父 ViewGroup 的 LayoutParams 语义直接注入父级
+- `ViewStub` 已支持作为普通 View 创建，并保留 `android:layout` / `android:inflatedId` 等延迟 inflate 关键语义
+- KSP 侧已接入 `IncludeResolver`，可以在 layout 目录内解析 include 依赖；循环 include 和超过深度限制的 include 会保守 fallback
 
 支持的 View：LinearLayout, FrameLayout, RelativeLayout, ScrollView, HorizontalScrollView,
-RecyclerView（仅容器）, TextView, Button, EditText, ImageView, View
+RecyclerView（仅容器）, TextView, Button, EditText, ImageView, View, ViewStub
 支持的属性：尺寸、padding、margin、gravity、visibility、text、id、orientation、weight、
 background、textColor、textSize、textStyle、hint、inputType、src、scaleType、tint、fillViewport、
 RelativeLayout 常见规则等。
 
 当前限制：
 
-- `merge` / `include` / `fragment` 等 fallback 子树仍走 legacy 整棵 layout inflate 兼容路径，普通子树已不再 inflate 兄弟节点。
+- `fragment`、无法解析的 include、循环 include、超出递归深度限制的 include，以及无法等价生成的特殊语义仍会保守 fallback。
 - KSP 处理器仍会生成聚合 Registry；Gradle task 资源输入声明、单 layout 改动的端到端行为和 Registry 内容 digest/cache 已有 functional test 覆盖。
-- 真实 XML 样本覆盖率基线下放到 v0.3，不再作为 v0.2 发布门槛。
-- 编译报告已有节点级 JSON，但尚未形成可发布的样本分布报告和 top fallback reason 汇总。
+- 编译报告已有节点级 JSON，但尚未形成可发布的 HTML/JSON 汇总和 top fallback reason 汇总。
 
 ---
 
@@ -96,19 +99,19 @@ RelativeLayout 常见规则等。
 
 - demo 中新增 RelativeLayout、RecyclerView、fallback、ImageView、Button、EditText 样例。
 - compiler-core 覆盖新增属性、LayoutParams 生成和默认 ViewRegistry 行为。
-- demo 覆盖 generated inflate 等价性最小验收；真实样本分布报告下放到 v0.3。
+- demo 覆盖 generated inflate 等价性最小验收。
 
 ---
 
-### v0.3.0 — 覆盖率、报告与保守增量
+### v0.3.0 — 编译报告与保守增量
 
-目标：让大型项目（500+ layout）可以评估收益、定位 fallback 原因，并为增量编译建立正确的依赖模型。
+目标：让项目可以定位 fallback 原因、判断单个 layout 的生成收益，并为增量编译建立正确的依赖模型。
 
-**覆盖率基线：**
+**编译诊断：**
 
-- 固定一组真实 XML 样本集，记录 layout 数、节点数、FULL / PARTIAL / FALLBACK 口径。
-- 覆盖率按 layout 和节点分别统计，不混用指标。
-- v0.3 目标：样本集中高频简单布局的 layout 级 fallback 明显下降；不以「通用 80%」作为硬承诺。
+- 报告每个 layout 的 FULL / PARTIAL / FALLBACK 结果、节点级支持度和 fallback 原因。
+- 支持按 layout、节点、属性三级定位问题，避免只给一个总覆盖率数字。
+- 汇总 top fallback reason，帮助开发者优先处理收益最高的 unsupported 语义。
 
 **增量编译：**
 
@@ -123,13 +126,14 @@ RelativeLayout 常见规则等。
 **FallbackInflater 优化：**
 
 - 普通 fallback 子树已改为 `XmlPullParser` seek + partial inflate，不再 inflate 兄弟节点。
-- `merge` / `include` / `fragment` 仍保留整棵 layout inflate 的 legacy 路径，以避免破坏原生 `LayoutInflater` 语义。
+- `fragment` 和无法安全局部生成的特殊节点仍保留整棵 layout inflate 的 legacy 路径，以避免破坏原生 `LayoutInflater` 语义。
+- `include` / `merge` / `ViewStub` 已在 v0.4.0 P0 中进入编译期支持路径；无法解析或存在循环引用时仍按保守 fallback 处理。
 
 **编译报告：**
 
-- 生成 HTML/JSON 报告：每个 layout 的覆盖率、fallback 原因
+- 生成 HTML/JSON 报告：每个 layout 的支持度、fallback 原因和 top fallback reason 汇总
 - Gradle task: `./gradlew layoutX2CReport`
-- CI 集成：覆盖率低于阈值时 warning/fail
+- CI 集成：可选按指定 fallback reason 或 FALLBACK layout 数量 warning/fail
 
 **ConstraintLayout 实验子集：**
 
@@ -138,16 +142,9 @@ RelativeLayout 常见规则等。
 - 不支持 chains、barriers、guidelines、Flow、Group、dimension ratio、percent、circle constraint；遇到即 fallback。
 - 默认作为实验能力关闭，开启后必须输出报告标记。
 
-**固定样本集：**
-
-- v0.3 基准样本固定为：K-9 Mail、AntennaPod、Telegram-FOSS。
-- 扩展观察样本：NewPipe、Signal-Android，仅用于发现额外语法和属性，不作为 v0.3 验收门槛。
-- 选取标准：layout 数量 200+、属性多样性高、仍有 XML 布局存量、仓库可稳定复现。
-- 样本集落档到 `docs/samples.md`，记录每个项目的 commit hash，确保覆盖率指标可复现。
-
 **验收口径：**
 
-- 样本集上跑出 baseline 报告，按 layout 级和节点级分别统计 FULL / PARTIAL / FALLBACK。
+- Demo 和仓库内测试 layout 可产出 HTML/JSON 报告，按 layout 级和节点级分别统计 FULL / PARTIAL / FALLBACK。
 - 增量编译有最小可验证场景：单文件改动只触发对应 factory 重新生成，Registry 是否聚合按依赖模型决定。
 - HTML 报告可在 CI 上产出并归档为 artifact。
 - ConstraintLayout 实验子集需配套 generated vs inflated 的 View 树等价性测试，否则不允许默认开启。
@@ -158,11 +155,20 @@ RelativeLayout 常见规则等。
 
 目标：支持常见组合布局，并与现有 DataBinding / ViewBinding 项目共存。
 
-**高级布局：**
+**已完成 P0：高级布局基础支持**
 
-- merge 标签支持
-- include 标签支持（递归解析被 include 的 layout）
-- ViewStub 支持（延迟 inflate 语义保留）
+- `include` 标签支持：递归解析被 include 的 layout，保留 include 标签上的 LayoutParams 覆盖、`android:id` 和 `android:visibility` 语义。
+- `merge` 标签支持：作为虚拟容器处理，子节点直接注入父级，include 到 merge root 的场景按父级 LayoutParams 分析。
+- `ViewStub` 支持：创建 `android.view.ViewStub`，写入 layout 资源和 inflatedId，延迟 inflate 语义不在编译期展开。
+- Parser / Analyzer / CodeGen / ViewRegistry / KSP 均已接入特殊节点语义。
+- 已有 `IncludeResolverTest`、`XmlLayoutParserTest`、`LayoutAnalyzerIncludeTest`、`LayoutCodeGeneratorTest` 覆盖基础和嵌套场景。
+
+**后续高级布局：**
+
+- Include 依赖纳入 `LayoutDigest`，被 include layout 改动时只重新生成受影响 factory。
+- Include 跨边界 fallback 定位继续收敛；复杂 fallback include 暂时保持整棵 fallback。
+- Merge 编译期内联继续优化，减少不必要的中间 factory 调用。
+- ViewStub 引用 layout 的延迟生成可作为后续优化，支持运行时走生成 factory inflate。
 - ConstraintLayout 扩展支持（chains、guidelines 等能力逐项引入，默认保守 fallback）
 
 **兼容性：**
@@ -189,7 +195,8 @@ RelativeLayout 常见规则等。
 
 **验收口径：**
 
-- merge / include / ViewStub 各有独立集成测试，覆盖嵌套场景。
+- merge / include / ViewStub 各有独立单元测试，覆盖嵌套 include、include + merge、LayoutParams 覆盖和 ViewStub 创建场景。
+- 端到端 Android 集成样例仍需补齐，尤其是 generated vs inflated 的真实 View 树等价性验证。
 - DataBinding 布局（`<layout>` 根标签）透明解包且不影响编译；异常 wrapper 保留专门报告归因，不替代 DataBinding runtime 语义。
 - `{Name}X2CBinding` 仅为 `<layout>` XML 生成；普通 XML 不生成该类。
 - 自定义 View 白名单 DSL 有文档和 demo。
@@ -311,10 +318,9 @@ XML File → Parser → LayoutTree → Analyzer → AnalyzedTree
 | RelativeLayout 支持 | 高 | 中 | P0 |
 | background 属性 | 高 | 中 | P0 |
 | textSize/textColor | 高 | 低 | P0 |
-| 真实样本覆盖率报告 | 高 | 低 | P1 |
 | ConstraintLayout 实验子集 | 中 | 高 | P1 |
 | 增量编译输入声明与端到端验证 | 中 | 中 | P1 |
-| include/merge 标签 | 中 | 中 | P1 |
+| include/merge/ViewStub 基础支持 | 中 | 中 | Done |
 | 编译报告 | 中 | 低 | P1 |
 | IDE 插件 | 中 | 高 | Post-1.0 |
 | Style 内联 | 中 | 高 | P2 |
