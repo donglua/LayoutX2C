@@ -15,9 +15,9 @@ class DataBindingTypeResolverTest {
 
     @Test
     fun `resolves common types`() {
-        assertThat(DataBindingTypeResolver.resolve("String").toString()).isEqualTo("java.lang.String")
-        assertThat(DataBindingTypeResolver.resolve("java.lang.String").toString()).isEqualTo("java.lang.String")
-        assertThat(DataBindingTypeResolver.resolve("Integer").toString()).isEqualTo("java.lang.Integer")
+        assertThat(DataBindingTypeResolver.resolve("String").toString()).isEqualTo("kotlin.String")
+        assertThat(DataBindingTypeResolver.resolve("java.lang.String").toString()).isEqualTo("kotlin.String")
+        assertThat(DataBindingTypeResolver.resolve("Integer").toString()).isEqualTo("kotlin.Int")
     }
 
     @Test
@@ -28,16 +28,16 @@ class DataBindingTypeResolverTest {
     @Test
     fun `resolves generic types`() {
         val listStringType = DataBindingTypeResolver.resolve("List<String>").toString()
-        assertThat(listStringType).contains("java.util.List")
-        assertThat(listStringType).contains("java.lang.String")
+        assertThat(listStringType).contains("kotlin.collections.List")
+        assertThat(listStringType).contains("kotlin.String")
     }
 
     @Test
     fun `resolves nested generic types`() {
         val mapType = DataBindingTypeResolver.resolve("Map<String, Integer>").toString()
-        assertThat(mapType).contains("java.util.Map")
-        assertThat(mapType).contains("java.lang.String")
-        assertThat(mapType).contains("java.lang.Integer")
+        assertThat(mapType).contains("kotlin.collections.Map")
+        assertThat(mapType).contains("kotlin.String")
+        assertThat(mapType).contains("kotlin.Int")
     }
 }
 

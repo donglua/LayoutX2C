@@ -124,7 +124,9 @@ class BindingFacadeGeneratorV2Test {
         assertThat(generated).contains("binding.setupTwoWayBindings()")
         assertThat(generated).contains("return binding")
         // 构造函数不包含变量参数
-        assertThat(generated).contains("private constructor(\n    root: View,\n    titleText: TextView")
+        assertThat(generated).contains("public class ItemBindX2CBinding private constructor(")
+        assertThat(generated).contains("public val root: View,")
+        assertThat(generated).contains("public val titleText: TextView,")
         assertThat(generated).doesNotContain("private constructor(\n    root: View,\n    titleText: TextView,\n    title:")
     }
 
