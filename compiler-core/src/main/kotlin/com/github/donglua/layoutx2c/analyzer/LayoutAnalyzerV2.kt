@@ -94,12 +94,12 @@ class LayoutAnalyzerV2(
         // 4. 递归分析子节点
         val analyzedChildren = node.children.map { analyzeNode(it, parentTagName = node.tagName) }
 
-        // 5. 确定支持度：自身 PARTIAL 或子节点有 FALLBACK 则 cap 到 PARTIAL
+        // 5. 确定支持度：自身 PARTIAL 或子节点非 FULL 则 cap 到 PARTIAL
         val ownLevel = if (classification.unsupported.isEmpty()) SupportLevel.FULL else SupportLevel.PARTIAL
-        val hasChildFallback = analyzedChildren.any { it.supportLevel == SupportLevel.FALLBACK }
+        val hasNonFullChild = analyzedChildren.any { it.supportLevel != SupportLevel.FULL }
         val supportLevel = when {
             ownLevel == SupportLevel.PARTIAL -> SupportLevel.PARTIAL
-            hasChildFallback -> SupportLevel.PARTIAL
+            hasNonFullChild -> SupportLevel.PARTIAL
             else -> SupportLevel.FULL
         }
 
