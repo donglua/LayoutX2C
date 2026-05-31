@@ -783,7 +783,8 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("import androidx.constraintlayout.widget.ConstraintLayout")
         assertThat(generated).contains("val root = ConstraintLayout(context)")
-        assertThat(generated).contains("root_child0.layoutParams = ConstraintLayout.LayoutParams(")
+        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_CONSTRAINT,")
         // 0dp under ConstraintLayout maps to MATCH_CONSTRAINT
         assertThat(generated).contains("ConstraintLayout.LayoutParams.MATCH_CONSTRAINT")
         // anchors to parent become PARENT_ID
@@ -822,7 +823,8 @@ class LayoutCodeGeneratorTest {
 
         // Helper-tagged subtree falls back via FallbackInflater
         assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.constraint_helper,")
-        assertThat(generated).doesNotContain("ConstraintLayout.LayoutParams")
+        assertThat(generated).doesNotContain("root_child0.layoutParams = ConstraintLayout.LayoutParams")
+        assertThat(generated).contains("root_child0.layoutParams = LinearLayout.LayoutParams(")
     }
 
     @Test
@@ -842,7 +844,8 @@ class LayoutCodeGeneratorTest {
         ).toString()
 
         assertThat(generated).contains("parent?.let { parentView ->")
-        assertThat(generated).contains("is ConstraintLayout -> ConstraintLayout.LayoutParams(")
+        assertThat(generated).contains("is ConstraintLayout ->")
+        assertThat(generated).contains("ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,")
     }
 
     @Test
