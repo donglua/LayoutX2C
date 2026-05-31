@@ -927,6 +927,58 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `include resolved to merge inlines children directly into parent without declaring include var`() {
+        // Simulates <FrameLayout><include layout="@layout/foo_merge"/></FrameLayout>
+        // where foo_merge is itself a <merge> root. After IncludeResolver runs,
+        // the include node's tagName becomes "merge" and its children are the merge's children.
+        val mergeChild1 = LayoutNode(
+            tagName = "TextView",
+            attributes = mapOf("android:text" to "First"),
+            children = emptyList(),
+            indexInParent = 0
+        )
+        val mergeChild2 = LayoutNode(
+            tagName = "TextView",
+            attributes = mapOf("android:text" to "Second"),
+            children = emptyList(),
+            indexInParent = 1
+        )
+        val resolvedIncludeNode = LayoutNode(
+            tagName = "merge",
+            attributes = emptyMap(),
+            children = listOf(mergeChild1, mergeChild2),
+            indexInParent = 0,
+            nodeType = LayoutNodeType.Include("foo_merge")
+        )
+        val rootNode = LayoutNode(
+            tagName = "FrameLayout",
+            attributes = mapOf(
+                "android:layout_width" to "match_parent",
+                "android:layout_height" to "match_parent"
+            ),
+            children = listOf(resolvedIncludeNode),
+            indexInParent = 0
+        )
+        val analyzerV2 = LayoutAnalyzerV2()
+        val analyzed = analyzerV2.analyze(rootNode)
+        val generated = generator.generate(analyzed, "include_merge_test", "R.layout.include_merge_test").toString()
+
+        // Merge children are added directly to root (the FrameLayout), using their merge-scoped names.
+        assertThat(generated).contains("val root_child0_child0 = AppCompatTextView(context).apply {")
+        assertThat(generated).contains("text = \"First\"")
+        assertThat(generated).contains("root.addView(root_child0_child0)")
+        assertThat(generated).contains("val root_child0_child1 = AppCompatTextView(context).apply {")
+        assertThat(generated).contains("text = \"Second\"")
+        assertThat(generated).contains("root.addView(root_child0_child1)")
+
+        // The merge child itself is virtual: no local declaration, no addView referring to it.
+        assertThat(generated).doesNotContain("val root_child0 =")
+        assertThat(generated).doesNotContain("root.addView(root_child0)")
+        // It is not an include factory call either — merge takes precedence over includedLayoutRef.
+        assertThat(generated).doesNotContain("Layout_FooMerge")
+    }
+
+    @Test
     fun `viewstub node generates properly`() {
         val xml = """
             <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"

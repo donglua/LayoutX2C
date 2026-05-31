@@ -203,7 +203,11 @@ class LayoutCodeGenerator(
                 isRoot = false,
                 childPath = childPath + child.indexInParent
             )
-            builder.addStatement("%L.addView(%L)", varName, childVarName)
+            // merge 子节点是虚拟容器，自身不会声明 childVarName，
+            // 其孙子节点已经在 merge 分支里被 addView 到当前 varName。
+            if (!child.isMerge) {
+                builder.addStatement("%L.addView(%L)", varName, childVarName)
+            }
         }
     }
 
