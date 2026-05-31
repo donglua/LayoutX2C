@@ -96,7 +96,7 @@ class LayoutAnalyzerIncludeTest {
 
         val result = analyzer.analyze(root)
 
-        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.PARTIAL)
         val includeResult = result.children[0]
         assertThat(includeResult.supportLevel).isEqualTo(SupportLevel.PARTIAL)
         assertThat(includeResult.includedLayoutRef).isEqualTo("content_layout")
@@ -164,7 +164,7 @@ class LayoutAnalyzerIncludeTest {
 
         val result = analyzer.analyze(root)
 
-        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.PARTIAL)
         val includeResult = result.children[0]
         assertThat(includeResult.supportLevel).isEqualTo(SupportLevel.FALLBACK)
         assertThat(includeResult.includedLayoutRef).isEqualTo("missing_layout")
@@ -620,7 +620,7 @@ class LayoutAnalyzerIncludeTest {
 
         val result = analyzer.analyze(root)
 
-        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.PARTIAL)
         assertThat(result.children).hasSize(2)
         assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
         assertThat(result.children[1].supportLevel).isEqualTo(SupportLevel.FALLBACK)

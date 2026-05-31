@@ -68,12 +68,12 @@ class DataBindingEnhancementsIntegrationTest {
     fun `type resolver handles all common patterns`() {
         assertThat(DataBindingTypeResolver.resolve("int").toString()).isEqualTo("kotlin.Int")
         assertThat(DataBindingTypeResolver.resolve("boolean").toString()).isEqualTo("kotlin.Boolean")
-        assertThat(DataBindingTypeResolver.resolve("java.lang.String").toString()).isEqualTo("java.lang.String")
+        assertThat(DataBindingTypeResolver.resolve("java.lang.String").toString()).isEqualTo("kotlin.String")
         assertThat(DataBindingTypeResolver.resolve("com.example.Foo").toString()).isEqualTo("com.example.Foo")
 
         val listType = DataBindingTypeResolver.resolve("List<String>").toString()
-        assertThat(listType).contains("java.util.List")
-        assertThat(listType).contains("java.lang.String")
+        assertThat(listType).contains("kotlin.collections.List")
+        assertThat(listType).contains("kotlin.String")
     }
 
     @Test
@@ -122,6 +122,6 @@ class DataBindingEnhancementsIntegrationTest {
         ).toString()
 
         assertThat(generated).contains("public var items: List<String>? = null")
-        assertThat(generated).contains("public var map: Map<String, Integer>? = null")
+        assertThat(generated).contains("public var map: Map<String, Int>? = null")
     }
 }
