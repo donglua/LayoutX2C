@@ -1,6 +1,9 @@
 package com.github.donglua.layoutx2c.report
 
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
+import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
+import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.LayoutNodeType
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -9,6 +12,7 @@ class SupportReportGeneratorTest {
 
     private val parser = XmlLayoutParser()
     private val analyzer = LayoutAnalyzer()
+    private val analyzerV2 = LayoutAnalyzerV2()
     private val generator = SupportReportGenerator()
 
     @Test
@@ -116,5 +120,33 @@ class SupportReportGeneratorTest {
         val report = generator.generate(analyzed, "duplicate_layout", tree)
 
         assertThat(report).contains("\"bindingFacade\": \"BINDING_FACADE_SKIPPED_DUPLICATE_ID\"")
+    }
+
+    @Test
+    fun `include resolution error is reported as fallback reason`() {
+        val root = LayoutNode(
+            tagName = "LinearLayout",
+            attributes = mapOf(
+                "android:layout_width" to "match_parent",
+                "android:layout_height" to "match_parent"
+            ),
+            children = listOf(
+                LayoutNode(
+                    tagName = "include",
+                    attributes = mapOf("layout" to "@layout/missing_panel"),
+                    children = emptyList(),
+                    indexInParent = 0,
+                    nodeType = LayoutNodeType.Include("missing_panel", "INCLUDE_NOT_FOUND")
+                )
+            ),
+            indexInParent = 0
+        )
+
+        val analyzed = analyzerV2.analyze(root)
+        val report = generator.generate(analyzed, "host_layout")
+
+        assertThat(report).contains("\"tag\": \"include\"")
+        assertThat(report).contains("\"support\": \"FALLBACK\"")
+        assertThat(report).contains("\"reason\": \"INCLUDE_NOT_FOUND\"")
     }
 }

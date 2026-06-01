@@ -95,41 +95,78 @@ class XmlLayoutParser(
 
         // For <include> with a resolver: attempt to resolve the included layout
         if (nodeType is LayoutNodeType.Include && includeResolver != null) {
-            val resolved = includeResolver.resolveInclude(nodeType.layoutRef)
-            if (resolved != null) {
-                val includedRoot = resolved.root
-                
-                // If the included root is a <merge> tag, native Android ignores 
-                // the layout_* and id attributes on the <include> tag.
-                if (includedRoot.tagName == "merge") {
+            when (val resolved = includeResolver.resolveInclude(nodeType.layoutRef)) {
+                is IncludeResult.Success -> {
+                    val includedRoot = resolved.tree.root
+
+                    // If the included root is a <merge> tag, native Android ignores
+                    // the layout_* and id attributes on the <include> tag.
+                    if (includedRoot.tagName == "merge") {
+                        return LayoutNode(
+                            tagName = "merge",
+                            attributes = includedRoot.attributes,
+                            children = includedRoot.children,
+                            indexInParent = indexInParent,
+                            nodeType = nodeType
+                        )
+                    }
+
+                    // Merge layout_* attrs from include tag onto the included root
+                    val mergedAttrs = includedRoot.attributes.toMutableMap()
+                    attributes.forEach { (key, value) ->
+                        if (key.startsWith("android:layout_")) {
+                            mergedAttrs[key] = value
+                        }
+                    }
+                    // Carry over android:id from include tag if present
+                    attributes["android:id"]?.let { mergedAttrs["android:id"] = it }
+                    // Carry over android:visibility from include tag if present
+                    attributes["android:visibility"]?.let { mergedAttrs["android:visibility"] = it }
+
                     return LayoutNode(
-                        tagName = "merge",
-                        attributes = includedRoot.attributes,
+                        tagName = includedRoot.tagName,
+                        attributes = mergedAttrs,
                         children = includedRoot.children,
                         indexInParent = indexInParent,
                         nodeType = nodeType
                     )
                 }
-
-                // Merge layout_* attrs from include tag onto the included root
-                val mergedAttrs = includedRoot.attributes.toMutableMap()
-                attributes.forEach { (key, value) ->
-                    if (key.startsWith("android:layout_")) {
-                        mergedAttrs[key] = value
-                    }
+                is IncludeResult.NotFound -> {
+                    return LayoutNode(
+                        tagName = tagName,
+                        attributes = attributes,
+                        children = children,
+                        indexInParent = indexInParent,
+                        nodeType = LayoutNodeType.Include(nodeType.layoutRef, "INCLUDE_NOT_FOUND")
+                    )
                 }
-                // Carry over android:id from include tag if present
-                attributes["android:id"]?.let { mergedAttrs["android:id"] = it }
-                // Carry over android:visibility from include tag if present
-                attributes["android:visibility"]?.let { mergedAttrs["android:visibility"] = it }
-
-                return LayoutNode(
-                    tagName = includedRoot.tagName,
-                    attributes = mergedAttrs,
-                    children = includedRoot.children,
-                    indexInParent = indexInParent,
-                    nodeType = nodeType
-                )
+                is IncludeResult.CircularReference -> {
+                    return LayoutNode(
+                        tagName = tagName,
+                        attributes = attributes,
+                        children = children,
+                        indexInParent = indexInParent,
+                        nodeType = LayoutNodeType.Include(nodeType.layoutRef, "CIRCULAR_INCLUDE")
+                    )
+                }
+                is IncludeResult.DepthExceeded -> {
+                    return LayoutNode(
+                        tagName = tagName,
+                        attributes = attributes,
+                        children = children,
+                        indexInParent = indexInParent,
+                        nodeType = LayoutNodeType.Include(nodeType.layoutRef, "INCLUDE_DEPTH_EXCEEDED")
+                    )
+                }
+                is IncludeResult.ParseError -> {
+                    return LayoutNode(
+                        tagName = tagName,
+                        attributes = attributes,
+                        children = children,
+                        indexInParent = indexInParent,
+                        nodeType = LayoutNodeType.Include(nodeType.layoutRef, "INCLUDE_PARSE_ERROR")
+                    )
+                }
             }
         }
 

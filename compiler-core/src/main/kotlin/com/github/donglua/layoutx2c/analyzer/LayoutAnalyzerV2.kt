@@ -187,6 +187,10 @@ class LayoutAnalyzerV2(
     private fun analyzeInclude(node: LayoutNode, parentTagName: String?): AnalyzedNode {
         val nodeType = node.nodeType as LayoutNodeType.Include
 
+        if (nodeType.resolutionError != null) {
+            return markAsFallback(node, parentTagName, includedLayoutRef = nodeType.layoutRef)
+        }
+
         // Unresolved include: tagName is still "include" (resolution failed)
         if (node.tagName == "include") {
             return markAsFallback(node, parentTagName, includedLayoutRef = nodeType.layoutRef)
@@ -241,6 +245,11 @@ class LayoutAnalyzerV2(
      * ViewStub has NO children.
      */
     private fun analyzeViewStub(node: LayoutNode, parentTagName: String?): AnalyzedNode {
+        val nodeType = node.nodeType as LayoutNodeType.ViewStub
+        if (nodeType.resolutionError != null) {
+            return markAsFallback(node, parentTagName)
+        }
+
         val supported = mutableSetOf<String>()
         val unsupported = mutableSetOf<String>()
 

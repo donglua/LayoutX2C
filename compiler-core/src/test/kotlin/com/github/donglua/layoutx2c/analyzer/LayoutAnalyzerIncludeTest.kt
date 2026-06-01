@@ -170,6 +170,35 @@ class LayoutAnalyzerIncludeTest {
         assertThat(includeResult.includedLayoutRef).isEqualTo("missing_layout")
     }
 
+    @Test
+    fun `include with resolution error returns FALLBACK even if tag was rewritten`() {
+        val includeNode = LayoutNode(
+            tagName = "LinearLayout",
+            attributes = mapOf(
+                "android:layout_width" to "match_parent",
+                "android:layout_height" to "wrap_content"
+            ),
+            children = emptyList(),
+            indexInParent = 0,
+            nodeType = LayoutNodeType.Include("broken_layout", "INCLUDE_PARSE_ERROR")
+        )
+        val root = LayoutNode(
+            tagName = "FrameLayout",
+            attributes = mapOf(
+                "android:layout_width" to "match_parent",
+                "android:layout_height" to "match_parent"
+            ),
+            children = listOf(includeNode),
+            indexInParent = 0
+        )
+
+        val result = analyzer.analyze(root)
+
+        val includeResult = result.children[0]
+        assertThat(includeResult.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(includeResult.includedLayoutRef).isEqualTo("broken_layout")
+    }
+
     // ─── Include: With style attribute → FALLBACK ───────────────────────────────
 
     @Test

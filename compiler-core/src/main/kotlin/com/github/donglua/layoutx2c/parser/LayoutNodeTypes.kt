@@ -6,9 +6,9 @@ package com.github.donglua.layoutx2c.parser
  */
 sealed class LayoutNodeType {
     object Regular : LayoutNodeType()
-    data class Include(val layoutRef: String) : LayoutNodeType()
+    data class Include(val layoutRef: String, val resolutionError: String? = null) : LayoutNodeType()
     object Merge : LayoutNodeType()
-    data class ViewStub(val layoutRef: String) : LayoutNodeType()
+    data class ViewStub(val layoutRef: String, val resolutionError: String? = null) : LayoutNodeType()
 }
 
 internal fun LayoutNode.isLinearLayout(): Boolean {

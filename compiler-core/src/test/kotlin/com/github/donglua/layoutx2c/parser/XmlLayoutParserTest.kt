@@ -1,9 +1,15 @@
 package com.github.donglua.layoutx2c.parser
 
 import com.google.common.truth.Truth.assertThat
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class XmlLayoutParserTest {
+
+    @get:Rule
+    val tempFolder = TemporaryFolder()
 
     private val parser = XmlLayoutParser()
 
@@ -189,6 +195,30 @@ class XmlLayoutParserTest {
         val includeNode = tree.root.children[0]
         assertThat(includeNode.tagName).isEqualTo("include")
         assertThat(includeNode.nodeType).isEqualTo(LayoutNodeType.Regular)
+    }
+
+    @Test
+    fun `include resolution failure is preserved on AST node`() {
+        val layoutDir = tempFolder.newFolder("layout")
+        val hostFile = File(layoutDir, "host.xml")
+        hostFile.writeText(
+            """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <include layout="@layout/missing_panel" />
+            </LinearLayout>
+            """.trimIndent()
+        )
+        val parser = XmlLayoutParser(IncludeResolver(layoutDir))
+
+        val tree = parser.parse(hostFile)
+
+        val includeNode = tree.root.children[0]
+        assertThat(includeNode.tagName).isEqualTo("include")
+        assertThat(includeNode.nodeType).isEqualTo(
+            LayoutNodeType.Include("missing_panel", "INCLUDE_NOT_FOUND")
+        )
     }
 
     @Test

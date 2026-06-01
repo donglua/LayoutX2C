@@ -61,7 +61,7 @@ internal class LayoutX2CDigestStore(private val manifestFile: File) {
 internal object LayoutX2CDigestCalculator {
 
     // Bump this when the digest inputs or hashing semantics change.
-    private const val SCHEMA_VERSION = "v3"
+    private const val SCHEMA_VERSION = "v4"
 
     fun layoutDigest(
         layoutFile: File,
@@ -74,6 +74,25 @@ internal object LayoutX2CDigestCalculator {
         digest.updateString(packageName)
         digest.updateString(rPackageName)
         digest.updateFile(layoutFile, resDir)
+
+        LayoutDependencyScanner.scanDependencyGraph(layoutFile, resDir)
+            .sortedWith(
+                compareBy<LayoutDependencyScanner.Dependency> { it.layoutRef }
+                    .thenBy { dependency ->
+                        dependency.file?.relativeTo(resDir)?.invariantSeparatorsPath ?: ""
+                    }
+            )
+            .forEach { dependency ->
+                digest.updateString("layout-dependency")
+                digest.updateString(dependency.layoutRef)
+                val dependencyFile = dependency.file
+                if (dependencyFile == null) {
+                    digest.updateString("MISSING")
+                } else {
+                    digest.updateString("PRESENT")
+                    digest.updateFile(dependencyFile, resDir)
+                }
+            }
 
         val valuesDir = File(resDir, "values")
         valuesDir.walkTopDown()

@@ -17,6 +17,11 @@ class IncludeResolverTest {
         return file
     }
 
+    private fun IncludeResult.successTree(): LayoutTree {
+        assertThat(this).isInstanceOf(IncludeResult.Success::class.java)
+        return (this as IncludeResult.Success).tree
+    }
+
     @Test
     fun `resolves simple include`() {
         createLayoutFile("toolbar", """
@@ -33,23 +38,23 @@ class IncludeResolverTest {
 
         val resolver = IncludeResolver(tempFolder.root)
         val result = resolver.resolveInclude("toolbar")
+        val tree = result.successTree()
 
-        assertThat(result).isNotNull()
-        assertThat(result!!.root.tagName).isEqualTo("LinearLayout")
-        assertThat(result.root.children).hasSize(1)
-        assertThat(result.root.children[0].tagName).isEqualTo("TextView")
+        assertThat(tree.root.tagName).isEqualTo("LinearLayout")
+        assertThat(tree.root.children).hasSize(1)
+        assertThat(tree.root.children[0].tagName).isEqualTo("TextView")
     }
 
     @Test
-    fun `returns null for non-existent layout`() {
+    fun `returns not found for non-existent layout`() {
         val resolver = IncludeResolver(tempFolder.root)
         val result = resolver.resolveInclude("non_existent")
 
-        assertThat(result).isNull()
+        assertThat(result).isSameInstanceAs(IncludeResult.NotFound)
     }
 
     @Test
-    fun `detects circular reference and returns null`() {
+    fun `detects circular reference and preserves error on nested include`() {
         // a.xml includes b.xml which includes a.xml
         createLayoutFile("layout_a", """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -69,17 +74,28 @@ class IncludeResolverTest {
         val resolver = IncludeResolver(tempFolder.root)
         // Resolving layout_a should succeed at top level
         val result = resolver.resolveInclude("layout_a")
-        assertThat(result).isNotNull()
+        val tree = result.successTree()
 
         // The circular include (layout_b -> layout_a) should result in
         // layout_a being treated as unresolved (include tag stays as-is with Include type)
-        val layoutB = result!!.root.children[0]
+        val layoutB = tree.root.children[0]
         // Since the resolver resolves layout_b, we get its root
         assertThat(layoutB.tagName).isEqualTo("LinearLayout")
         // layout_b's include of layout_a should NOT be resolved (circular) — stays as include tag
         val circularInclude = layoutB.children[0]
         assertThat(circularInclude.tagName).isEqualTo("include")
-        assertThat(circularInclude.nodeType).isEqualTo(LayoutNodeType.Include("layout_a"))
+        assertThat(circularInclude.nodeType).isEqualTo(
+            LayoutNodeType.Include("layout_a", "CIRCULAR_INCLUDE")
+        )
+    }
+
+    @Test
+    fun `returns circular reference when requested layout is already visited`() {
+        val resolver = IncludeResolver(tempFolder.root)
+
+        val result = resolver.resolveInclude("self_ref", visitedLayouts = setOf("self_ref"))
+
+        assertThat(result).isSameInstanceAs(IncludeResult.CircularReference)
     }
 
     @Test
@@ -99,10 +115,10 @@ class IncludeResolverTest {
         // With maxDepth=3, only 3 levels should be resolved
         val resolver = IncludeResolver(tempFolder.root, maxDepth = 3)
         val result = resolver.resolveInclude("depth_0")
+        val tree = result.successTree()
 
-        assertThat(result).isNotNull()
         // depth_0 -> includes depth_1 (resolved at depth 1)
-        val child1 = result!!.root.children[0]
+        val child1 = tree.root.children[0]
         assertThat(child1.tagName).isEqualTo("LinearLayout") // depth_1 resolved
         // depth_1 -> includes depth_2 (resolved at depth 2)
         val child2 = child1.children[0]
@@ -110,7 +126,18 @@ class IncludeResolverTest {
         // depth_2 -> includes depth_3 (depth=3 >= maxDepth=3, not resolved)
         val child3 = child2.children[0]
         assertThat(child3.tagName).isEqualTo("include") // NOT resolved
-        assertThat(child3.nodeType).isEqualTo(LayoutNodeType.Include("depth_3"))
+        assertThat(child3.nodeType).isEqualTo(
+            LayoutNodeType.Include("depth_3", "INCLUDE_DEPTH_EXCEEDED")
+        )
+    }
+
+    @Test
+    fun `returns depth exceeded at max depth`() {
+        val resolver = IncludeResolver(tempFolder.root, maxDepth = 2)
+
+        val result = resolver.resolveInclude("any_layout", depth = 2)
+
+        assertThat(result).isSameInstanceAs(IncludeResult.DepthExceeded)
     }
 
     @Test
@@ -196,12 +223,14 @@ class IncludeResolverTest {
 
         val resolver = IncludeResolver(tempFolder.root)
         val result = resolver.resolveInclude("self_ref")
+        val tree = result.successTree()
 
-        assertThat(result).isNotNull()
         // The self-referencing include should not be resolved
-        val child = result!!.root.children[0]
+        val child = tree.root.children[0]
         assertThat(child.tagName).isEqualTo("include")
-        assertThat(child.nodeType).isEqualTo(LayoutNodeType.Include("self_ref"))
+        assertThat(child.nodeType).isEqualTo(
+            LayoutNodeType.Include("self_ref", "CIRCULAR_INCLUDE")
+        )
     }
 
     @Test

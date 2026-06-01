@@ -96,6 +96,104 @@ class LayoutX2CDigestStoreTest {
     }
 
     @Test
+    fun `layout digest changes when included layout changes`() {
+        val projectDir = tempDir.newFolder("layoutx2c-include-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutDir = resDir.resolve("layout")
+        val layoutFile = layoutDir.resolve("host.xml")
+        val includedFile = layoutDir.resolve("common_button.xml")
+        layoutDir.mkdirs()
+        layoutFile.writeText(
+            """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android">
+                <include layout="@layout/common_button" />
+            </LinearLayout>
+            """.trimIndent()
+        )
+        includedFile.writeText("<Button android:text=\"Before\" />")
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        includedFile.writeText("<Button android:text=\"After\" />")
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(second).isNotEqualTo(first)
+    }
+
+    @Test
+    fun `layout digest changes when missing include becomes available`() {
+        val projectDir = tempDir.newFolder("layoutx2c-missing-include-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutDir = resDir.resolve("layout")
+        val layoutFile = layoutDir.resolve("host.xml")
+        val includedFile = layoutDir.resolve("later_panel.xml")
+        layoutDir.mkdirs()
+        layoutFile.writeText(
+            """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android">
+                <include layout="@layout/later_panel" />
+            </FrameLayout>
+            """.trimIndent()
+        )
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        includedFile.writeText("<TextView android:text=\"Now present\" />")
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(second).isNotEqualTo(first)
+    }
+
+    @Test
+    fun `layout digest tolerates malformed included layout`() {
+        val projectDir = tempDir.newFolder("layoutx2c-malformed-include-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutDir = resDir.resolve("layout")
+        val layoutFile = layoutDir.resolve("host.xml")
+        val includedFile = layoutDir.resolve("broken_panel.xml")
+        layoutDir.mkdirs()
+        layoutFile.writeText(
+            """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android">
+                <include layout="@layout/broken_panel" />
+            </FrameLayout>
+            """.trimIndent()
+        )
+        includedFile.writeText("<LinearLayout>")
+
+        val digest = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(digest).isNotEmpty()
+    }
+
+    @Test
     fun `layout digest schema is bumped for binding facade generation`() {
         val projectDir = tempDir.newFolder("layoutx2c-schema-digest")
         val resDir = projectDir.resolve("src/main/res")

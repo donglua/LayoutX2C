@@ -4,6 +4,7 @@ import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.analyzer.SupportLevel
 import com.github.donglua.layoutx2c.codegen.BindingFacadeEligibility
 import com.github.donglua.layoutx2c.codegen.BindingFacadeStatus
+import com.github.donglua.layoutx2c.parser.LayoutNodeType
 import com.github.donglua.layoutx2c.parser.LayoutTree
 
 /**
@@ -75,6 +76,14 @@ class SupportReportGenerator {
 
     private fun fallbackReason(node: AnalyzedNode): String? {
         if (node.supportLevel != SupportLevel.FALLBACK) return null
+
+        val nodeType = node.node.nodeType
+        when (nodeType) {
+            is LayoutNodeType.Include -> nodeType.resolutionError?.let { return it }
+            is LayoutNodeType.ViewStub -> nodeType.resolutionError?.let { return it }
+            else -> Unit
+        }
+
         return when (node.node.tagName) {
             "layout" -> "DATA_BINDING_WRAPPER"
             else -> "UNSUPPORTED_VIEW_OR_SEMANTICS"
