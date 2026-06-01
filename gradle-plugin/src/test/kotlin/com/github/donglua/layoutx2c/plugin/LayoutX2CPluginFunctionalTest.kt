@@ -102,7 +102,47 @@ class LayoutX2CPluginFunctionalTest {
         assertThat(fixture.registryFile.readText()).isEqualTo(firstRegistry)
     }
 
-    private fun createAndroidFixture(): AndroidFixture {
+    @Test
+    fun `layoutX2CReport aggregates generated layout reports`() {
+        val fixture = createAndroidFixture()
+
+        fixture.runReport()
+
+        val json = fixture.reportJson.readText()
+        assertThat(json).contains("\"totalLayouts\": 5")
+        assertThat(json).contains("\"FULL\"")
+        assertThat(json).contains("\"FALLBACK\"")
+        assertThat(json).contains("\"DATA_BINDING_WRAPPER\"")
+        assertThat(json).contains("\"malformed_binding\"")
+        assertThat(json).contains("\"fallbackNodes\"")
+        assertThat(json).contains("\"path\": \"[0]\"")
+
+        val html = fixture.reportHtml.readText()
+        assertThat(html).contains("LayoutX2C Report")
+        assertThat(html).contains("demo_one")
+        assertThat(html).contains("malformed_binding")
+        assertThat(html).contains("[0]")
+    }
+
+    @Test
+    fun `layoutX2CReport fails when CI fallback policy is exceeded`() {
+        val fixture = createAndroidFixture(
+            """
+                maxFallbackLayouts.set(0)
+                failOnFallbackReasons.add("DATA_BINDING_WRAPPER")
+            """.trimIndent()
+        )
+
+        val result = fixture.runReportAndFail()
+
+        assertThat(result.output).contains("LayoutX2C report policy failed")
+        assertThat(result.output).contains("fallback layouts: 1 > 0")
+        assertThat(result.output).contains("DATA_BINDING_WRAPPER")
+        assertThat(fixture.reportJson.isFile).isTrue()
+        assertThat(fixture.reportHtml.isFile).isTrue()
+    }
+
+    private fun createAndroidFixture(layoutX2CConfiguration: String = ""): AndroidFixture {
         val projectDir = tempDir.newFolder("layoutx2c-functional")
         val repoRoot = File(System.getProperty("user.dir")).parentFile
         val repoPath = repoRoot.invariantSeparatorsPath
@@ -165,6 +205,7 @@ class LayoutX2CPluginFunctionalTest {
 
             layoutX2C {
                 packageName.set("com.example.generated")
+                $layoutX2CConfiguration
             }
             """.trimIndent()
         )
@@ -253,6 +294,12 @@ class LayoutX2CPluginFunctionalTest {
         val valuesFile: File
             get() = appDir.resolve("src/main/res/values/colors.xml")
 
+        val reportJson: File
+            get() = appDir.resolve("build/reports/layoutx2c/index.json")
+
+        val reportHtml: File
+            get() = appDir.resolve("build/reports/layoutx2c/index.html")
+
         fun layout(name: String): File = appDir.resolve("src/main/res/layout/$name.xml")
 
         fun cacheDir(layoutName: String, digest: String): File {
@@ -269,6 +316,24 @@ class LayoutX2CPluginFunctionalTest {
             assertThat(result.task(":app:kspDebugKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
             assertThat(registryFile.isFile).isTrue()
         }
+
+        fun runReport() {
+            val result = GradleRunner.create()
+                .withProjectDir(projectDir)
+                .withArguments(":app:layoutX2CReport", "--stacktrace")
+                .withPluginClasspath()
+                .build()
+
+            assertThat(result.task(":app:layoutX2CReport")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+            assertThat(reportJson.isFile).isTrue()
+            assertThat(reportHtml.isFile).isTrue()
+        }
+
+        fun runReportAndFail() = GradleRunner.create()
+            .withProjectDir(projectDir)
+            .withArguments(":app:layoutX2CReport", "--stacktrace")
+            .withPluginClasspath()
+            .buildAndFail()
 
         fun generatedSnapshot(): Map<String, String> {
             return generatedKspDir.walkTopDown()

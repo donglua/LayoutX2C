@@ -7,7 +7,7 @@
 - **runtime** — Android library，ViewFactory 接口 + FallbackInflater + 注册表
 - **compiler-core** — 纯 JVM，XML 解析、支持度分析、代码生成
 - **ksp-processor** — KSP 注解处理器，扫描 @FastLayoutConfig / @FastLayouts / @FastLayoutPattern
-- **gradle-plugin** — Gradle 插件，自动配置 KSP、传递 res 路径
+- **gradle-plugin** — Gradle 插件，自动配置 KSP、传递 res 路径、生成编译报告
 - **demo** — 示例 App + benchmark
 
 ## 使用方式
@@ -72,6 +72,28 @@ interface LayoutX2CConfig
 
 只有在资源目录、`R` 包名或生成包名不符合默认推导时，才需要手动传：
 `layoutx2c.resDir`、`layoutx2c.rPackageName`、`layoutx2c.packageName`。
+
+## 编译报告
+
+Gradle 插件会注册 `layoutX2CReport` 任务，汇总 KSP 生成的 per-layout JSON：
+
+```bash
+./gradlew :app:layoutX2CReport
+```
+
+输出文件：
+
+- `build/reports/layoutx2c/index.json`：稳定 JSON 汇总，包含 layout 支持度、节点计数、fallback 节点路径、原因和属性。
+- `build/reports/layoutx2c/index.html`：可读 HTML 汇总，适合本地查看。
+
+CI 中可以按 fallback layout 数量或指定 fallback reason 让报告任务失败：
+
+```kotlin
+layoutX2C {
+    maxFallbackLayouts.set(0)
+    failOnFallbackReasons.add("DATA_BINDING_WRAPPER")
+}
+```
 
 ## 当前支持范围
 

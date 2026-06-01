@@ -37,6 +37,8 @@ class LayoutX2CPlugin : Plugin<Project> {
         )
         extension.warnOnFallback.convention(true)
         extension.packageName.convention("com.github.donglua.layoutx2c.generated")
+        extension.maxFallbackLayouts.convention(Int.MAX_VALUE)
+        extension.failOnFallbackReasons.convention(emptyList())
 
         // 2. 等 Android plugin 就位
         project.plugins.withId("com.android.application") {
@@ -61,6 +63,20 @@ class LayoutX2CPlugin : Plugin<Project> {
         val androidComponents = project.extensions
             .findByType(AndroidComponentsExtension::class.java) ?: return
 
+        val reportTask = project.tasks.register("layoutX2CReport", LayoutX2CReportTask::class.java) { task ->
+            task.group = "reporting"
+            task.description = "Aggregates LayoutX2C per-layout reports into project JSON and HTML reports."
+            task.reportFiles.from(
+                project.layout.buildDirectory.asFileTree.matching { filter ->
+                    filter.include("generated/ksp/**/resources/**/*_report.json")
+                }
+            )
+            task.outputDir.set(project.layout.buildDirectory.dir("reports/layoutx2c"))
+            task.warnOnFallback.set(extension.warnOnFallback)
+            task.maxFallbackLayouts.set(extension.maxFallbackLayouts)
+            task.failOnFallbackReasons.set(extension.failOnFallbackReasons)
+        }
+
         androidComponents.onVariants { variant ->
             project.extensions.configure(KspExtension::class.java) { ksp ->
                 ksp.addArg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
@@ -80,6 +96,9 @@ class LayoutX2CPlugin : Plugin<Project> {
                             .absolutePath
                     )
                 )
+            }
+            reportTask.configure { task ->
+                task.dependsOn("ksp${variant.name.replaceFirstChar { it.uppercaseChar() }}Kotlin")
             }
         }
     }
