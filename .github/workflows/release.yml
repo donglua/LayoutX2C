@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      HAS_GRADLE_PLUGIN_PUBLISH_SECRETS: ${{ secrets.GRADLE_PUBLISH_KEY != '' && secrets.GRADLE_PUBLISH_SECRET != '' }}
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -36,7 +38,12 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
 
       - name: Publish Gradle plugin
+        if: env.HAS_GRADLE_PLUGIN_PUBLISH_SECRETS == 'true'
         run: ./gradlew publishPlugins -Playoutx2c.enablePublishing=true --no-configuration-cache
         env:
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+
+      - name: Skip Gradle plugin publish
+        if: env.HAS_GRADLE_PLUGIN_PUBLISH_SECRETS != 'true'
+        run: echo "Skipping Gradle Plugin Portal publish because GRADLE_PUBLISH_KEY/SECRET are not configured."
