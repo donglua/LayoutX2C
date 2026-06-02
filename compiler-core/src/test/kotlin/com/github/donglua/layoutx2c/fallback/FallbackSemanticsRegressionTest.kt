@@ -92,6 +92,36 @@ class FallbackSemanticsRegressionTest {
     }
 
     @Test
+    fun `fallback child layout params with dp declares density`() {
+        val xml = """
+            <androidx.constraintlayout.widget.ConstraintLayout
+                xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <com.example.UnsupportedView
+                    android:id="@+id/shelter_tab_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="51dp"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "fallback_child_dp_params").root)
+        val generated = generator.generate(
+            analyzed,
+            "fallback_child_dp_params",
+            "R.layout.fallback_child_dp_params"
+        ).toString()
+
+        assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(analyzed.children[0].supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(generated).contains("val density = context.resources.displayMetrics.density")
+        assertThat(generated).contains("root_child0.layoutParams = ConstraintLayout.LayoutParams")
+        assertThat(generated).contains("(51f * density + 0.5f).toInt()")
+    }
+
+    @Test
     fun `unsupported relative rule escalates whole layout to FALLBACK`() {
         val xml = """
             <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"

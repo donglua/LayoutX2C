@@ -89,7 +89,7 @@ class LayoutCodeGenerator(
             builder.addStatement("requireNotNull(parent) { %S }", "Merge layout must have a non-null parent")
         }
 
-        if (usesDensity(node)) {
+        if (usesDensity(node, isRoot = true)) {
             builder.addStatement("val density = context.resources.displayMetrics.density")
             builder.add("\n")
         }
@@ -215,10 +215,19 @@ class LayoutCodeGenerator(
         return childPath.joinToString(prefix = "intArrayOf(", postfix = ")")
     }
 
-    private fun usesDensity(node: AnalyzedNode): Boolean {
-        if (node.supportLevel == SupportLevel.FALLBACK) return false
+    private fun usesDensity(node: AnalyzedNode, isRoot: Boolean): Boolean {
+        if (node.supportLevel == SupportLevel.FALLBACK) {
+            return !isRoot && fallbackChildLayoutParamsUseDensity(node)
+        }
         return node.node.attributes.values.any { value -> value.endsWith("dp") } ||
-            node.children.any(::usesDensity)
+            node.children.any { child -> usesDensity(child, isRoot = false) }
+    }
+
+    private fun fallbackChildLayoutParamsUseDensity(node: AnalyzedNode): Boolean {
+        val attrs = node.node.attributes
+        return fallbackChildLayoutParamAttributes.any { attrName ->
+            attrs[attrName]?.endsWith("dp") == true
+        }
     }
 
     private fun hasEmittedAttributes(node: AnalyzedNode): Boolean {
@@ -240,5 +249,19 @@ class LayoutCodeGenerator(
         return layoutName.split("_").joinToString("") {
             it.replaceFirstChar { char -> char.uppercaseChar() }
         } + "X2C"
+    }
+
+    private companion object {
+        val fallbackChildLayoutParamAttributes = setOf(
+            "android:layout_width",
+            "android:layout_height",
+            "android:layout_margin",
+            "android:layout_marginLeft",
+            "android:layout_marginStart",
+            "android:layout_marginTop",
+            "android:layout_marginRight",
+            "android:layout_marginEnd",
+            "android:layout_marginBottom"
+        )
     }
 }
