@@ -39,14 +39,15 @@
 - fallback 子树定位支持完整 child path，并对非法路径输出可诊断错误。
 - 普通 fallback 子树优先走 `XmlPullParser` seek + partial inflate；无法安全局部生成的特殊节点保留整棵 layout inflate 兼容路径。
 - Gradle 插件已声明 layout / values XML 输入，并传入 `layoutx2c.cacheDir`。
-- KSP 侧已落地保守 digest cache：digest 未变时可恢复 per-layout factory、facade 和 report。
+- KSP 侧已落地保守 digest cache：digest 未变时可恢复 per-layout factory、facade 和 report；digest
+  已纳入 include / ViewStub layout 引用图，values XML 仍作为 coarse input。
 - Registry 仍是 aggregating 输出，但已通过内容 digest/cache 避免 Registry 内容未变时重复走完整生成路径。
+- Gradle 插件已提供 `layoutX2CReport`，可输出项目级 JSON / HTML 汇总，并支持 CI fallback policy。
 
 **当前限制**
 
 - `fragment`、无法解析的 include、循环 include、超出递归深度限制的 include，以及无法等价生成的特殊语义仍会保守 fallback。
-- `LayoutDigest` 还没有 include 依赖图和精确资源引用图；values XML 仍作为 coarse input。
-- 编译报告已有节点级 JSON，但还没有产品化 HTML/JSON 汇总和 top fallback reason 视图。
+- `LayoutDigest` 还没有精确 style / dimen / color / string / drawable 引用图；values XML 仍作为 coarse input。
 - Android 端到端 generated vs inflated 等价性覆盖还需要系统补齐。
 
 ---
@@ -55,38 +56,7 @@
 
 短期只推进会直接提高可用性和发布可信度的工作。
 
-### 1. 编译报告产品化
-
-目标：让用户能快速看出哪些 layout 生成成功、哪些节点 fallback、最值得优先处理的原因是什么。
-
-- 输出项目级 HTML/JSON 汇总。
-- 汇总每个 layout 的 FULL / PARTIAL / FALLBACK 结果。
-- 汇总 top fallback reason，支持按 layout、节点、属性三级定位。
-- 提供稳定的 Gradle 入口，例如 `./gradlew layoutX2CReport`。
-- CI 可选按 FALLBACK layout 数量或指定 fallback reason warning/fail。
-
-验收口径：
-
-- Demo 和仓库内测试 layout 可产出可读报告。
-- 报告能定位 layout、节点、属性三级 fallback 原因。
-- JSON schema 稳定，后续 HTML、CI 和 IDE 能复用。
-
-### 2. Include 依赖进入 Digest
-
-目标：被 include 的 layout 改动时，只重新生成受影响 factory，同时保持保守正确。
-
-- `LayoutDigest` 纳入 include 引用图。
-- 检测 include 循环、缺失和深度限制，并把原因写入 report。
-- Registry 仍可保持 aggregating 输出，不提前承诺 KSP isolating processor。
-- 后续再扩展到精确 style / dimen / color / string / drawable 引用图。
-
-验收口径：
-
-- 修改被 include layout 会触发引用方重新生成。
-- 修改无关 layout 不触发无关 factory 重生成。
-- 循环 include 不崩溃，并可诊断地 fallback。
-
-### 3. Android 等价性测试补齐
+### 1. Android 等价性测试补齐
 
 目标：用真实 Android inflate 结果约束高风险语义，避免代码生成只在字符串测试层面正确。
 
@@ -99,7 +69,7 @@
 - 每类特殊语义都有最小端到端 Android 测试。
 - 失败信息能指出 layout、节点路径和不一致属性。
 
-### 4. README 和 Demo 同步
+### 2. README 和 Demo 同步
 
 目标：让用户看到的支持范围与实际 Roadmap 保持一致。
 
@@ -111,6 +81,20 @@
 
 - README 的支持范围、限制和 Roadmap 一致。
 - Demo 能覆盖主要成功路径和 fallback 路径。
+
+### 3. 精确资源引用图
+
+目标：减少无关 values 资源改动导致的保守重跑，同时保持 fallback 正确性。
+
+- 从 coarse values XML 输入推进到 style / dimen / color / string / drawable 引用图。
+- style / theme 引用继续默认保守 fallback，只把 digest 依赖做精确。
+- 保持 Registry aggregating 输出，不提前承诺 KSP isolating processor。
+
+验收口径：
+
+- 修改被引用资源会触发相关 layout 重新生成。
+- 修改无关资源不触发无关 factory 重生成。
+- 无法解析或动态 theme 语义仍保守 fallback，并在 report 中可诊断。
 
 ---
 
