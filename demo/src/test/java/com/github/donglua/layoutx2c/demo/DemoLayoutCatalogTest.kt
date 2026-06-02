@@ -17,6 +17,7 @@ class DemoLayoutCatalogTest {
 
         assertEquals("Fallback", fallbackDemo?.label)
         assertEquals("Layout_DemoFallback", fallbackDemo?.generatedClassName)
+        assertEquals(DemoLayoutCatalog.Status.Fallback, fallbackDemo?.status)
         assertTrue(DemoLayoutCatalog.entries.map { it.layoutName }.contains("demo_fallback"))
     }
 
@@ -26,6 +27,7 @@ class DemoLayoutCatalogTest {
 
         assertEquals("Binding", bindingDemo?.label)
         assertEquals("DemoDataBindingX2CBinding", bindingDemo?.codeViewerClassName)
+        assertEquals(DemoLayoutCatalog.Status.Binding, bindingDemo?.status)
         assertEquals(true, bindingDemo?.platformInflatable)
     }
 
@@ -35,6 +37,7 @@ class DemoLayoutCatalogTest {
 
         assertEquals("Constraint", constraintDemo?.label)
         assertEquals("Layout_DemoConstraint", constraintDemo?.generatedClassName)
+        assertEquals(DemoLayoutCatalog.Status.Generated, constraintDemo?.status)
         assertEquals(true, constraintDemo?.platformInflatable)
         assertTrue(DemoLayoutCatalog.entries.map { it.layoutName }.contains("demo_constraint"))
     }
@@ -56,6 +59,27 @@ class DemoLayoutCatalogTest {
 
         assertEquals("Binding Enhanced", bindingDemo?.label)
         assertEquals("DemoDataBindingEnhancedX2CBinding", bindingDemo?.codeViewerClassName)
+        assertEquals(DemoLayoutCatalog.Status.Binding, bindingDemo?.status)
         assertEquals(true, bindingDemo?.platformInflatable)
+    }
+
+    @Test
+    fun `catalog lookup resolves entries by layout name`() {
+        val simpleDemo = DemoLayoutCatalog.requireByLayoutName("demo_simple")
+
+        assertEquals("Simple", simpleDemo.label)
+        assertEquals("demo_simple", simpleDemo.layoutName)
+    }
+
+    @Test
+    fun `catalog includes scroll image demo for supported scroll and image attributes`() {
+        val scrollImageDemo = DemoLayoutCatalog.entries.singleOrNull {
+            it.layoutName == "demo_scroll_image"
+        }
+
+        assertEquals("Scroll + Image", scrollImageDemo?.label)
+        assertEquals("Layout_DemoScrollImage", scrollImageDemo?.generatedClassName)
+        assertEquals(DemoLayoutCatalog.Status.Generated, scrollImageDemo?.status)
+        assertTrue(scrollImageDemo?.summary.orEmpty().contains("ScrollView"))
     }
 }
