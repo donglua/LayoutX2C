@@ -43,7 +43,8 @@ class CodeViewerActivity : AppCompatActivity() {
             findViewById<Button>(R.id.btn_demo_recycler),
             findViewById<Button>(R.id.btn_demo_fallback),
             findViewById<Button>(R.id.btn_demo_binding),
-            findViewById<Button>(R.id.btn_demo_binding_enhanced)
+            findViewById<Button>(R.id.btn_demo_binding_enhanced),
+            findViewById<Button>(R.id.btn_demo_scroll_image)
         )
         require(buttons.size == demos.size) { "Code Viewer selector must cover every demo layout." }
         buttons.zip(demos).forEach { (button, demo) ->
@@ -143,7 +144,8 @@ class CodeViewerActivity : AppCompatActivity() {
             R.id.btn_demo_recycler to demos[6],
             R.id.btn_demo_fallback to demos[7],
             R.id.btn_demo_binding to demos[8],
-            R.id.btn_demo_binding_enhanced to demos[9]
+            R.id.btn_demo_binding_enhanced to demos[9],
+            R.id.btn_demo_scroll_image to demos[10]
         )
         buttonPairs.forEach { (buttonId, demo) ->
             findViewById<Button>(buttonId).isSelected = demo == currentDemo

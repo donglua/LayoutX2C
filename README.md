@@ -175,6 +175,7 @@ catalog：
 - `demo_recycler`（RecyclerView 容器）
 - `demo_fallback`（故意触发 runtime fallback）
 - `demo_data_binding`, `demo_data_binding_enhanced`
+- `demo_scroll_image`（ScrollView + ImageView 常用属性）
 
 ## License
 
