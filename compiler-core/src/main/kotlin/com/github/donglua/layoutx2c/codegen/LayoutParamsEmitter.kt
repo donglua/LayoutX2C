@@ -8,6 +8,8 @@ import com.github.donglua.layoutx2c.parser.isLinearLayout
 import com.github.donglua.layoutx2c.parser.isRelativeLayout
 import com.github.donglua.layoutx2c.parser.isScrollView
 import com.github.donglua.layoutx2c.registry.ConstraintLayoutRules
+import com.github.donglua.layoutx2c.resources.PermissiveResourceReferenceResolver
+import com.github.donglua.layoutx2c.resources.ResourceReferenceResolver
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 
@@ -27,7 +29,10 @@ interface LayoutParamsEmitter {
     )
 }
 
-class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
+class DefaultLayoutParamsEmitter(
+    private val rPackageName: String = "",
+    private val resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver
+) : LayoutParamsEmitter {
 
     override fun emit(
         builder: CodeBlock.Builder,
@@ -120,10 +125,10 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
                 "(%L.layoutParams as %T).setMargins(%L, %L, %L, %L)",
                 varName,
                 ClassName("android.view", "ViewGroup", "MarginLayoutParams"),
-                dimensionToCode(marginLeft ?: marginAll),
-                dimensionToCode(marginTop ?: marginAll),
-                dimensionToCode(marginRight ?: marginAll),
-                dimensionToCode(marginBottom ?: marginAll)
+                dimensionValueToCode(marginLeft ?: marginAll),
+                dimensionValueToCode(marginTop ?: marginAll),
+                dimensionValueToCode(marginRight ?: marginAll),
+                dimensionValueToCode(marginBottom ?: marginAll)
             )
             return
         }
@@ -145,7 +150,7 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
             varName,
             ClassName("android.view", "ViewGroup", "MarginLayoutParams"),
             propertyName,
-            dimensionToCode(value)
+            dimensionValueToCode(value)
         )
     }
 
@@ -288,10 +293,14 @@ class DefaultLayoutParamsEmitter : LayoutParamsEmitter {
             "0dp" -> if (node.parentIs(LayoutNode::isConstraintLayout)) {
                 CodeBlock.of("%T.MATCH_CONSTRAINT", constraintLayoutParamsClass)
             } else {
-                CodeBlock.of("%L", dimensionToCode(value))
+                CodeBlock.of("%L", dimensionValueToCode(value))
             }
-            else -> CodeBlock.of("%L", dimensionToCode(value))
+            else -> CodeBlock.of("%L", dimensionValueToCode(value))
         }
+    }
+
+    private fun dimensionValueToCode(value: String): String {
+        return dimensionToCode(value, resourceResolver, rPackageName)
     }
 
     private companion object {

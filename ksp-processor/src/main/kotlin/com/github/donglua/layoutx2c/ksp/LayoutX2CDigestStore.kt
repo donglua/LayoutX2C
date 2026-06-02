@@ -61,7 +61,7 @@ internal class LayoutX2CDigestStore(private val manifestFile: File) {
 internal object LayoutX2CDigestCalculator {
 
     // Bump this when the digest inputs or hashing semantics change.
-    private const val SCHEMA_VERSION = "v4"
+    private const val SCHEMA_VERSION = "v5"
 
     fun layoutDigest(
         layoutFile: File,
@@ -102,6 +102,15 @@ internal object LayoutX2CDigestCalculator {
                 digest.updateFile(valuesFile, resDir)
             }
 
+        resourceSymbolDirs(resDir)
+            .flatMap { resourceDir ->
+                resourceDir.walkTopDown().filter { it.isFile }.toList()
+            }
+            .sortedBy { it.relativeTo(resDir).invariantSeparatorsPath }
+            .forEach { resourceFile ->
+                digest.updateFile(resourceFile, resDir)
+            }
+
         return digest.digest().joinToString(separator = "") { "%02x".format(it) }
     }
 
@@ -126,5 +135,14 @@ internal object LayoutX2CDigestCalculator {
     private fun MessageDigest.updateString(value: String) {
         update(value.toByteArray(Charsets.UTF_8))
         update(0)
+    }
+
+    private fun resourceSymbolDirs(resDir: File): List<File> {
+        return resDir.listFiles()
+            ?.filter { resourceDir ->
+                resourceDir.isDirectory &&
+                    resourceDir.name.substringBefore("-") in setOf("color", "drawable", "layout", "mipmap")
+            }
+            ?: emptyList()
     }
 }

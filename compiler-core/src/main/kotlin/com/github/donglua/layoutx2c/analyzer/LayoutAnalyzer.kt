@@ -37,7 +37,8 @@ class LayoutAnalyzer(
             !isXmlnsAttribute(attrName) &&
                 attrName.startsWith("android:layout_") &&
                 !viewRegistry.isKnownLayoutAttribute(attrName)
-        } || node.children.any(::hasUnsupportedLayoutParam)
+        } || viewRegistry.hasUnsupportedLayoutAttributeValue(node, parentTagName = null) ||
+            node.children.any(::hasUnsupportedLayoutParam)
     }
 
     private fun hasInvalidRelativeLayoutParam(node: LayoutNode, parentTagName: String? = null): Boolean {

@@ -12,6 +12,10 @@ import com.github.donglua.layoutx2c.parser.isLinearLayout
 import com.github.donglua.layoutx2c.parser.isRecyclerView
 import com.github.donglua.layoutx2c.parser.isScrollView
 import com.github.donglua.layoutx2c.parser.isTextLikeView
+import com.github.donglua.layoutx2c.resources.PermissiveResourceReferenceResolver
+import com.github.donglua.layoutx2c.resources.ResourceReferenceResolver
+import com.github.donglua.layoutx2c.resources.parseResourceReference
+import com.github.donglua.layoutx2c.resources.referenceCode
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 
@@ -22,6 +26,7 @@ interface ViewAnalysisRegistry {
     fun isKnownLayoutAttribute(attrName: String): Boolean
     fun isSupportedAttribute(node: LayoutNode, parentTagName: String?, attrName: String): Boolean
     fun hasUnsupportedAttributeValue(node: LayoutNode, parentTagName: String?): Boolean
+    fun hasUnsupportedLayoutAttributeValue(node: LayoutNode, parentTagName: String?): Boolean = false
     fun hasInvalidRelativeLayoutParamForNode(node: LayoutNode, parentTagName: String?): Boolean
     fun hasInvalidConstraintLayoutParamForNode(node: LayoutNode, parentTagName: String?): Boolean
 }
@@ -48,10 +53,15 @@ private interface AttributeHandler {
 
     fun emit(builder: CodeBlock.Builder, node: AnalyzedNode)
 
-    fun hasAnyAttribute(attrs: Map<String, String>): Boolean = names.any(attrs::containsKey)
+    fun hasAnyAttribute(attrs: Map<String, String>, supportedAttributes: Set<String>): Boolean {
+        return names.any { attrName -> attrName in supportedAttributes && attrName in attrs }
+    }
 }
 
-object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
+open class ResourceAwareViewRegistry(
+    private val rPackageName: String = "",
+    private val resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver
+) : ViewAnalysisRegistry, ViewEmitRegistry {
     override val forceFallbackAttributes = setOf(
         "style",
         "android:theme"
@@ -119,22 +129,22 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         IdAttributeHandler,
         OrientationAttributeHandler,
         VisibilityAttributeHandler,
-        BackgroundAttributeHandler,
-        TextAttributeHandler,
-        TextColorAttributeHandler,
-        TextSizeAttributeHandler,
+        BackgroundAttributeHandler(),
+        TextAttributeHandler(),
+        TextColorAttributeHandler(),
+        TextSizeAttributeHandler(),
         TextStyleAttributeHandler,
-        HintAttributeHandler,
+        HintAttributeHandler(),
         InputTypeAttributeHandler,
-        ImageSourceAttributeHandler,
+        ImageSourceAttributeHandler(),
         ImageScaleTypeAttributeHandler,
-        ImageTintAttributeHandler,
-        CommonStateAttributeHandler,
-        PaddingAttributeHandler,
+        ImageTintAttributeHandler(),
+        CommonStateAttributeHandler(),
+        PaddingAttributeHandler(),
         GravityAttributeHandler,
         FillViewportAttributeHandler,
         RecyclerViewLayoutManagerAttributeHandler,
-        ViewStubAttributeHandler
+        ViewStubAttributeHandler()
     )
 
     private val attributeHandlerByName: Map<String, AttributeHandler> =
@@ -191,6 +201,19 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         return false
     }
 
+    override fun hasUnsupportedLayoutAttributeValue(node: LayoutNode, parentTagName: String?): Boolean {
+        for ((attrName, value) in node.attributes) {
+            if (attrName !in layoutAttributeNames) continue
+            if (attrName in relativeLayoutRuleAttributes || attrName in ConstraintLayoutRules.supportedAttributes) {
+                continue
+            }
+            if (value.startsWith("@dimen/") && !supportsResourceReference(value)) {
+                return true
+            }
+        }
+        return false
+    }
+
     override fun hasInvalidRelativeLayoutParamForNode(node: LayoutNode, parentTagName: String?): Boolean {
         for ((attrName, value) in node.attributes) {
             if (attrName in relativeLayoutRuleAttributes && hasUnsupportedRelativeLayoutRuleValue(attrName, value, parentTagName)) {
@@ -220,10 +243,19 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
 
     override fun emitAttributes(builder: CodeBlock.Builder, node: AnalyzedNode) {
         for (handler in attributeHandlers) {
-            if (handler.hasAnyAttribute(node.node.attributes)) {
+            if (handler.hasAnyAttribute(node.node.attributes, node.supportedAttributes)) {
                 handler.emit(builder, node)
             }
         }
+    }
+
+    private fun supportsResourceReference(value: String): Boolean {
+        val reference = parseResourceReference(value) ?: return true
+        return resourceResolver.resolve(reference.type, reference.name) != null
+    }
+
+    private fun resourceCode(type: String, name: String): String? {
+        return resourceResolver.referenceCode(type, name, rPackageName)
     }
 
     private fun hasUnsupportedRelativeLayoutRuleValue(
@@ -281,11 +313,11 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
     }
 
-    private object BackgroundAttributeHandler : AttributeHandler {
+    private inner class BackgroundAttributeHandler : AttributeHandler {
         override val names = setOf("android:background")
 
         override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
-            return isSupportedBackground(value)
+            return isSupportedBackground(value) && supportsResourceReference(value)
         }
 
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
@@ -293,15 +325,19 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
                 when {
                     value.startsWith("@drawable/") -> {
                         val resName = value.removePrefix("@drawable/")
-                        builder.addStatement("setBackgroundResource(R.drawable.%L)", resName)
+                        resourceCode("drawable", resName)?.let { resCode ->
+                            builder.addStatement("setBackgroundResource(%L)", resCode)
+                        }
                     }
                     value.startsWith("@color/") -> {
                         val resName = value.removePrefix("@color/")
-                        builder.addStatement(
-                            "setBackgroundColor(%T.getColor(context, R.color.%L))",
-                            ClassName("androidx.core.content", "ContextCompat"),
-                            resName
-                        )
+                        resourceCode("color", resName)?.let { resCode ->
+                            builder.addStatement(
+                                "setBackgroundColor(%T.getColor(context, %L))",
+                                ClassName("androidx.core.content", "ContextCompat"),
+                                resCode
+                            )
+                        }
                     }
                     value.startsWith("#") -> {
                         builder.addStatement("setBackgroundColor(%T.parseColor(%S))", ClassName("android.graphics", "Color"), value)
@@ -311,8 +347,12 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
     }
 
-    private object TextAttributeHandler : AttributeHandler {
+    private inner class TextAttributeHandler : AttributeHandler {
         override val names = setOf("android:text")
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return supportsResourceReference(value)
+        }
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
             return node.isTextLikeView()
@@ -322,7 +362,9 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
             node.node.attributes["android:text"]?.let { value ->
                 if (value.startsWith("@string/")) {
                     val resName = value.removePrefix("@string/")
-                    builder.addStatement("text = context.getString(R.string.%L)", resName)
+                    resourceCode("string", resName)?.let { resCode ->
+                        builder.addStatement("text = context.getString(%L)", resCode)
+                    }
                 } else {
                     builder.addStatement("text = %S", value)
                 }
@@ -330,7 +372,7 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
     }
 
-    private object TextColorAttributeHandler : AttributeHandler {
+    private inner class TextColorAttributeHandler : AttributeHandler {
         override val names = setOf("android:textColor")
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
@@ -338,7 +380,7 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
 
         override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
-            return isSupportedColor(value)
+            return isSupportedColor(value) && supportsResourceReference(value)
         }
 
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
@@ -346,9 +388,33 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
                 emitColorAssignment(builder, value, "setTextColor")
             }
         }
+
+        private fun emitColorAssignment(builder: CodeBlock.Builder, value: String, methodName: String) {
+            when {
+                value.startsWith("@color/") -> {
+                    val resName = value.removePrefix("@color/")
+                    resourceCode("color", resName)?.let { resCode ->
+                        builder.addStatement(
+                            "%L(%T.getColor(context, %L))",
+                            methodName,
+                            ClassName("androidx.core.content", "ContextCompat"),
+                            resCode
+                        )
+                    }
+                }
+                value.startsWith("#") -> {
+                    builder.addStatement(
+                        "%L(%T.parseColor(%S))",
+                        methodName,
+                        ClassName("android.graphics", "Color"),
+                        value
+                    )
+                }
+            }
+        }
     }
 
-    private object TextSizeAttributeHandler : AttributeHandler {
+    private inner class TextSizeAttributeHandler : AttributeHandler {
         override val names = setOf("android:textSize")
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
@@ -356,7 +422,7 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
 
         override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
-            return isSupportedDimension(value)
+            return isSupportedDimension(value) && supportsResourceReference(value)
         }
 
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
@@ -364,7 +430,7 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
                 builder.addStatement(
                     "setTextSize(%T.COMPLEX_UNIT_PX, %L)",
                     ClassName("android.util", "TypedValue"),
-                    dimensionToPxFloatCode(value)
+                    dimensionToPxFloatCode(value, resourceResolver, rPackageName)
                 )
             }
         }
@@ -388,8 +454,12 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
     }
 
-    private object HintAttributeHandler : AttributeHandler {
+    private inner class HintAttributeHandler : AttributeHandler {
         override val names = setOf("android:hint")
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return supportsResourceReference(value)
+        }
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
             return node.isEditText()
@@ -399,7 +469,9 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
             node.node.attributes["android:hint"]?.let { value ->
                 if (value.startsWith("@string/")) {
                     val resName = value.removePrefix("@string/")
-                    builder.addStatement("hint = context.getString(R.string.%L)", resName)
+                    resourceCode("string", resName)?.let { resCode ->
+                        builder.addStatement("hint = context.getString(%L)", resCode)
+                    }
                 } else {
                     builder.addStatement("hint = %S", value)
                 }
@@ -425,18 +497,24 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
     }
 
-    private object ImageSourceAttributeHandler : AttributeHandler {
+    private inner class ImageSourceAttributeHandler : AttributeHandler {
         override val names = setOf("android:src")
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
             return node.isImageView()
         }
 
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return !value.startsWith("@drawable/") || supportsResourceReference(value)
+        }
+
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             node.node.attributes["android:src"]?.let { value ->
                 if (value.startsWith("@drawable/")) {
                     val resName = value.removePrefix("@drawable/")
-                    builder.addStatement("setImageResource(R.drawable.%L)", resName)
+                    resourceCode("drawable", resName)?.let { resCode ->
+                        builder.addStatement("setImageResource(%L)", resCode)
+                    }
                 }
             }
         }
@@ -462,28 +540,34 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
     }
 
-    private object ImageTintAttributeHandler : AttributeHandler {
+    private inner class ImageTintAttributeHandler : AttributeHandler {
         override val names = setOf("android:tint", "app:tint")
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
             return node.isImageView()
         }
 
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return !value.startsWith("@color/") || supportsResourceReference(value)
+        }
+
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             (node.node.attributes["app:tint"] ?: node.node.attributes["android:tint"])?.let { value ->
                 if (value.startsWith("@color/")) {
                     val resName = value.removePrefix("@color/")
-                    builder.addStatement(
-                        "imageTintList = %T.getColorStateList(context, R.color.%L)",
-                        ClassName("androidx.core.content", "ContextCompat"),
-                        resName
-                    )
+                    resourceCode("color", resName)?.let { resCode ->
+                        builder.addStatement(
+                            "imageTintList = %T.getColorStateList(context, %L)",
+                            ClassName("androidx.core.content", "ContextCompat"),
+                            resCode
+                        )
+                    }
                 }
             }
         }
     }
 
-    private object CommonStateAttributeHandler : AttributeHandler {
+    private inner class CommonStateAttributeHandler : AttributeHandler {
         override val names = setOf(
             "android:enabled",
             "android:clickable",
@@ -500,7 +584,7 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
                 "android:focusable" -> isSupportedBoolean(value)
                 "android:elevation",
                 "android:minWidth",
-                "android:minHeight" -> isSupportedDimension(value)
+                "android:minHeight" -> isSupportedDimension(value) && supportsResourceReference(value)
                 else -> true
             }
         }
@@ -517,18 +601,18 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
                 builder.addStatement("isFocusable = %L", value == "true")
             }
             attrs["android:elevation"]?.let { value ->
-                builder.addStatement("elevation = %L", dimensionToPxFloatCode(value))
+                builder.addStatement("elevation = %L", dimensionToPxFloatCode(value, resourceResolver, rPackageName))
             }
             attrs["android:minWidth"]?.let { value ->
-                builder.addStatement("minimumWidth = %L", dimensionToCode(value))
+                builder.addStatement("minimumWidth = %L", dimensionToCode(value, resourceResolver, rPackageName))
             }
             attrs["android:minHeight"]?.let { value ->
-                builder.addStatement("minimumHeight = %L", dimensionToCode(value))
+                builder.addStatement("minimumHeight = %L", dimensionToCode(value, resourceResolver, rPackageName))
             }
         }
     }
 
-    private object PaddingAttributeHandler : AttributeHandler {
+    private inner class PaddingAttributeHandler : AttributeHandler {
         override val names = setOf(
             "android:padding",
             "android:paddingLeft",
@@ -538,6 +622,10 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
             "android:paddingStart",
             "android:paddingEnd"
         )
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return isSupportedDimension(value) && supportsResourceReference(value)
+        }
 
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             val attrs = node.node.attributes
@@ -549,10 +637,10 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
             if (left != null || top != null || right != null || bottom != null) {
                 builder.addStatement(
                     "setPadding(%L, %L, %L, %L)",
-                    dimensionToCode(left ?: "0dp"),
-                    dimensionToCode(top ?: "0dp"),
-                    dimensionToCode(right ?: "0dp"),
-                    dimensionToCode(bottom ?: "0dp")
+                    dimensionToCode(left ?: "0dp", resourceResolver, rPackageName),
+                    dimensionToCode(top ?: "0dp", resourceResolver, rPackageName),
+                    dimensionToCode(right ?: "0dp", resourceResolver, rPackageName),
+                    dimensionToCode(bottom ?: "0dp", resourceResolver, rPackageName)
                 )
             }
         }
@@ -606,18 +694,24 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) = Unit
     }
 
-    private object ViewStubAttributeHandler : AttributeHandler {
+    private inner class ViewStubAttributeHandler : AttributeHandler {
         override val names = setOf("android:layout", "android:inflatedId")
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
             return node.tagName == "ViewStub" || node.tagName == "android.view.ViewStub"
         }
 
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return attrName != "android:layout" || !value.startsWith("@layout/") || supportsResourceReference(value)
+        }
+
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             node.node.attributes["android:layout"]?.let { value ->
                 if (value.startsWith("@layout/")) {
                     val resName = value.removePrefix("@layout/")
-                    builder.addStatement("layoutResource = R.layout.%L", resName)
+                    resourceCode("layout", resName)?.let { resCode ->
+                        builder.addStatement("layoutResource = %L", resCode)
+                    }
                 }
             }
             node.node.attributes["android:inflatedId"]?.let { value ->
@@ -629,6 +723,8 @@ object DefaultViewRegistry : ViewAnalysisRegistry, ViewEmitRegistry {
         }
     }
 }
+
+object DefaultViewRegistry : ResourceAwareViewRegistry()
 
 private val relativeLayoutIdRuleAttributes = setOf(
     "android:layout_above",
@@ -746,23 +842,6 @@ private fun isSupportedInputType(value: String): Boolean {
 
     val classOrVariationCount = parts.count { it in inputTypeClassOrVariationParts }
     return classOrVariationCount <= 1
-}
-
-private fun emitColorAssignment(builder: CodeBlock.Builder, value: String, methodName: String) {
-    when {
-        value.startsWith("@color/") -> {
-            val resName = value.removePrefix("@color/")
-            builder.addStatement(
-                "%L(%T.getColor(context, R.color.%L))",
-                methodName,
-                ClassName("androidx.core.content", "ContextCompat"),
-                resName
-            )
-        }
-        value.startsWith("#") -> {
-            builder.addStatement("%L(%T.parseColor(%S))", methodName, ClassName("android.graphics", "Color"), value)
-        }
-    }
 }
 
 private fun textStyleToCode(value: String): String {
