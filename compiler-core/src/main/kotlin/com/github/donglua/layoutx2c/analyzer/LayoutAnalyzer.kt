@@ -75,6 +75,10 @@ class LayoutAnalyzer(
     }
 
     private fun analyzeNode(node: LayoutNode, parentTagName: String?): AnalyzedNode {
+        if (hasInvalidConstraintLayoutParamFromParent(node, parentTagName)) {
+            return markAsFallback(node, parentTagName)
+        }
+
         // 1. 检查 View 类型是否支持
         if (viewRegistry.viewHandlerFor(node.tagName) == null) {
             return markAsFallback(node, parentTagName)
@@ -97,7 +101,7 @@ class LayoutAnalyzer(
         }
 
         // 4. ConstraintLayout 子树级别 fallback
-        if (hasInvalidConstraintLayoutSubtree(node)) {
+        if (parentTagName != null && hasInvalidConstraintLayoutSubtree(node)) {
             return markAsFallback(node, parentTagName)
         }
 
@@ -128,6 +132,13 @@ class LayoutAnalyzer(
             indexInParent = node.indexInParent,
             parentTagName = parentTagName
         )
+    }
+
+    private fun hasInvalidConstraintLayoutParamFromParent(node: LayoutNode, parentTagName: String?): Boolean {
+        if (!ConstraintLayoutRules.parentIsConstraintLayout(parentTagName)) return false
+        return ConstraintLayoutRules.isHelperTag(node.tagName) ||
+            ConstraintLayoutRules.hasComplexConstraintAttribute(node) ||
+            viewRegistry.hasInvalidConstraintLayoutParamForNode(node, parentTagName)
     }
 
     private fun markAsFallback(node: LayoutNode, parentTagName: String? = null): AnalyzedNode {

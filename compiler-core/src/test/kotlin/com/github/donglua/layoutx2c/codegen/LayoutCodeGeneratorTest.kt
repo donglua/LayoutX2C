@@ -142,6 +142,56 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `data binding constraint root generates root and falls back unsupported child`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+                <data>
+                    <import type="com.example.other.R" />
+                </data>
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/home_header_bg">
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        android:text="Title" />
+                    <com.example.widget.HomeTabLayout
+                        android:id="@+id/home_tabs"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/title" />
+                    <androidx.constraintlayout.widget.Guideline
+                        android:id="@+id/guide"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintGuide_percent="0.5" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </layout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "feature_home_entry").root)
+        val generated = generator.generate(analyzed, "feature_home_entry", "R.layout.feature_home_entry").toString()
+
+        assertThat(generated).contains("val root = ConstraintLayout(context).apply {")
+        assertThat(generated).contains("setBackgroundResource(R.drawable.home_header_bg)")
+        assertThat(generated).contains("parent?.let { parentView ->")
+        assertThat(generated).contains("root.layoutParams =")
+        assertThat(generated).contains("is ConstraintLayout ->")
+        assertThat(generated).contains("ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("val root_child0 = AppCompatTextView(context).apply {")
+        assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.feature_home_entry,")
+        assertThat(generated).contains("intArrayOf(1), root)")
+        assertThat(generated).contains("intArrayOf(2), root)")
+        assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.feature_home_entry, parent)")
+    }
+
+    @Test
     fun `scroll view emits fill viewport and frame layout params for its child`() {
         val xml = """
             <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"

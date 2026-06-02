@@ -123,6 +123,58 @@ class SupportReportGeneratorTest {
     }
 
     @Test
+    fun `data binding constraint root report keeps root supported`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+                <data>
+                    <import type="com.example.other.R" />
+                </data>
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/home_header_bg">
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        android:text="Title" />
+                    <com.example.widget.HomeTabLayout
+                        android:id="@+id/home_tabs"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/title" />
+                    <androidx.constraintlayout.widget.Guideline
+                        android:id="@+id/guide"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintGuide_percent="0.5" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "feature_home_entry")
+        val analyzed = analyzer.analyze(tree.root)
+        val report = generator.generate(analyzed, "feature_home_entry", tree)
+        val rootEntry = report
+            .substringAfter("\"tag\": \"androidx.constraintlayout.widget.ConstraintLayout\"")
+            .substringBefore("    },")
+
+        assertThat(rootEntry).contains("\"support\": \"FULL\"")
+        assertThat(rootEntry).contains("\"reason\": null")
+        assertThat(rootEntry).doesNotContain("android:layout_width")
+        assertThat(rootEntry).doesNotContain("android:layout_height")
+        assertThat(rootEntry).doesNotContain("android:background")
+        assertThat(report).contains("\"tag\": \"com.example.widget.HomeTabLayout\"")
+        assertThat(report).contains("\"tag\": \"androidx.constraintlayout.widget.Guideline\"")
+        assertThat(report).contains("\"support\": \"FALLBACK\"")
+        assertThat(report).doesNotContain("\"reason\": \"DATA_BINDING_WRAPPER\"")
+    }
+
+    @Test
     fun `include resolution error is reported as fallback reason`() {
         val root = LayoutNode(
             tagName = "LinearLayout",

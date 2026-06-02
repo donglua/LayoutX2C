@@ -501,7 +501,54 @@ class LayoutAnalyzerTest {
     }
 
     @Test
-    fun `constraint layout chain attribute on child falls back the subtree`() {
+    fun `data binding constraint root with helper child keeps root generated`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+                <data>
+                    <import type="com.example.other.R" />
+                </data>
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/home_header_bg">
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        android:text="Title" />
+                    <com.example.widget.HomeTabLayout
+                        android:id="@+id/home_tabs"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/title" />
+                    <androidx.constraintlayout.widget.Guideline
+                        android:id="@+id/guide"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintGuide_percent="0.5" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </layout>
+        """.trimIndent()
+
+        val result = analyzer.analyze(parser.parse(xml, "feature_home_entry").root)
+
+        assertThat(result.node.tagName).isEqualTo("androidx.constraintlayout.widget.ConstraintLayout")
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.unsupportedAttributes).doesNotContain("android:layout_width")
+        assertThat(result.unsupportedAttributes).doesNotContain("android:layout_height")
+        assertThat(result.unsupportedAttributes).doesNotContain("android:background")
+        assertThat(result.children).hasSize(3)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[1].supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.children[2].supportLevel).isEqualTo(SupportLevel.FALLBACK)
+    }
+
+    @Test
+    fun `constraint layout chain attribute on child falls back the child subtree`() {
         val xml = """
             <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -520,12 +567,14 @@ class LayoutAnalyzerTest {
         val tree = parser.parse(xml, "test")
         val result = analyzer.analyze(tree.root)
 
-        assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
-        assertThat(result.children).isEmpty()
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children).hasSize(1)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.children[0].children).isEmpty()
     }
 
     @Test
-    fun `constraint layout dimension ratio on child falls back the subtree`() {
+    fun `constraint layout dimension ratio on child falls back the child subtree`() {
         val xml = """
             <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -543,11 +592,13 @@ class LayoutAnalyzerTest {
         val tree = parser.parse(xml, "test")
         val result = analyzer.analyze(tree.root)
 
-        assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children).hasSize(1)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FALLBACK)
     }
 
     @Test
-    fun `constraint layout invalid anchor value falls back the subtree`() {
+    fun `constraint layout invalid anchor value falls back the child subtree`() {
         val xml = """
             <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -563,11 +614,13 @@ class LayoutAnalyzerTest {
         val tree = parser.parse(xml, "test")
         val result = analyzer.analyze(tree.root)
 
-        assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children).hasSize(1)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FALLBACK)
     }
 
     @Test
-    fun `constraint layout invalid bias value falls back the subtree`() {
+    fun `constraint layout invalid bias value falls back the child subtree`() {
         val xml = """
             <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -584,7 +637,9 @@ class LayoutAnalyzerTest {
         val tree = parser.parse(xml, "test")
         val result = analyzer.analyze(tree.root)
 
-        assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children).hasSize(1)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FALLBACK)
     }
 
     @Test
