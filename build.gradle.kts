@@ -1,3 +1,6 @@
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
+
 buildscript {
     extra["kotlinVersion"] = "2.2.21"
     extra["agpVersion"] = "9.2.1"
@@ -6,7 +9,7 @@ buildscript {
     extra["targetSdk"] = 36
     extra["compileSdk"] = 36
     extra["groupId"] = "com.github.donglua.layoutx2c"
-    extra["versionName"] = "0.3.1"
+    extra["versionName"] = "0.3.2"
 }
 
 plugins {
@@ -19,12 +22,33 @@ plugins {
     id("com.gradle.plugin-publish") version "2.1.1" apply false
 }
 
-subprojects {
-    group = rootProject.extra["groupId"] as String
-    version = rootProject.extra["versionName"] as String
+val publishingGroup = providers.environmentVariable("GROUP")
+    .orElse(rootProject.extra["groupId"] as String)
+val publishingVersion = providers.environmentVariable("VERSION")
+    .orElse(rootProject.extra["versionName"] as String)
+val enableMavenCentralPublishing = providers.gradleProperty("layoutx2c.enablePublishing").isPresent
 
-    if (rootProject.providers.gradleProperty("layoutx2c.enablePublishing").isPresent) {
+subprojects {
+    group = publishingGroup.get()
+    version = publishingVersion.get()
+
+    if (enableMavenCentralPublishing) {
         pluginManager.apply("com.vanniktech.maven.publish")
+    } else if (name == "gradle-plugin") {
+        pluginManager.withPlugin("java-gradle-plugin") {
+            pluginManager.apply("maven-publish")
+        }
+    } else {
+        pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+            pluginManager.apply("maven-publish")
+            extensions.configure<PublishingExtension>("publishing") {
+                publications {
+                    register<MavenPublication>("maven") {
+                        from(components["java"])
+                    }
+                }
+            }
+        }
     }
 }
 

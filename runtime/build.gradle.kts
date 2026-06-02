@@ -9,6 +9,7 @@ val compileSdk: Int by rootProject.extra
 val minSdk: Int by rootProject.extra
 val groupId: String by rootProject.extra
 val versionName: String by rootProject.extra
+val enableMavenCentralPublishing = providers.gradleProperty("layoutx2c.enablePublishing").isPresent
 
 android {
     namespace = "com.github.donglua.layoutx2c.runtime"
@@ -24,14 +25,16 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
+    if (!enableMavenCentralPublishing) {
+        publishing {
+            singleVariant("release") {
+                withSourcesJar()
+            }
         }
     }
 }
 
-if (!providers.gradleProperty("layoutx2c.enablePublishing").isPresent) {
+if (!enableMavenCentralPublishing) {
     afterEvaluate {
         publishing {
             publications {
