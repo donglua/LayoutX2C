@@ -41,7 +41,7 @@ class BindingFieldCollectorTest {
     }
 
     @Test
-    fun `uses view type for unknown custom view fields`() {
+    fun `uses concrete type for fully qualified custom view fields`() {
         val xml = """
             <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="match_parent"
@@ -59,7 +59,36 @@ class BindingFieldCollectorTest {
         val fields = (result as BindingFieldResult.Success).fields
         assertThat(fields).hasSize(1)
         assertThat(fields[0].propertyName).isEqualTo("customView")
-        assertThat(fields[0].viewClass.simpleName).isEqualTo("View")
+        assertThat(fields[0].viewClass.toString()).isEqualTo("com.example.CustomView")
+    }
+
+    @Test
+    fun `uses concrete type for material and view class fields`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <com.google.android.material.tabs.TabLayout
+                    android:id="@+id/tab_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+                <view
+                    class="androidx.viewpager.widget.ViewPager"
+                    android:id="@+id/main_view_pager"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val result = collector.collect(parser.parse(xml, "material").root)
+
+        assertThat(result).isInstanceOf(BindingFieldResult.Success::class.java)
+        val fields = (result as BindingFieldResult.Success).fields
+        assertThat(fields.map { it.propertyName }).containsExactly("tabLayout", "mainViewPager").inOrder()
+        assertThat(fields.map { it.viewClass.toString() }).containsExactly(
+            "com.google.android.material.tabs.TabLayout",
+            "androidx.viewpager.widget.ViewPager"
+        ).inOrder()
     }
 
     @Test

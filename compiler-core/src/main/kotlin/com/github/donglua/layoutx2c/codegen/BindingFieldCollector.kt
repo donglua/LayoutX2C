@@ -37,7 +37,7 @@ class BindingFieldCollector {
             fields += BindingField(
                 idName = idName,
                 propertyName = idName.toPropertyName(),
-                viewClass = bindingViewClass(node.tagName)
+                viewClass = bindingViewClass(node)
             )
         }
 
@@ -61,7 +61,9 @@ class BindingFieldCollector {
             .joinToString("")
     }
 
-    private fun bindingViewClass(tagName: String): ClassName {
+    private fun bindingViewClass(node: LayoutNode): ClassName {
+        val tagName = node.attributes["class"]?.takeIf { node.tagName == "view" && it.isNotBlank() } ?: node.tagName
+
         return when (tagName) {
             "LinearLayout", "android.widget.LinearLayout" -> ClassName("android.widget", "LinearLayout")
             "FrameLayout", "android.widget.FrameLayout" -> ClassName("android.widget", "FrameLayout")
@@ -76,6 +78,7 @@ class BindingFieldCollector {
             "EditText", "android.widget.EditText" -> ClassName("android.widget", "EditText")
             "ImageView", "android.widget.ImageView" -> ClassName("android.widget", "ImageView")
             "View", "android.view.View" -> ClassName("android.view", "View")
+            "ViewStub", "android.view.ViewStub" -> ClassName("android.view", "ViewStub")
             "androidx.appcompat.widget.AppCompatTextView" -> ClassName("androidx.appcompat.widget", "AppCompatTextView")
             "androidx.appcompat.widget.AppCompatButton" -> ClassName("androidx.appcompat.widget", "AppCompatButton")
             "androidx.appcompat.widget.AppCompatEditText" -> ClassName("androidx.appcompat.widget", "AppCompatEditText")
@@ -84,7 +87,21 @@ class BindingFieldCollector {
                 "AppCompatImageView"
             )
             "androidx.recyclerview.widget.RecyclerView" -> ClassName("androidx.recyclerview.widget", "RecyclerView")
-            else -> ClassName("android.view", "View")
+            else -> if (tagName.isFullyQualifiedClassName()) {
+                ClassName.bestGuess(tagName)
+            } else {
+                ClassName("android.view", "View")
+            }
         }
+    }
+
+    private fun String.isFullyQualifiedClassName(): Boolean {
+        return '.' in this && split('.').all { it.isKotlinIdentifierPart() }
+    }
+
+    private fun String.isKotlinIdentifierPart(): Boolean {
+        if (isEmpty()) return false
+        if (!first().isLetter() && first() != '_') return false
+        return drop(1).all { it.isLetterOrDigit() || it == '_' }
     }
 }
