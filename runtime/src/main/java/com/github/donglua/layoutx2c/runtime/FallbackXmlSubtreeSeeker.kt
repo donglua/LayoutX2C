@@ -3,14 +3,19 @@ package com.github.donglua.layoutx2c.runtime
 import org.xmlpull.v1.XmlPullParser
 
 internal data class FallbackXmlSubtree(
-    val tagName: String
+    val tagName: String,
+    val dataBindingWrapped: Boolean = false,
+    val dataBindingDataTagPresent: Boolean = false
 )
 
 internal object FallbackXmlSubtreeSeeker {
     fun seekToChild(parser: XmlPullParser, childPath: IntArray, layoutName: String): FallbackXmlSubtree {
         seekToRoot(parser, layoutName)
+        var dataBindingWrapped = false
+        var dataBindingDataTagPresent = false
         if (parser.name == "layout") {
-            seekToDataBindingViewRoot(parser, childPath, layoutName)
+            dataBindingWrapped = true
+            dataBindingDataTagPresent = seekToDataBindingViewRoot(parser, childPath, layoutName)
         }
 
         val traversed = mutableListOf<Int>()
@@ -19,7 +24,42 @@ internal object FallbackXmlSubtreeSeeker {
             traversed += index
         }
 
-        return FallbackXmlSubtree(tagName = parser.name)
+        return FallbackXmlSubtree(
+            tagName = parser.name,
+            dataBindingWrapped = dataBindingWrapped,
+            dataBindingDataTagPresent = dataBindingDataTagPresent
+        )
+    }
+
+    fun seekBeforeChild(
+        parser: XmlPullParser,
+        childPath: IntArray,
+        layoutName: String,
+        dataBindingWrapped: Boolean,
+        dataBindingDataTagPresent: Boolean
+    ) {
+        if (!dataBindingWrapped) {
+            if (childPath.isEmpty()) {
+                return
+            }
+            seekToRoot(parser, layoutName)
+        } else {
+            seekToRoot(parser, layoutName)
+            if (childPath.isEmpty()) {
+                if (dataBindingDataTagPresent) {
+                    skipDataBindingDataTag(parser, childPath, layoutName)
+                }
+                return
+            }
+            seekToDataBindingViewRoot(parser, childPath, layoutName)
+        }
+
+        val traversed = mutableListOf<Int>()
+        for (index in childPath.dropLast(1)) {
+            seekToDirectChild(parser, index, childPath, traversed, layoutName)
+            traversed += index
+        }
+        seekBeforeDirectChild(parser, childPath.last(), childPath, traversed, layoutName)
     }
 
     private fun seekToRoot(parser: XmlPullParser, layoutName: String) {
@@ -33,14 +73,20 @@ internal object FallbackXmlSubtreeSeeker {
         }
     }
 
-    private fun seekToDataBindingViewRoot(parser: XmlPullParser, childPath: IntArray, layoutName: String) {
+    private fun seekToDataBindingViewRoot(
+        parser: XmlPullParser,
+        childPath: IntArray,
+        layoutName: String
+    ): Boolean {
         val parentDepth = parser.depth
         var viewRootSeen = false
+        var dataTagPresent = false
         while (true) {
             when (parser.next()) {
                 XmlPullParser.START_TAG -> {
                     if (parser.depth == parentDepth + 1) {
                         if (parser.name == "data") {
+                            dataTagPresent = true
                             skipCurrentTag(parser)
                         } else {
                             if (viewRootSeen) {
@@ -51,7 +97,7 @@ internal object FallbackXmlSubtreeSeeker {
                                 )
                             }
                             viewRootSeen = true
-                            return
+                            return dataTagPresent
                         }
                     }
                 }
@@ -68,6 +114,36 @@ internal object FallbackXmlSubtreeSeeker {
                     childPath,
                     layoutName,
                     "data binding wrapper has no view root"
+                )
+            }
+        }
+    }
+
+    private fun skipDataBindingDataTag(parser: XmlPullParser, childPath: IntArray, layoutName: String) {
+        val parentDepth = parser.depth
+        while (true) {
+            when (parser.next()) {
+                XmlPullParser.START_TAG -> {
+                    if (parser.depth == parentDepth + 1) {
+                        if (parser.name == "data") {
+                            skipCurrentTag(parser)
+                            return
+                        }
+                    }
+                }
+                XmlPullParser.END_TAG -> {
+                    if (parser.depth == parentDepth) {
+                        throw invalidPath(
+                            childPath,
+                            layoutName,
+                            "data binding wrapper has no data tag before view root"
+                        )
+                    }
+                }
+                XmlPullParser.END_DOCUMENT -> throw invalidPath(
+                    childPath,
+                    layoutName,
+                    "data binding wrapper has no data tag before view root"
                 )
             }
         }
@@ -111,6 +187,51 @@ internal object FallbackXmlSubtreeSeeker {
                     childPath,
                     layoutName,
                     "index $targetIndex is out of bounds at ${traversed.toPathString()} with childCount=$childIndex"
+                )
+            }
+        }
+    }
+
+    private fun seekBeforeDirectChild(
+        parser: XmlPullParser,
+        targetIndex: Int,
+        childPath: IntArray,
+        traversed: List<Int>,
+        layoutName: String
+    ) {
+        if (targetIndex < 0) {
+            throw invalidPath(childPath, layoutName, "index $targetIndex is negative at ${traversed.toPathString()}")
+        }
+
+        if (targetIndex == 0) {
+            return
+        }
+
+        val parentDepth = parser.depth
+        var skippedChildCount = 0
+        while (skippedChildCount < targetIndex) {
+            when (parser.next()) {
+                XmlPullParser.START_TAG -> {
+                    if (parser.depth == parentDepth + 1) {
+                        skippedChildCount++
+                        skipCurrentTag(parser)
+                    }
+                }
+                XmlPullParser.END_TAG -> {
+                    if (parser.depth == parentDepth) {
+                        throw invalidPath(
+                            childPath,
+                            layoutName,
+                            "index $targetIndex is out of bounds at ${traversed.toPathString()} " +
+                                "with childCount=$skippedChildCount"
+                        )
+                    }
+                }
+                XmlPullParser.END_DOCUMENT -> throw invalidPath(
+                    childPath,
+                    layoutName,
+                    "index $targetIndex is out of bounds at ${traversed.toPathString()} " +
+                        "with childCount=$skippedChildCount"
                 )
             }
         }

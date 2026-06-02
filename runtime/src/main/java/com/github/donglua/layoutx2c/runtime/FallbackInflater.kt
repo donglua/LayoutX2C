@@ -39,13 +39,22 @@ object FallbackInflater {
         parent: ViewGroup?
     ): View {
         val layoutName = context.resources.getResourceName(layoutId)
-        context.resources.getLayout(layoutId).use { parser ->
-            val subtree = FallbackXmlSubtreeSeeker.seekToChild(parser, childPath, layoutName)
-            if (!subtree.requiresLegacyInflate()) {
-                return LayoutInflater.from(context).inflate(ReplayStartTagXmlResourceParser(parser), parent, false)
-            }
+        val subtree = context.resources.getLayout(layoutId).use { parser ->
+            FallbackXmlSubtreeSeeker.seekToChild(parser, childPath, layoutName)
         }
-        return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
+        if (subtree.requiresLegacyInflate()) {
+            return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
+        }
+        context.resources.getLayout(layoutId).use { parser ->
+            FallbackXmlSubtreeSeeker.seekBeforeChild(
+                parser,
+                childPath,
+                layoutName,
+                subtree.dataBindingWrapped,
+                subtree.dataBindingDataTagPresent
+            )
+            return LayoutInflater.from(context).inflate(parser, parent, false)
+        }
     }
 
     private fun FallbackXmlSubtree.requiresLegacyInflate(): Boolean {

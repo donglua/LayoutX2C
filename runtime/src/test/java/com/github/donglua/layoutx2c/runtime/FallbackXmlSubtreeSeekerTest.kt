@@ -32,6 +32,99 @@ class FallbackXmlSubtreeSeekerTest {
     }
 
     @Test
+    fun `seek before root leaves parser before first start tag`() {
+        val parser = parserFor(
+            Event(XmlPullParser.START_TAG, "FrameLayout", 1),
+            Event(XmlPullParser.START_TAG, "TextView", 2),
+            Event(XmlPullParser.END_TAG, "TextView", 2),
+            Event(XmlPullParser.END_TAG, "FrameLayout", 1),
+        )
+
+        FallbackXmlSubtreeSeeker.seekBeforeChild(
+            parser,
+            intArrayOf(),
+            "demo_root",
+            dataBindingWrapped = false,
+            dataBindingDataTagPresent = false
+        )
+
+        assertThat(parser.eventType).isEqualTo(XmlPullParser.START_DOCUMENT)
+        assertThat(parser.depth).isEqualTo(0)
+    }
+
+    @Test
+    fun `seek before first child leaves parser on parent start tag`() {
+        val parser = parserFor(
+            Event(XmlPullParser.START_TAG, "FrameLayout", 1),
+            Event(XmlPullParser.START_TAG, "TextView", 2),
+            Event(XmlPullParser.END_TAG, "TextView", 2),
+            Event(XmlPullParser.START_TAG, "Button", 2),
+            Event(XmlPullParser.END_TAG, "Button", 2),
+            Event(XmlPullParser.END_TAG, "FrameLayout", 1),
+        )
+
+        FallbackXmlSubtreeSeeker.seekBeforeChild(
+            parser,
+            intArrayOf(0),
+            "demo_first_child",
+            dataBindingWrapped = false,
+            dataBindingDataTagPresent = false
+        )
+
+        assertThat(parser.eventType).isEqualTo(XmlPullParser.START_TAG)
+        assertThat(parser.name).isEqualTo("FrameLayout")
+        assertThat(parser.depth).isEqualTo(1)
+    }
+
+    @Test
+    fun `seek before later child leaves parser after skipped sibling`() {
+        val parser = parserFor(
+            Event(XmlPullParser.START_TAG, "FrameLayout", 1),
+            Event(XmlPullParser.START_TAG, "TextView", 2),
+            Event(XmlPullParser.END_TAG, "TextView", 2),
+            Event(XmlPullParser.START_TAG, "Button", 2),
+            Event(XmlPullParser.END_TAG, "Button", 2),
+            Event(XmlPullParser.END_TAG, "FrameLayout", 1),
+        )
+
+        FallbackXmlSubtreeSeeker.seekBeforeChild(
+            parser,
+            intArrayOf(1),
+            "demo_later_child",
+            dataBindingWrapped = false,
+            dataBindingDataTagPresent = false
+        )
+
+        assertThat(parser.eventType).isEqualTo(XmlPullParser.END_TAG)
+        assertThat(parser.name).isEqualTo("TextView")
+        assertThat(parser.depth).isEqualTo(2)
+    }
+
+    @Test
+    fun `seek before nested child leaves parser on nested parent start tag`() {
+        val parser = parserFor(
+            Event(XmlPullParser.START_TAG, "FrameLayout", 1),
+            Event(XmlPullParser.START_TAG, "LinearLayout", 2),
+            Event(XmlPullParser.START_TAG, "TextView", 3),
+            Event(XmlPullParser.END_TAG, "TextView", 3),
+            Event(XmlPullParser.END_TAG, "LinearLayout", 2),
+            Event(XmlPullParser.END_TAG, "FrameLayout", 1),
+        )
+
+        FallbackXmlSubtreeSeeker.seekBeforeChild(
+            parser,
+            intArrayOf(0, 0),
+            "demo_nested_first_child",
+            dataBindingWrapped = false,
+            dataBindingDataTagPresent = false
+        )
+
+        assertThat(parser.eventType).isEqualTo(XmlPullParser.START_TAG)
+        assertThat(parser.name).isEqualTo("LinearLayout")
+        assertThat(parser.depth).isEqualTo(2)
+    }
+
+    @Test
     fun `seek ignores nested descendants of skipped siblings`() {
         val parser = parserFor(
             Event(XmlPullParser.START_TAG, "FrameLayout", 1),
@@ -86,8 +179,68 @@ class FallbackXmlSubtreeSeekerTest {
         val subtree = FallbackXmlSubtreeSeeker.seekToChild(parser, intArrayOf(1), "demo_data_binding")
 
         assertThat(subtree.tagName).isEqualTo("com.example.CustomView")
+        assertThat(subtree.dataBindingWrapped).isTrue()
+        assertThat(subtree.dataBindingDataTagPresent).isTrue()
         assertThat(parser.eventType).isEqualTo(XmlPullParser.START_TAG)
         assertThat(parser.depth).isEqualTo(3)
+    }
+
+    @Test
+    fun `seek before data binding root with data tag leaves parser after data tag`() {
+        val parser = parserFor(
+            Event(XmlPullParser.START_TAG, "layout", 1),
+            Event(XmlPullParser.START_TAG, "data", 2),
+            Event(XmlPullParser.START_TAG, "variable", 3),
+            Event(XmlPullParser.END_TAG, "variable", 3),
+            Event(XmlPullParser.END_TAG, "data", 2),
+            Event(XmlPullParser.START_TAG, "LinearLayout", 2),
+            Event(XmlPullParser.START_TAG, "TextView", 3),
+            Event(XmlPullParser.END_TAG, "TextView", 3),
+            Event(XmlPullParser.END_TAG, "LinearLayout", 2),
+            Event(XmlPullParser.END_TAG, "layout", 1),
+        )
+
+        FallbackXmlSubtreeSeeker.seekBeforeChild(
+            parser,
+            intArrayOf(),
+            "demo_data_binding_root",
+            dataBindingWrapped = true,
+            dataBindingDataTagPresent = true
+        )
+
+        assertThat(parser.eventType).isEqualTo(XmlPullParser.END_TAG)
+        assertThat(parser.name).isEqualTo("data")
+        assertThat(parser.depth).isEqualTo(2)
+    }
+
+    @Test
+    fun `seek before data binding child leaves parser on view root start tag`() {
+        val parser = parserFor(
+            Event(XmlPullParser.START_TAG, "layout", 1),
+            Event(XmlPullParser.START_TAG, "data", 2),
+            Event(XmlPullParser.START_TAG, "variable", 3),
+            Event(XmlPullParser.END_TAG, "variable", 3),
+            Event(XmlPullParser.END_TAG, "data", 2),
+            Event(XmlPullParser.START_TAG, "LinearLayout", 2),
+            Event(XmlPullParser.START_TAG, "TextView", 3),
+            Event(XmlPullParser.END_TAG, "TextView", 3),
+            Event(XmlPullParser.START_TAG, "Button", 3),
+            Event(XmlPullParser.END_TAG, "Button", 3),
+            Event(XmlPullParser.END_TAG, "LinearLayout", 2),
+            Event(XmlPullParser.END_TAG, "layout", 1),
+        )
+
+        FallbackXmlSubtreeSeeker.seekBeforeChild(
+            parser,
+            intArrayOf(0),
+            "demo_data_binding_child",
+            dataBindingWrapped = true,
+            dataBindingDataTagPresent = true
+        )
+
+        assertThat(parser.eventType).isEqualTo(XmlPullParser.START_TAG)
+        assertThat(parser.name).isEqualTo("LinearLayout")
+        assertThat(parser.depth).isEqualTo(2)
     }
 
     @Test
