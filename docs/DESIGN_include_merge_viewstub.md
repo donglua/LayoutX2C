@@ -498,7 +498,7 @@ object HeaderX2CFactory {
 
 ### 4.1 Fallback 子树定位
 
-当前 fallback 子树定位使用 `XmlPullParser` seek + partial inflate，需要精确的 child path。
+当前 fallback 子树定位需要精确的 child path。运行时通过原始 layout 完整 inflate 后按 child path 摘取目标节点，避免 `LayoutInflater` partial inflate 触发平台 `XmlBlock.Parser` 依赖。
 
 ### 4.2 Include/Merge/ViewStub 的影响
 

@@ -9,7 +9,7 @@ import androidx.annotation.LayoutRes
 /**
  * Fallback：对不支持的布局或子树，使用原始 LayoutInflater inflate 原始 layout。
  *
- * 子树 fallback 会先 seek 到原始 XML 的目标节点，再只 inflate 目标子树。
+ * 子树 fallback 会 inflate 原始 layout，再按路径摘取目标节点。
  */
 object FallbackInflater {
 
@@ -39,36 +39,13 @@ object FallbackInflater {
         parent: ViewGroup?
     ): View {
         val layoutName = context.resources.getResourceName(layoutId)
-        val subtree = context.resources.getLayout(layoutId).use { parser ->
-            FallbackXmlSubtreeSeeker.seekToChild(parser, childPath, layoutName)
-        }
-        if (subtree.requiresLegacyInflate()) {
-            return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
-        }
-        context.resources.getLayout(layoutId).use { parser ->
-            FallbackXmlSubtreeSeeker.seekBeforeChild(
-                parser,
-                childPath,
-                layoutName,
-                subtree.dataBindingWrapped,
-                subtree.dataBindingDataTagPresent
-            )
-            return LayoutInflater.from(context).inflate(parser, parent, false)
-        }
-    }
-
-    private fun FallbackXmlSubtree.requiresLegacyInflate(): Boolean {
-        return tagName == "merge" || tagName == "include" || tagName == "fragment"
+        return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
     }
 
     /**
-     * Legacy path for tags whose semantics depend on normal LayoutInflater handling.
-     *
-     * Unlike the parser-seek path above, this inflates the full original layout and detaches
-     * the requested child afterward. That keeps merge/include/fragment behavior compatible,
-     * but can be slower for complex parent layouts. Nested include content that itself expands
-     * merge is also still bounded by full-tree inflate semantics, so avoid treating this as a
-     * partial-subtree optimization.
+     * Inflate the full original layout and detach the requested child afterward.
+     * Android's platform inflater expects framework XmlBlock parsers for styled attributes,
+     * so partial inflation from a custom seeked parser is not compatible on all devices.
      */
     private fun inflateChildFromFullTree(
         context: Context,

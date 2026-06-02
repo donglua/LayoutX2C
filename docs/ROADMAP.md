@@ -51,7 +51,7 @@
 **Fallback 和增量**
 
 - fallback 子树定位支持完整 child path，并对非法路径输出可诊断错误。
-- 普通 fallback 子树优先走 `XmlPullParser` seek + partial inflate；无法安全局部生成的特殊节点保留整棵 layout inflate 兼容路径。
+- fallback 子树通过原始 layout 完整 inflate 后按 child path 摘取目标节点；`LayoutInflater` 的属性解析依赖平台 `XmlBlock.Parser`，不能安全地从 seek 后的普通 `XmlPullParser` 做 partial inflate。
 - Gradle 插件已声明 layout / values XML 输入，并传入 `layoutx2c.cacheDir`。
 - KSP 侧已落地保守 digest cache：digest 未变时可恢复 per-layout factory、facade 和 report；digest
   已纳入 include / ViewStub layout 引用图，values XML 仍作为 coarse input。
