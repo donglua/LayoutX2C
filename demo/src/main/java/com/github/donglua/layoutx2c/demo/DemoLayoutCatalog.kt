@@ -9,6 +9,7 @@ import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoFallbackX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoFormX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoIncludeX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoNestedX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoRecyclerX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoRelativeX2C
@@ -38,6 +39,9 @@ object DemoLayoutCatalog {
         },
         Entry("Relative", "demo_relative", R.layout.demo_relative, "Layout_DemoRelative") { context, parent ->
             DemoRelativeX2C.inflate(context, parent)
+        },
+        Entry("Include", "demo_include", R.layout.demo_include, "Layout_DemoInclude") { context, parent ->
+            DemoIncludeX2C.inflate(context, parent)
         },
         Entry("Constraint", "demo_constraint", R.layout.demo_constraint, "Layout_DemoConstraint") { context, parent ->
             DemoConstraintX2C.inflate(context, parent)

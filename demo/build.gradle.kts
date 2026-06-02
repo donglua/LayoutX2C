@@ -36,7 +36,7 @@ android {
     }
 
     // =========================================================================
-    // NOTE: The following configuration is ONLY used for the "Code Viewer" 
+    // NOTE: The following configuration is ONLY used for the "Code Viewer"
     // feature in this demo app, which displays the generated code on screen.
     // You DO NOT need this in your own project to use LayoutX2C!
     // =========================================================================
@@ -47,7 +47,13 @@ android {
     }
 }
 
+val codeViewerAssetOutput = layout.buildDirectory.dir("generated/custom_assets/code")
+
 val copySourceCodeForDemo by tasks.registering(Copy::class) {
+    doFirst {
+        delete(codeViewerAssetOutput)
+    }
+
     // Read the original XML files
     from("src/main/res/layout") {
         include("demo_*.xml")
@@ -58,8 +64,8 @@ val copySourceCodeForDemo by tasks.registering(Copy::class) {
         include("*.kt")
         into("kotlin")
     }
-    into(layout.buildDirectory.dir("generated/custom_assets/code"))
-    
+    into(codeViewerAssetOutput)
+
     // We need to wait for KSP to generate the code first
     dependsOn("kspDebugKotlin")
 }

@@ -7,6 +7,11 @@ import org.junit.Test
 class DemoLayoutCatalogTest {
 
     @Test
+    fun `catalog stays aligned with generated config layout order`() {
+        assertEquals(LayoutX2CConfig.layouts.toList(), DemoLayoutCatalog.entries.map { it.layoutResId })
+    }
+
+    @Test
     fun `catalog includes fallback demo`() {
         val fallbackDemo = DemoLayoutCatalog.entries.singleOrNull { it.layoutName == "demo_fallback" }
 
@@ -32,5 +37,25 @@ class DemoLayoutCatalogTest {
         assertEquals("Layout_DemoConstraint", constraintDemo?.generatedClassName)
         assertEquals(true, constraintDemo?.platformInflatable)
         assertTrue(DemoLayoutCatalog.entries.map { it.layoutName }.contains("demo_constraint"))
+    }
+
+    @Test
+    fun `catalog includes include merge and viewstub demo`() {
+        val includeDemo = DemoLayoutCatalog.entries.singleOrNull { it.layoutName == "demo_include" }
+
+        assertEquals("Include", includeDemo?.label)
+        assertEquals("Layout_DemoInclude", includeDemo?.generatedClassName)
+        assertEquals(true, includeDemo?.platformInflatable)
+    }
+
+    @Test
+    fun `catalog includes enhanced data binding demo for code viewer`() {
+        val bindingDemo = DemoLayoutCatalog.entries.singleOrNull {
+            it.layoutName == "demo_data_binding_enhanced"
+        }
+
+        assertEquals("Binding Enhanced", bindingDemo?.label)
+        assertEquals("DemoDataBindingEnhancedX2CBinding", bindingDemo?.codeViewerClassName)
+        assertEquals(true, bindingDemo?.platformInflatable)
     }
 }

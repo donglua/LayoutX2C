@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- demo_include: include + merge + ViewStub special tag showcase -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/include_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/demo_include_title"
+        android:textColor="@color/demo_text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/include_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="12dp"
+        android:text="@string/demo_include_body"
+        android:textColor="@color/code_viewer_muted_text"
+        android:textSize="14sp" />
+
+    <include layout="@layout/include_demo_actions" />
+
+    <ViewStub
+        android:id="@+id/include_stub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout="@layout/include_demo_stub_panel"
+        android:inflatedId="@+id/include_stub_content" />
+
+</LinearLayout>

@@ -8,7 +8,7 @@
 - **compiler-core** — 纯 JVM，XML 解析、支持度分析、代码生成
 - **ksp-processor** — KSP 注解处理器，扫描 @FastLayoutConfig / @FastLayouts / @FastLayoutPattern
 - **gradle-plugin** — Gradle 插件，自动配置 KSP、传递 res 路径、生成编译报告
-- **demo** — 示例 App + benchmark
+- **demo** — 示例 App + benchmark + 生成代码查看页
 
 ## 使用方式
 
@@ -103,8 +103,10 @@ layoutX2C {
 - `RelativeLayout`
 - `ScrollView`, `HorizontalScrollView`
 - `androidx.recyclerview.widget.RecyclerView`（仅容器创建，不生成 adapter / layoutManager 运行时逻辑）
+- `androidx.constraintlayout.widget.ConstraintLayout`（安全子集）
 - `TextView`, `Button`, `EditText`
 - `ImageView`, `androidx.appcompat.widget.AppCompatImageView`
+- `ViewStub`
 - `View`
 
 高频属性支持：
@@ -124,13 +126,22 @@ layoutX2C {
   `layout_alignParentRight`, `layout_alignParentTop`, `layout_alignParentBottom`,
   `layout_centerInParent`, `layout_centerHorizontal`, `layout_centerVertical`
 - RecyclerView：`app:layoutManager` 仅作为容器元数据接受并忽略
+- ConstraintLayout：普通 start/end/top/bottom 约束、`0dp` match constraint、
+  `layout_constraintHorizontal_bias`、`layout_constraintVertical_bias`
+- ViewStub：`android:layout`, `android:inflatedId`
 
 未支持的 View 会 fallback 到原生 `LayoutInflater`；不安全或无法等价生成的属性值会触发
 layout/subtree fallback。
 
+特殊标签：
+
+- `<include>` 会在编译期解析目标 layout；未解析、循环 include 或超出递归深度时 fallback。
+- `<merge>` 会作为虚拟容器处理，子节点直接注入父容器。
+- `<ViewStub>` 保留运行时延迟 inflate 语义，LayoutX2C 只生成 stub 本身和 layout resource 引用。
+
 DataBinding 的 `<layout>` 根标签会透明解包到真实 View 根节点参与分析和生成；异常
-wrapper 会作为 `DATA_BINDING_WRAPPER` 单独归因。LayoutX2C 不替代生成的 Binding
-class、变量绑定或 binding expression 运行时语义。
+wrapper 会作为 `DATA_BINDING_WRAPPER` 单独归因。LayoutX2C 不替代原生 DataBinding
+生成的 Binding class 或完整运行时语义。
 
 对于根节点是 `<layout>` 的 XML，LayoutX2C 会额外生成 `{Name}X2CBinding`：
 
@@ -142,10 +153,26 @@ binding.titleText
 
 `{Name}X2CBinding` 是 LayoutX2C 的 binding-like facade，提供 `inflate()`、
 `bind()`、`root`、按 `android:id` 生成的字段，以及迁移期编译兼容用的 `<data>`
-变量属性、`lifecycleOwner` 字段和 `executePendingBindings()` 空方法。普通非 `<layout>` XML 不生成
-该类。包含 `@{}` / `@={}` 表达式或其他整棵 fallback 语义的布局会生成 fallback-only
-facade；迁移后不会执行 DataBinding 表达式、BindingAdapter、dirty flag 或 lifecycle
-观察者逻辑。
+变量属性和 `lifecycleOwner` 字段。普通非 `<layout>` XML 不生成该类。
+
+当前 facade 支持简单 `@{variable}` / `@{variable.property}` 表达式在
+`executePendingBindings()` 中正向写回到白名单属性；`@={}` 仅对 `EditText.text`
+和 `CompoundButton.checked` 这类白名单组合生成反向监听器。复杂表达式、
+BindingAdapter、dirty flag、lifecycle 观察者和原生 DataBinding 的增量调度仍不由
+LayoutX2C 替代；不安全布局会生成 fallback-only facade。
+
+## Demo 覆盖
+
+`demo` 模块的 `LayoutX2CConfig` 当前覆盖以下 layout，benchmark 和 Code Viewer 共用同一份
+catalog：
+
+- `demo_simple`, `demo_nested`, `demo_form`
+- `demo_relative`
+- `demo_include`（include + merge + ViewStub）
+- `demo_constraint`（ConstraintLayout 安全子集）
+- `demo_recycler`（RecyclerView 容器）
+- `demo_fallback`（故意触发 runtime fallback）
+- `demo_data_binding`, `demo_data_binding_enhanced`
 
 ## License
 

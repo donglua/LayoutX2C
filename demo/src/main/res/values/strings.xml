@@ -20,10 +20,12 @@
     <string name="code_viewer_nested">Nested</string>
     <string name="code_viewer_form">Form</string>
     <string name="code_viewer_relative">Relative</string>
+    <string name="code_viewer_include">Include</string>
     <string name="code_viewer_constraint">Constraint</string>
     <string name="code_viewer_recycler">Recycler</string>
     <string name="code_viewer_fallback">Fallback</string>
     <string name="code_viewer_binding">Binding</string>
+    <string name="code_viewer_binding_enhanced">Binding+</string>
     <string name="code_viewer_tab_xml">XML</string>
     <string name="code_viewer_tab_kotlin">Generated Kotlin</string>
     <string name="code_viewer_no_source">Build the project first (./gradlew :demo:assembleDebug) to generate Kotlin code.</string>
@@ -47,6 +49,13 @@
     <string name="demo_relative_title">RelativeLayout Rules</string>
     <string name="demo_relative_badge">RULES</string>
     <string name="demo_relative_body">Sibling and parent rules are emitted as RelativeLayout.LayoutParams.addRule calls.</string>
+
+    <!-- demo_include layout strings -->
+    <string name="demo_include_title">Include + Merge</string>
+    <string name="demo_include_body">A merge include is inlined, while ViewStub keeps lazy inflate semantics.</string>
+    <string name="demo_include_action_primary">Primary</string>
+    <string name="demo_include_action_secondary">Secondary</string>
+    <string name="demo_include_stub_title">Lazy ViewStub Content</string>
 
     <!-- demo_constraint layout strings -->
     <string name="demo_constraint_title">ConstraintLayout Anchors</string>
