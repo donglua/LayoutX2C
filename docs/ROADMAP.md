@@ -23,7 +23,8 @@
 - 常用 View：`TextView`、`Button`、`EditText`、`ImageView`、`View`。
 - AndroidX：`RecyclerView` 作为容器创建；`ConstraintLayout` 已有安全子集支持。
 - 特殊标签：`include`、`merge`、`ViewStub` 已进入编译期支持路径。
-- DataBinding `<layout>` root 会透明解包到真实 View root，并生成 LayoutX2C 的 binding-like facade。
+- DataBinding `<layout>` root 会透明解包到真实 View root，并生成继承 `ViewDataBinding` 的
+  `{Name}X2CBinding`。
 
 **已支持的关键属性**
 
@@ -33,6 +34,19 @@
 - ScrollView：fillViewport。
 - RelativeLayout 常见规则。
 - ConstraintLayout 安全子集：普通 start/end/top/bottom 约束、`0dp` match constraint、horizontal/vertical bias。
+
+**DataBinding 子集**
+
+- `{Name}X2CBinding` 继承 `androidx.databinding.ViewDataBinding`，并提供 `inflate()`、`bind()`、
+  `root` 和按 `android:id` 生成的字段。
+- `<data>` 变量会生成类型化 `@Bindable` 属性，setter 会维护 dirty flag、触发
+  `notifyPropertyChanged()` 和 `requestRebind()`。
+- `setVariable(variableId, value)`、`invalidateAll()`、`hasPendingBindings()`、`onFieldChange()` 和
+  `executeBindings()` 已按 LayoutX2C 支持子集生成。
+- 简单 `@{variable}` / `@{variable.property}` 表达式通过 `executePendingBindings()` 写回 View；
+  白名单 `@={}` 绑定生成反向监听器。
+- 生成代码不直接依赖 DataBinding AP 阶段输出的 `BR` 类；运行时会解析宿主 `BR` ID，并保留本地
+  fallback ID 以保证 KSP Kotlin 编译顺序稳定。
 
 **Fallback 和增量**
 
@@ -48,6 +62,7 @@
 
 - `fragment`、无法解析的 include、循环 include、超出递归深度限制的 include，以及无法等价生成的特殊语义仍会保守 fallback。
 - `LayoutDigest` 还没有精确 style / dimen / color / string / drawable 引用图；values XML 仍作为 coarse input。
+- 复杂 DataBinding 表达式、BindingAdapter、Observable / LiveData 自动订阅和 lifecycle 观察者语义仍交给原生 DataBinding。
 - Android 端到端 generated vs inflated 等价性覆盖还需要系统补齐。
 
 ---
@@ -75,45 +90,14 @@
 
 - README 更新 include / merge / ViewStub / ConstraintLayout 安全子集支持范围。
 - Demo 补齐对应 XML 样例和 benchmark 入口。
-- 明确 DataBinding facade 不替代 DataBinding runtime expression、BindingAdapter、dirty flag 和 lifecycle 观察者语义。
+- 明确 DataBinding binding 子类只实现 LayoutX2C 可静态保证的 `ViewDataBinding` 子集。
 
 验收口径：
 
 - README 的支持范围、限制和 Roadmap 一致。
 - Demo 能覆盖主要成功路径和 fallback 路径。
 
-### 3. DataBinding facade 升级为 ViewDataBinding 子类
-
-目标：让根节点为 `<layout>` 的 `{Name}X2CBinding` 继承 `androidx.databinding.ViewDataBinding`，
-并按 LayoutX2C 能静态保证的 DataBinding 子集真实实现契约，而不是只提供同名 facade 方法。
-
-实施边界：
-
-- 生成类继承 `ViewDataBinding`，构造函数调用 `ViewDataBinding(null, rootView, localFieldCount)`。
-- `root` 交给 `ViewDataBinding.getRoot()`，避免重复声明与 `ViewBinding` 契约冲突。
-- `<data>` 变量生成 `@Bindable` 属性、getter / setter，并在 setter 中维护 dirty flag、触发
-  `notifyPropertyChanged(BR.xxx)` 和 `requestRebind()`。
-- 生成 `setVariable(variableId, value)`，按 `BR.xxx` 分发到已支持变量；未知变量返回 `false`。
-- 生成 `invalidateAll()`、`hasPendingBindings()`、`executeBindings()` 和
-  `onFieldChange()`，只覆盖 LayoutX2C 已支持的简单 `@{variable}`、
-  `@{variable.property}` 与白名单 `@={}` 绑定。
-- `executePendingBindings()` 继续使用 `ViewDataBinding` 的 public final 调度入口，实际属性写回放到
-  protected `executeBindings()`。
-- `lifecycleOwner` 使用 `ViewDataBinding.setLifecycleOwner()` / `getLifecycleOwner()`，
-  不再生成独立占位字段。
-- fallback-only binding 也必须满足 `ViewDataBinding` 类型契约；无法安全执行的表达式只保留原生
-  inflate fallback，不伪造未支持的绑定行为。
-
-验收口径：
-
-- KotlinPoet 字符串测试覆盖继承关系、构造函数、`@Bindable` 变量、`setVariable()`、dirty flag
-  和 pending 状态。
-- demo 的 generated DataBinding layout 能通过 Android 编译，并可作为 `ViewDataBinding` 传入统一渲染入口。
-- 简单正向绑定在 `executePendingBindings()` 后写回 View；白名单双向绑定能回写到支持的目标。
-- 未支持的复杂表达式、BindingAdapter、Observable / LiveData 自动订阅仍可诊断，并保守 fallback
-  或保持不生成对应绑定逻辑。
-
-### 4. 精确资源引用图
+### 3. 精确资源引用图
 
 目标：减少无关 values 资源改动导致的保守重跑，同时保持 fallback 正确性。
 
@@ -200,7 +184,7 @@ v1.0 的目标是稳定 API，发布到 Maven Central，并能被生产项目保
 
 - 公开 benchmark 数据：inflate 时间、内存占用、编译时间开销。
 - README 和文档站点说明测试设备、方法论和限制。
-- 示例项目覆盖 generated inflate、fallback、DataBinding facade 和报告输出。
+- 示例项目覆盖 generated inflate、fallback、DataBinding binding 子类和报告输出。
 
 ---
 

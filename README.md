@@ -152,15 +152,16 @@ binding.root
 binding.titleText
 ```
 
-`{Name}X2CBinding` 是 LayoutX2C 的 binding-like facade，提供 `inflate()`、
-`bind()`、`root`、按 `android:id` 生成的字段，以及迁移期编译兼容用的 `<data>`
-变量属性和 `lifecycleOwner` 字段。普通非 `<layout>` XML 不生成该类。
+`{Name}X2CBinding` 继承 `androidx.databinding.ViewDataBinding`，提供
+`inflate()`、`bind()`、`root`、按 `android:id` 生成的字段，以及类型化的 `<data>`
+变量属性。普通非 `<layout>` XML 不生成该类。
 
-当前 facade 支持简单 `@{variable}` / `@{variable.property}` 表达式在
-`executePendingBindings()` 中正向写回到白名单属性；`@={}` 仅对 `EditText.text`
-和 `CompoundButton.checked` 这类白名单组合生成反向监听器。复杂表达式、
-BindingAdapter、dirty flag、lifecycle 观察者和原生 DataBinding 的增量调度仍不由
-LayoutX2C 替代；不安全布局会生成 fallback-only facade。
+当前 binding 子类支持简单 `@{variable}` / `@{variable.property}` 表达式通过
+`executePendingBindings()` 正向写回到白名单属性；`@={}` 仅对 `EditText.text`
+和 `CompoundButton.checked` 这类白名单组合生成反向监听器。生成类会维护已支持变量的
+dirty flag、`hasPendingBindings()`、`invalidateAll()` 和 `setVariable()` 分发。
+复杂表达式、BindingAdapter、Observable / LiveData 自动订阅、lifecycle 观察者和原生
+DataBinding 的完整增量调度仍不由 LayoutX2C 替代；不安全布局会生成 fallback-only binding。
 
 ## Demo 覆盖
 

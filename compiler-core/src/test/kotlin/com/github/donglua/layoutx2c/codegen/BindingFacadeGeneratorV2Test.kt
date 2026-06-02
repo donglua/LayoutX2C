@@ -19,6 +19,55 @@ class BindingFacadeGeneratorV2Test {
     )
 
     @Test
+    fun `generated binding extends ViewDataBinding and implements supported contract`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable
+                        name="title"
+                        type="java.lang.String" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:id="@+id/title_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@{title}" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+        val tree = parser.parse(xml, "item_contract")
+        val analyzed = analyzer.analyze(tree.root)
+
+        val generated = generator.generate(
+            analyzedRoot = analyzed,
+            layoutName = "item_contract",
+            layoutResId = "R.layout.item_contract",
+            useFastPath = true,
+            dataBindingVariables = tree.rootMetadata.dataBindingVariables
+        ).toString()
+
+        assertThat(generated).contains("import androidx.databinding.Bindable")
+        assertThat(generated).contains("import androidx.databinding.ViewDataBinding")
+        assertThat(generated).doesNotContain("import com.example.BR")
+        assertThat(generated).contains("private val TITLE_0: Int = resolveBrId(\"title\", 1)")
+        assertThat(generated).contains("Class.forName(\"com.example.BR\").getField(name).getInt(null)")
+        assertThat(generated).contains(") : ViewDataBinding(null, rootView, 0)")
+        assertThat(generated).contains("@get:Bindable")
+        assertThat(generated).contains("public var title: String? = null")
+        assertThat(generated).contains("notifyPropertyChanged(TITLE_0)")
+        assertThat(generated).contains("requestRebind()")
+        assertThat(generated).contains("override fun setVariable(variableId: Int, variable: Any?): Boolean")
+        assertThat(generated).contains("TITLE_0 -> {")
+        assertThat(generated).contains("override fun invalidateAll()")
+        assertThat(generated).contains("override fun hasPendingBindings(): Boolean")
+        assertThat(generated).contains("protected override fun executeBindings()")
+        assertThat(generated).contains("titleText.text = title ?: \"\"")
+    }
+
+    @Test
     fun `generates typed nullable variables instead of Any`() {
         val xml = """
             <layout xmlns:android="http://schemas.android.com/apk/res/android">
@@ -52,8 +101,8 @@ class BindingFacadeGeneratorV2Test {
         // 不再是 Any?
         assertThat(generated).doesNotContain("public var title: Any?")
         assertThat(generated).doesNotContain("public var vm: Any?")
-        // lifecycleOwner 是 LifecycleOwner?
-        assertThat(generated).contains("public var lifecycleOwner: LifecycleOwner? = null")
+        // lifecycleOwner 使用 ViewDataBinding 父类实现，不再生成占位字段
+        assertThat(generated).doesNotContain("public var lifecycleOwner")
         assertThat(generated).doesNotContain("public var lifecycleOwner: Any?")
     }
 
@@ -125,9 +174,10 @@ class BindingFacadeGeneratorV2Test {
         assertThat(generated).contains("return binding")
         // 构造函数不包含变量参数
         assertThat(generated).contains("public class ItemBindX2CBinding private constructor(")
-        assertThat(generated).contains("public val root: View,")
+        assertThat(generated).contains("rootView: View,")
         assertThat(generated).contains("public val titleText: TextView,")
-        assertThat(generated).doesNotContain("private constructor(\n    root: View,\n    titleText: TextView,\n    title:")
+        assertThat(generated).contains(") : ViewDataBinding(null, rootView, 0)")
+        assertThat(generated).doesNotContain("private constructor(\n    rootView: View,\n    titleText: TextView,\n    title:")
     }
 
     @Test

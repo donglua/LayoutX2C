@@ -54,14 +54,17 @@ class DataBindingEnhancementsIntegrationTest {
         assertThat(generated).contains("public var count: Int? = null")
         assertThat(generated).contains("public var viewModel: ItemViewModel? = null")
 
-        // lifecycleOwner 类型化
-        assertThat(generated).contains("public var lifecycleOwner: LifecycleOwner? = null")
+        // lifecycleOwner 使用 ViewDataBinding 父类实现，不再生成占位字段
+        assertThat(generated).contains(") : ViewDataBinding")
+        assertThat(generated).doesNotContain("public var lifecycleOwner")
 
         // View 字段非空
         assertThat(generated).contains("public val titleText: TextView")
 
-        // 不包含 Any?
-        assertThat(generated).doesNotContain("Any?")
+        // DataBinding 变量属性不退回 Any?
+        assertThat(generated).doesNotContain("public var title: Any?")
+        assertThat(generated).doesNotContain("public var count: Any?")
+        assertThat(generated).doesNotContain("public var viewModel: Any?")
     }
 
     @Test

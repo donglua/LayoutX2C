@@ -2,6 +2,7 @@ package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.parser.DataBindingVariable
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
@@ -10,6 +11,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.asTypeName
 
 /**
  * 增强版 BindingFacadeGenerator，支持：
@@ -42,21 +44,25 @@ class BindingFacadeGeneratorV2(
         // 构造函数只包含 root + view 字段（与 V1 一致）
         val constructor = FunSpec.constructorBuilder()
             .addModifiers(KModifier.PRIVATE)
-            .addParameter("root", ClassName("android.view", "View"))
+            .addParameter("rootView", ClassName("android.view", "View"))
             .apply {
                 fields.forEach { field ->
                     addParameter(field.propertyName, field.viewClass)
                 }
             }
             .build()
+        val dirtyFlagBits = dataBindingProperties
+            .mapIndexed { index, variable -> variable.name to (1L shl index) }
+            .toMap()
+        val brIdProperties = dataBindingProperties
+            .mapIndexed { index, variable -> variable.name to BrIdProperty(variable.name.toBrIdPropertyName(index), index + 1) }
+            .toMap()
+        val invalidateDirtyFlag = dirtyFlagBits.values.fold(1L) { acc, flag -> acc or flag }
 
         val typeSpec = TypeSpec.classBuilder(bindingClassName)
             .primaryConstructor(constructor)
-            .addProperty(
-                PropertySpec.builder("root", ClassName("android.view", "View"))
-                    .initializer("root")
-                    .build()
-            )
+            .superclass(ClassName("androidx.databinding", "ViewDataBinding"))
+            .addSuperclassConstructorParameter("null, rootView, 0")
             .apply {
                 // View 字段（非空，来自构造函数）
                 fields.forEach { field ->
@@ -69,26 +75,48 @@ class BindingFacadeGeneratorV2(
                 // DataBinding 变量（nullable 实际类型，mutable，初始 null）
                 dataBindingProperties.forEach { variable ->
                     val resolvedType = DataBindingTypeResolver.resolve(variable.type)
+                    val propertyType = resolvedType.copy(nullable = true)
                     addProperty(
-                        PropertySpec.builder(variable.name, resolvedType.copy(nullable = true))
+                        PropertySpec.builder(variable.name, propertyType)
                             .mutable(true)
+                            .addAnnotation(
+                                AnnotationSpec.builder(ClassName("androidx.databinding", "Bindable"))
+                                    .useSiteTarget(AnnotationSpec.UseSiteTarget.GET)
+                                    .build()
+                            )
                             .initializer("null")
+                            .setter(
+                                FunSpec.setterBuilder()
+                                    .addParameter("value", propertyType)
+                                    .addCode(
+                                        variableSetterBody(
+                                            variable.name,
+                                            dirtyFlagBits.getValue(variable.name),
+                                            brIdProperties.getValue(variable.name).propertyName
+                                        )
+                                    )
+                                    .build()
+                            )
                             .build()
                     )
                 }
             }
             .addProperty(
                 PropertySpec.builder(
-                    "lifecycleOwner",
-                    ClassName("androidx.lifecycle", "LifecycleOwner").copy(nullable = true)
-                )
+                    "mDirtyFlags",
+                    Long::class
+                ).addModifiers(KModifier.PRIVATE)
                     .mutable(true)
-                    .initializer("null")
+                    .initializer("0L")
                     .build()
             )
-            .addFunction(buildExecutePendingBindings(analyzedRoot, fields, dataBindingVariables))
+            .addFunction(buildSetVariable(dataBindingProperties, brIdProperties))
+            .addFunction(buildInvalidateAll(invalidateDirtyFlag))
+            .addFunction(buildHasPendingBindings())
+            .addFunction(buildOnFieldChange())
+            .addFunction(buildExecuteBindings(analyzedRoot, fields))
             .addFunction(buildSetupTwoWayBindings(analyzedRoot, fields))
-            .addType(companionObject(layoutName, layoutResId, bindingClassName, fields, useFastPath))
+            .addType(companionObject(layoutName, layoutResId, bindingClassName, fields, useFastPath, brIdProperties))
             .build()
 
         return FileSpec.builder(packageName, bindingClassName)
@@ -97,12 +125,89 @@ class BindingFacadeGeneratorV2(
             .build()
     }
 
+    private fun variableSetterBody(variableName: String, dirtyFlag: Long, brIdPropertyName: String): CodeBlock {
+        return CodeBlock.builder()
+            .beginControlFlow("if (field != value)")
+            .addStatement("field = value")
+            .beginControlFlow("synchronized(this)")
+            .addStatement("mDirtyFlags = mDirtyFlags or %LL", dirtyFlag)
+            .endControlFlow()
+            .addStatement("notifyPropertyChanged(%L)", brIdPropertyName)
+            .addStatement("requestRebind()")
+            .endControlFlow()
+            .build()
+    }
+
+    private fun buildSetVariable(
+        dataBindingProperties: List<DataBindingVariable>,
+        brIdProperties: Map<String, BrIdProperty>
+    ): FunSpec {
+        val builder = FunSpec.builder("setVariable")
+            .addModifiers(KModifier.OVERRIDE)
+            .addAnnotation(
+                AnnotationSpec.builder(Suppress::class)
+                    .addMember("%S", "UNCHECKED_CAST")
+                    .build()
+            )
+            .addParameter("variableId", Int::class)
+            .addParameter("variable", Any::class.asTypeName().copy(nullable = true))
+            .returns(Boolean::class)
+
+        if (dataBindingProperties.isEmpty()) {
+            return builder.addStatement("return false").build()
+        }
+
+        builder.beginControlFlow("return when (variableId)")
+        dataBindingProperties.forEach { variable ->
+            val resolvedType = DataBindingTypeResolver.resolve(variable.type).copy(nullable = true)
+            builder.beginControlFlow("%L ->", brIdProperties.getValue(variable.name).propertyName)
+            builder.addStatement("%L = variable as %T", variable.name, resolvedType)
+            builder.addStatement("true")
+            builder.endControlFlow()
+        }
+        builder.addStatement("else -> false")
+        builder.endControlFlow()
+        return builder.build()
+    }
+
+    private fun buildInvalidateAll(invalidateDirtyFlag: Long): FunSpec {
+        return FunSpec.builder("invalidateAll")
+            .addModifiers(KModifier.OVERRIDE)
+            .beginControlFlow("synchronized(this)")
+            .addStatement("mDirtyFlags = mDirtyFlags or %LL", invalidateDirtyFlag)
+            .endControlFlow()
+            .addStatement("requestRebind()")
+            .build()
+    }
+
+    private fun buildHasPendingBindings(): FunSpec {
+        return FunSpec.builder("hasPendingBindings")
+            .addModifiers(KModifier.OVERRIDE)
+            .returns(Boolean::class)
+            .beginControlFlow("synchronized(this)")
+            .addStatement("return mDirtyFlags != 0L")
+            .endControlFlow()
+            .build()
+    }
+
+    private fun buildOnFieldChange(): FunSpec {
+        return FunSpec.builder("onFieldChange")
+            .addModifiers(KModifier.PROTECTED, KModifier.OVERRIDE)
+            .addParameter("localFieldId", Int::class)
+            .addParameter("obj", Any::class.asTypeName().copy(nullable = true))
+            .addParameter("fieldId", Int::class)
+            .returns(Boolean::class)
+            .addStatement("return false")
+            .build()
+    }
+
     private fun companionObject(
         layoutName: String,
         layoutResId: String,
         bindingClassName: String,
         fields: List<BindingField>,
-        useFastPath: Boolean
+        useFastPath: Boolean,
+        brIdProperties: Map<String, BrIdProperty>
     ): TypeSpec {
         val inflaterClass = ClassName("android.view", "LayoutInflater")
         val viewGroupClass = ClassName("android.view", "ViewGroup")
@@ -141,8 +246,35 @@ class BindingFacadeGeneratorV2(
             .build()
 
         return TypeSpec.companionObjectBuilder()
+            .apply {
+                brIdProperties.forEach { (variableName, property) ->
+                    addProperty(
+                        PropertySpec.builder(property.propertyName, Int::class)
+                            .addModifiers(KModifier.PRIVATE)
+                            .initializer("resolveBrId(%S, %L)", variableName, property.fallbackId)
+                            .build()
+                    )
+                }
+                if (brIdProperties.isNotEmpty()) {
+                    addFunction(buildResolveBrId())
+                }
+            }
             .addFunction(inflateFun)
             .addFunction(bindFun)
+            .build()
+    }
+
+    private fun buildResolveBrId(): FunSpec {
+        return FunSpec.builder("resolveBrId")
+            .addModifiers(KModifier.PRIVATE)
+            .addParameter("name", String::class)
+            .addParameter("fallbackId", Int::class)
+            .returns(Int::class)
+            .beginControlFlow("return try")
+            .addStatement("%T.forName(%S).getField(name).getInt(null)", Class::class, "$rPackageName.BR")
+            .nextControlFlow("catch (_: Throwable)")
+            .addStatement("fallbackId")
+            .endControlFlow()
             .build()
     }
 
@@ -163,6 +295,7 @@ class BindingFacadeGeneratorV2(
             (listOf("rootView") + fields.map { it.propertyName }).joinToString(", ")
         )
         builder.addStatement("binding.setupTwoWayBindings()")
+        builder.addStatement("binding.invalidateAll()")
         builder.addStatement("return binding")
         return builder.build()
     }
@@ -176,14 +309,22 @@ class BindingFacadeGeneratorV2(
     }
 
     /**
-     * 构建 executePendingBindings() 方法，生成 @{} 表达式的绑定代码。
+     * 构建 executeBindings() 方法，生成 @{} 表达式的绑定代码。
      */
-    private fun buildExecutePendingBindings(
+    private fun buildExecuteBindings(
         analyzedRoot: AnalyzedNode,
-        fields: List<BindingField>,
-        dataBindingVariables: List<DataBindingVariable>
+        fields: List<BindingField>
     ): FunSpec {
-        val builder = FunSpec.builder("executePendingBindings")
+        val builder = FunSpec.builder("executeBindings")
+            .addModifiers(KModifier.PROTECTED, KModifier.OVERRIDE)
+            .addStatement("val dirtyFlags: Long")
+            .beginControlFlow("synchronized(this)")
+            .addStatement("dirtyFlags = mDirtyFlags")
+            .addStatement("mDirtyFlags = 0L")
+            .endControlFlow()
+            .beginControlFlow("if (dirtyFlags == 0L)")
+            .addStatement("return")
+            .endControlFlow()
 
         // 收集所有有 @{} 表达式的属性绑定
         val bindings = collectDataBindingExpressions(analyzedRoot, fields)
@@ -313,6 +454,11 @@ class BindingFacadeGeneratorV2(
         val viewTagName: String = ""
     )
 
+    private data class BrIdProperty(
+        val propertyName: String,
+        val fallbackId: Int
+    )
+
 
     private fun List<DataBindingVariable>.toCompatibilityProperties(fields: List<BindingField>): List<DataBindingVariable> {
         val reservedNames = mutableSetOf(
@@ -336,6 +482,16 @@ class BindingFacadeGeneratorV2(
         if (this in KOTLIN_KEYWORDS) return false
         if (!first().isLetter() && first() != '_') return false
         return drop(1).all { it.isLetterOrDigit() || it == '_' }
+    }
+
+    private fun String.toBrIdPropertyName(index: Int): String {
+        val upper = buildString {
+            this@toBrIdPropertyName.forEachIndexed { charIndex, char ->
+                if (charIndex > 0 && char.isUpperCase()) append('_')
+                append(char.uppercaseChar())
+            }
+        }
+        return "${upper}_$index"
     }
 
     private companion object {
