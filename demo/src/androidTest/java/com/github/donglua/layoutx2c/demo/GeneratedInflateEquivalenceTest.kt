@@ -19,6 +19,7 @@ import androidx.constraintlayout.widget.ConstraintLayout.LayoutParams as Constra
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.recyclerview.widget.RecyclerView
+import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.runtime.LayoutX2CRegistry
 import kotlin.math.abs
 import org.junit.Test
@@ -88,6 +89,32 @@ class GeneratedInflateEquivalenceTest {
     }
 
     @Test
+    fun generatedViewStubInflatesEquivalentContentAndReplacesStub() {
+        runOnMainThread {
+            val entry = entry("demo_include")
+            val platformInflated = inflatePlatform(entry)
+            val generated = inflateGenerated(entry)
+
+            val platformContent = platformInflated.findViewById<ViewStub>(R.id.include_stub).inflate()
+            val generatedContent = generated.findViewById<ViewStub>(R.id.include_stub).inflate()
+
+            assertEquivalent("demo_include/inflated_stub", snapshot(platformContent), snapshot(generatedContent))
+            assertEquivalentChildIds(
+                "demo_include/after_stub_inflate",
+                platformInflated,
+                generated,
+                listOf(
+                    R.id.include_title,
+                    R.id.include_body,
+                    R.id.include_primary,
+                    R.id.include_secondary,
+                    R.id.include_stub_content
+                )
+            )
+        }
+    }
+
+    @Test
     fun generatedConstraintLayoutPreservesSafeSubsetAnchors() {
         runOnMainThread {
             val entry = entry("demo_constraint")
@@ -113,6 +140,50 @@ class GeneratedInflateEquivalenceTest {
             requireTrue("demo_fallback should preserve child count", (generated as LinearLayout).childCount == 3)
             assertEquivalentLinearLayoutParamsAt("demo_fallback/badge", platformInflated, generated, childIndex = 1)
             assertEquivalentLinearLayoutParamsAt("demo_fallback/body", platformInflated, generated, childIndex = 2)
+        }
+    }
+
+    @Test
+    fun generatedDataBindingEnhancedFieldsAndSimpleExpressionsStayUsable() {
+        runOnMainThread {
+            val binding = DemoDataBindingEnhancedX2CBinding.inflate(
+                LayoutInflater.from(context),
+                parentFor(entry("demo_data_binding_enhanced")),
+                false
+            )
+
+            requireTrue("titleText should resolve generated field", binding.titleText.id == R.id.title_text)
+            requireTrue("descriptionText should resolve generated field", binding.descriptionText.id == R.id.description_text)
+            requireTrue("countText should resolve generated field", binding.countText.id == R.id.count_text)
+            requireTrue("vmNameText should resolve generated field", binding.vmNameText.id == R.id.vm_name_text)
+            requireTrue("vmStatusText should resolve generated field", binding.vmStatusText.id == R.id.vm_status_text)
+
+            binding.title = "Android equivalence"
+            binding.description = "Generated binding writes supported expressions"
+            binding.viewModel = ItemViewModel(
+                name = "LayoutX2C VM",
+                status = "Bound",
+                itemId = 42
+            )
+            requireTrue("setting variables should mark binding dirty", binding.hasPendingBindings())
+
+            binding.executePendingBindings()
+
+            val differences = mutableListOf<String>()
+            checkField("demo_data_binding_enhanced", "titleText.text", "Android equivalence", binding.titleText.text.toString(), differences)
+            checkField(
+                "demo_data_binding_enhanced",
+                "descriptionText.text",
+                "Generated binding writes supported expressions",
+                binding.descriptionText.text.toString(),
+                differences
+            )
+            checkField("demo_data_binding_enhanced", "vmNameText.text", "LayoutX2C VM", binding.vmNameText.text.toString(), differences)
+            checkField("demo_data_binding_enhanced", "vmStatusText.text", "Bound", binding.vmStatusText.text.toString(), differences)
+            if (differences.isNotEmpty()) {
+                throw AssertionError(differences.joinToString(separator = "\n"))
+            }
+            requireTrue("executePendingBindings should clear dirty state", !binding.hasPendingBindings())
         }
     }
 
