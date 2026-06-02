@@ -61,7 +61,7 @@ internal class LayoutX2CDigestStore(private val manifestFile: File) {
 internal object LayoutX2CDigestCalculator {
 
     // Bump this when the digest inputs or hashing semantics change.
-    private const val SCHEMA_VERSION = "v5"
+    private const val SCHEMA_VERSION = "v6"
 
     fun layoutDigest(
         layoutFile: File,
@@ -70,7 +70,7 @@ internal object LayoutX2CDigestCalculator {
         rPackageName: String
     ): String {
         val digest = MessageDigest.getInstance("SHA-256")
-        digest.updateString(SCHEMA_VERSION)
+        digest.updateString(cacheCompatibilityKey())
         digest.updateString(packageName)
         digest.updateString(rPackageName)
         digest.updateFile(layoutFile, resDir)
@@ -121,11 +121,25 @@ internal object LayoutX2CDigestCalculator {
         rPackageName: String
     ): String {
         val digest = MessageDigest.getInstance("SHA-256")
-        digest.updateString(SCHEMA_VERSION)
+        digest.updateString(cacheCompatibilityKey())
         digest.updateString(packageName)
         digest.updateString(rPackageName)
         digest.updateString(content)
         return digest.digest().joinToString(separator = "") { "%02x".format(it) }
+    }
+
+    internal fun cacheCompatibilityKey(
+        processorVersion: String? = processorImplementationVersion()
+    ): String {
+        return listOf(
+            "schema=$SCHEMA_VERSION",
+            "processor=${processorVersion ?: "development"}"
+        ).joinToString(separator = "|")
+    }
+
+    private fun processorImplementationVersion(): String? {
+        return LayoutX2CDigestCalculator::class.java.`package`.implementationVersion
+            ?.takeIf { it.isNotBlank() }
     }
 
     private fun MessageDigest.updateFile(file: File, resDir: File) {

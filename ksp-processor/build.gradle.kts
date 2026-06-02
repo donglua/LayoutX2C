@@ -2,6 +2,12 @@ plugins {
     id("org.jetbrains.kotlin.jvm")
 }
 
+tasks.jar {
+    manifest {
+        attributes("Implementation-Version" to project.version)
+    }
+}
+
 dependencies {
     implementation(project(":compiler-core"))
     implementation("com.google.devtools.ksp:symbol-processing-api:${rootProject.extra["kspVersion"]}")

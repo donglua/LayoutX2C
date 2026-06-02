@@ -215,6 +215,26 @@ class LayoutX2CDigestStoreTest {
     }
 
     @Test
+    fun `layout digest invalidates caches from older codegen compatibility keys`() {
+        val projectDir = tempDir.newFolder("layoutx2c-codegen-compatibility-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutFile = resDir.resolve("layout/demo.xml")
+        layoutFile.parentFile.mkdirs()
+        layoutFile.writeText("<LinearLayout android:id=\"@+id/root\" />")
+
+        val digest = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(digest).isNotEqualTo(
+            "3ffb5db5cd705bbef3d8bd5281a9bdffff098fc49791dc9f7b9d051117a27042"
+        )
+    }
+
+    @Test
     fun `manifest reports unchanged only for persisted digest`() {
         val manifestFile = tempDir.newFolder("layoutx2c-manifest")
             .resolve("manifest.properties")
