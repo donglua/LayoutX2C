@@ -1,9 +1,11 @@
 package com.github.donglua.layoutx2c.demo
 
 import android.content.Context
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewStub
 import android.widget.CompoundButton
 import android.widget.Button
 import android.widget.EditText
@@ -30,28 +32,95 @@ class GeneratedInflateEquivalenceTest {
 
     @Test
     fun generatedDemoLayoutsMatchPlatformInflatedViewTrees() {
-        for (entry in DemoLayoutCatalog.entries.filter { it.platformInflatable }) {
-            val platformInflated = inflatePlatform(entry)
-            val generated = inflateGenerated(entry)
+        runOnMainThread {
+            for (entry in DemoLayoutCatalog.entries.filter { it.platformInflatable }) {
+                val platformInflated = inflatePlatform(entry)
+                val generated = inflateGenerated(entry)
 
-            assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(generated))
+                assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(generated))
+            }
         }
     }
 
     @Test
     fun registryFacadeInflatesEveryGeneratedDemoLayout() {
-        requireTrue(LayoutX2CRegistry.initialize(context))
+        runOnMainThread {
+            requireTrue(LayoutX2CRegistry.initialize(context))
 
-        for (entry in DemoLayoutCatalog.entries) {
-            requireTrue("${entry.layoutName} should be registered", LayoutX2CRegistry.has(context, entry.layoutResId))
+            for (entry in DemoLayoutCatalog.entries) {
+                requireTrue("${entry.layoutName} should be registered", LayoutX2CRegistry.has(context, entry.layoutResId))
 
-            val registryInflated = LayoutX2CRegistry.inflate(context, entry.layoutResId, parentFor(entry), attachToRoot = false)
-            if (!entry.platformInflatable) {
-                continue
+                val registryInflated = LayoutX2CRegistry.inflate(context, entry.layoutResId, parentFor(entry), attachToRoot = false)
+                if (!entry.platformInflatable) {
+                    continue
+                }
+
+                val platformInflated = inflatePlatform(entry)
+                assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(registryInflated))
             }
+        }
+    }
 
+    @Test
+    fun generatedIncludeLayoutPreservesMergeChildrenAndViewStubMetadata() {
+        runOnMainThread {
+            val entry = entry("demo_include")
             val platformInflated = inflatePlatform(entry)
-            assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(registryInflated))
+            val generated = inflateGenerated(entry)
+
+            assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(generated))
+            assertEquivalentChildIds(
+                "demo_include",
+                platformInflated,
+                generated,
+                listOf(
+                    R.id.include_title,
+                    R.id.include_body,
+                    R.id.include_primary,
+                    R.id.include_secondary,
+                    R.id.include_stub
+                )
+            )
+            assertEquivalentLinearLayoutParamsById("demo_include/include_primary", platformInflated, generated, R.id.include_primary)
+            assertEquivalentLinearLayoutParamsById("demo_include/include_secondary", platformInflated, generated, R.id.include_secondary)
+            assertEquivalentViewStub("demo_include/include_stub", platformInflated, generated, R.id.include_stub)
+        }
+    }
+
+    @Test
+    fun generatedConstraintLayoutPreservesSafeSubsetAnchors() {
+        runOnMainThread {
+            val entry = entry("demo_constraint")
+            val platformInflated = inflatePlatform(entry)
+            val generated = inflateGenerated(entry)
+
+            assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(generated))
+            assertEquivalentConstraintParams("demo_constraint/constraint_title", platformInflated, generated, R.id.constraint_title)
+            assertEquivalentConstraintParams("demo_constraint/constraint_subtitle", platformInflated, generated, R.id.constraint_subtitle)
+            assertEquivalentConstraintParams("demo_constraint/constraint_end", platformInflated, generated, R.id.constraint_end)
+        }
+    }
+
+    @Test
+    fun generatedFallbackLayoutPreservesPlatformInflatedStructure() {
+        runOnMainThread {
+            val entry = entry("demo_fallback")
+            val platformInflated = inflatePlatform(entry)
+            val generated = inflateGenerated(entry)
+
+            assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(generated))
+            requireTrue("demo_fallback should inflate a LinearLayout root", generated is LinearLayout)
+            requireTrue("demo_fallback should preserve child count", (generated as LinearLayout).childCount == 3)
+            assertEquivalentLinearLayoutParamsAt("demo_fallback/badge", platformInflated, generated, childIndex = 1)
+            assertEquivalentLinearLayoutParamsAt("demo_fallback/body", platformInflated, generated, childIndex = 2)
+        }
+    }
+
+    private fun runOnMainThread(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            block()
+        } else {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(block)
         }
     }
 
@@ -215,6 +284,8 @@ class GeneratedInflateEquivalenceTest {
         checkField(path, "idName", idName, actual.idName, differences)
         checkField(path, "visibility", visibility, actual.visibility, differences)
         checkField(path, "enabled", enabled, actual.enabled, differences)
+        checkField(path, "clickable", clickable, actual.clickable, differences)
+        checkField(path, "focusable", focusable, actual.focusable, differences)
         checkField(path, "text", text, actual.text, differences)
         checkField(path, "hint", hint, actual.hint, differences)
         checkField(path, "textColor", textColor, actual.textColor, differences)
@@ -231,6 +302,105 @@ class GeneratedInflateEquivalenceTest {
         checkField(path, "childCount", children.size, actual.children.size, differences)
         for (index in 0 until minOf(children.size, actual.children.size)) {
             children[index].collectDifferences(actual.children[index], "$path/$index", differences)
+        }
+    }
+
+    private fun entry(layoutName: String): DemoLayoutCatalog.Entry {
+        return DemoLayoutCatalog.entries.first { it.layoutName == layoutName }
+    }
+
+    private fun assertEquivalentChildIds(
+        path: String,
+        expectedRoot: View,
+        actualRoot: View,
+        expectedIds: List<Int>
+    ) {
+        val expectedNames = expectedIds.map { context.resources.getResourceEntryName(it) }
+        val differences = mutableListOf<String>()
+        checkField(path, "platform childIds", expectedNames, (expectedRoot as ViewGroup).childIds(), differences)
+        checkField(path, "generated childIds", expectedNames, (actualRoot as ViewGroup).childIds(), differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun ViewGroup.childIds(): List<String?> {
+        return (0 until childCount).map { index ->
+            resources.getResourceEntryNameOrNull(getChildAt(index).id)
+        }
+    }
+
+    private fun assertEquivalentLinearLayoutParamsById(
+        path: String,
+        expectedRoot: View,
+        actualRoot: View,
+        childId: Int
+    ) {
+        assertEquivalentLinearLayoutParams(
+            path,
+            expectedRoot.findViewById(childId),
+            actualRoot.findViewById(childId)
+        )
+    }
+
+    private fun assertEquivalentLinearLayoutParamsAt(
+        path: String,
+        expectedRoot: View,
+        actualRoot: View,
+        childIndex: Int
+    ) {
+        assertEquivalentLinearLayoutParams(
+            path,
+            (expectedRoot as ViewGroup).getChildAt(childIndex),
+            (actualRoot as ViewGroup).getChildAt(childIndex)
+        )
+    }
+
+    private fun assertEquivalentLinearLayoutParams(path: String, expected: View, actual: View) {
+        val expectedParams = expected.layoutParams as LinearLayout.LayoutParams
+        val actualParams = actual.layoutParams as LinearLayout.LayoutParams
+        val differences = mutableListOf<String>()
+        checkField(path, "layoutParams.width", expectedParams.width, actualParams.width, differences)
+        checkField(path, "layoutParams.height", expectedParams.height, actualParams.height, differences)
+        checkField(path, "layoutParams.topMargin", expectedParams.topMargin, actualParams.topMargin, differences)
+        checkField(path, "layoutParams.bottomMargin", expectedParams.bottomMargin, actualParams.bottomMargin, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentViewStub(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<ViewStub>(childId)
+        val actual = actualRoot.findViewById<ViewStub>(childId)
+        val differences = mutableListOf<String>()
+        checkField(path, "className", expected.javaClass.name, actual.javaClass.name, differences)
+        checkField(path, "layoutResource", expected.layoutResource, actual.layoutResource, differences)
+        checkField(path, "inflatedId", expected.inflatedId, actual.inflatedId, differences)
+        checkField(path, "layoutParams.width", expected.layoutParams.width, actual.layoutParams.width, differences)
+        checkField(path, "layoutParams.height", expected.layoutParams.height, actual.layoutParams.height, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentConstraintParams(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<View>(childId).layoutParams as ConstraintLayoutParams
+        val actual = actualRoot.findViewById<View>(childId).layoutParams as ConstraintLayoutParams
+        val differences = mutableListOf<String>()
+        checkField(path, "width", expected.width, actual.width, differences)
+        checkField(path, "height", expected.height, actual.height, differences)
+        checkField(path, "startToStart", expected.startToStart, actual.startToStart, differences)
+        checkField(path, "startToEnd", expected.startToEnd, actual.startToEnd, differences)
+        checkField(path, "endToStart", expected.endToStart, actual.endToStart, differences)
+        checkField(path, "endToEnd", expected.endToEnd, actual.endToEnd, differences)
+        checkField(path, "topToTop", expected.topToTop, actual.topToTop, differences)
+        checkField(path, "topToBottom", expected.topToBottom, actual.topToBottom, differences)
+        checkField(path, "bottomToTop", expected.bottomToTop, actual.bottomToTop, differences)
+        checkField(path, "bottomToBottom", expected.bottomToBottom, actual.bottomToBottom, differences)
+        checkFloatField(path, "horizontalBias", expected.horizontalBias, actual.horizontalBias, differences)
+        checkFloatField(path, "verticalBias", expected.verticalBias, actual.verticalBias, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
         }
     }
 

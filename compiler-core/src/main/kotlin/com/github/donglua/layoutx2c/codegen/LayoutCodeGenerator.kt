@@ -2,6 +2,7 @@ package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.analyzer.SupportLevel
+import com.github.donglua.layoutx2c.parser.isButton
 import com.github.donglua.layoutx2c.registry.DefaultViewRegistry
 import com.github.donglua.layoutx2c.registry.ViewEmitRegistry
 import com.squareup.kotlinpoet.*
@@ -231,6 +232,9 @@ class LayoutCodeGenerator(
     }
 
     private fun hasEmittedAttributes(node: AnalyzedNode): Boolean {
+        if (node.node.isButton()) {
+            return true
+        }
         return node.supportedAttributes.any { attrName ->
             !attrName.startsWith("xmlns:") &&
                 !attrName.startsWith("tools:") &&

@@ -6,6 +6,7 @@ import com.github.donglua.layoutx2c.codegen.dimensionToCode
 import com.github.donglua.layoutx2c.codegen.dimensionToPxFloatCode
 import com.github.donglua.layoutx2c.codegen.gravityToCode
 import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.isButton
 import com.github.donglua.layoutx2c.parser.isEditText
 import com.github.donglua.layoutx2c.parser.isImageView
 import com.github.donglua.layoutx2c.parser.isLinearLayout
@@ -50,6 +51,8 @@ private interface AttributeHandler {
     fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean = true
 
     fun canEmit(node: AnalyzedNode, attrName: String): Boolean = true
+
+    fun shouldEmit(node: AnalyzedNode): Boolean = false
 
     fun emit(builder: CodeBlock.Builder, node: AnalyzedNode)
 
@@ -243,7 +246,7 @@ open class ResourceAwareViewRegistry(
 
     override fun emitAttributes(builder: CodeBlock.Builder, node: AnalyzedNode) {
         for (handler in attributeHandlers) {
-            if (handler.hasAnyAttribute(node.node.attributes, node.supportedAttributes)) {
+            if (handler.shouldEmit(node) || handler.hasAnyAttribute(node.node.attributes, node.supportedAttributes)) {
                 handler.emit(builder, node)
             }
         }
@@ -589,8 +592,20 @@ open class ResourceAwareViewRegistry(
             }
         }
 
+        override fun shouldEmit(node: AnalyzedNode): Boolean {
+            return node.node.isButton()
+        }
+
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             val attrs = node.node.attributes
+            if (node.node.isButton()) {
+                if ("android:clickable" !in attrs) {
+                    builder.addStatement("isClickable = true")
+                }
+                if ("android:focusable" !in attrs) {
+                    builder.addStatement("isFocusable = true")
+                }
+            }
             attrs["android:enabled"]?.let { value ->
                 builder.addStatement("isEnabled = %L", value == "true")
             }

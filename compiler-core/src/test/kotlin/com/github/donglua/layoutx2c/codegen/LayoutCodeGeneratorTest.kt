@@ -529,6 +529,24 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `button emits platform default clickable and focusable state`() {
+        val xml = """
+            <Button xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/submit"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/app_name" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "button_defaults").root)
+        val generated = generator.generate(analyzed, "button_defaults", "R.layout.button_defaults").toString()
+
+        assertThat(generated).contains("val root = AppCompatButton(context).apply {")
+        assertThat(generated).contains("isClickable = true")
+        assertThat(generated).contains("isFocusable = true")
+    }
+
+    @Test
     fun `edit text emits hint and input type`() {
         val xml = """
             <EditText xmlns:android="http://schemas.android.com/apk/res/android"
