@@ -82,7 +82,38 @@
 - README 的支持范围、限制和 Roadmap 一致。
 - Demo 能覆盖主要成功路径和 fallback 路径。
 
-### 3. 精确资源引用图
+### 3. DataBinding facade 升级为 ViewDataBinding 子类
+
+目标：让根节点为 `<layout>` 的 `{Name}X2CBinding` 继承 `androidx.databinding.ViewDataBinding`，
+并按 LayoutX2C 能静态保证的 DataBinding 子集真实实现契约，而不是只提供同名 facade 方法。
+
+实施边界：
+
+- 生成类继承 `ViewDataBinding`，构造函数调用 `ViewDataBinding(null, rootView, localFieldCount)`。
+- `root` 交给 `ViewDataBinding.getRoot()`，避免重复声明与 `ViewBinding` 契约冲突。
+- `<data>` 变量生成 `@Bindable` 属性、getter / setter，并在 setter 中维护 dirty flag、触发
+  `notifyPropertyChanged(BR.xxx)` 和 `requestRebind()`。
+- 生成 `setVariable(variableId, value)`，按 `BR.xxx` 分发到已支持变量；未知变量返回 `false`。
+- 生成 `invalidateAll()`、`hasPendingBindings()`、`executeBindings()` 和
+  `onFieldChange()`，只覆盖 LayoutX2C 已支持的简单 `@{variable}`、
+  `@{variable.property}` 与白名单 `@={}` 绑定。
+- `executePendingBindings()` 继续使用 `ViewDataBinding` 的 public final 调度入口，实际属性写回放到
+  protected `executeBindings()`。
+- `lifecycleOwner` 使用 `ViewDataBinding.setLifecycleOwner()` / `getLifecycleOwner()`，
+  不再生成独立占位字段。
+- fallback-only binding 也必须满足 `ViewDataBinding` 类型契约；无法安全执行的表达式只保留原生
+  inflate fallback，不伪造未支持的绑定行为。
+
+验收口径：
+
+- KotlinPoet 字符串测试覆盖继承关系、构造函数、`@Bindable` 变量、`setVariable()`、dirty flag
+  和 pending 状态。
+- demo 的 generated DataBinding layout 能通过 Android 编译，并可作为 `ViewDataBinding` 传入统一渲染入口。
+- 简单正向绑定在 `executePendingBindings()` 后写回 View；白名单双向绑定能回写到支持的目标。
+- 未支持的复杂表达式、BindingAdapter、Observable / LiveData 自动订阅仍可诊断，并保守 fallback
+  或保持不生成对应绑定逻辑。
+
+### 4. 精确资源引用图
 
 目标：减少无关 values 资源改动导致的保守重跑，同时保持 fallback 正确性。
 
@@ -179,4 +210,5 @@ v1.0 的目标是稳定 API，发布到 Maven Central，并能被生产项目保
 - 运行时动态 layout 加载：这是编译期工具，不做运行时 DSL。
 - 100% 覆盖率：渐进式策略的核心就是接受 fallback 的存在。
 - 默认把运行时 Theme 语义编译成常量：这类能力只能显式 opt-in。
-- 替代 DataBinding runtime：表达式、BindingAdapter、dirty flag 和 lifecycle 观察者逻辑继续由原生 DataBinding 负责。
+- 完整替代 DataBinding runtime：LayoutX2C 只实现可静态保证的 `ViewDataBinding` 子集；复杂表达式、
+  BindingAdapter、Observable / LiveData 自动订阅和 lifecycle 观察者语义仍由原生 DataBinding 负责。
