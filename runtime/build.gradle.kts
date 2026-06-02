@@ -1,5 +1,8 @@
+import org.gradle.api.publish.maven.MavenPublication
+
 plugins {
     id("com.android.library")
+    id("maven-publish")
 }
 
 val compileSdk: Int by rootProject.extra
@@ -21,6 +24,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+if (!providers.gradleProperty("layoutx2c.enablePublishing").isPresent) {
+    afterEvaluate {
+        publishing {
+            publications {
+                register<MavenPublication>("release") {
+                    from(components["release"])
+                }
+            }
+        }
+    }
 }
 
 dependencies {
