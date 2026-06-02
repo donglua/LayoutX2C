@@ -108,7 +108,8 @@ internal object LayoutX2CDigestCalculator {
             }
             .sortedBy { it.relativeTo(resDir).invariantSeparatorsPath }
             .forEach { resourceFile ->
-                digest.updateFile(resourceFile, resDir)
+                digest.updateString("resource-symbol-file")
+                digest.updateString(resourceFile.relativeTo(resDir).invariantSeparatorsPath)
             }
 
         return digest.digest().joinToString(separator = "") { "%02x".format(it) }
