@@ -6,7 +6,7 @@ buildscript {
     extra["targetSdk"] = 36
     extra["compileSdk"] = 36
     extra["groupId"] = "com.github.donglua.layoutx2c"
-    extra["versionName"] = "0.2.0"
+    extra["versionName"] = "0.3.0"
 }
 
 plugins {
