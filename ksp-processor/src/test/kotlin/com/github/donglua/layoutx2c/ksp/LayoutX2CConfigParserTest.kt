@@ -27,4 +27,25 @@ class LayoutX2CConfigParserTest {
 
         assertEquals(listOf("activity_main", "fragment_home"), layouts)
     }
+
+    @Test
+    fun extractsImportedRPackageNameFromConfigObject() {
+        val source = """
+            package com.example.legacy.home
+
+            import com.example.feature.home.R
+            import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig
+
+            @FastLayoutConfig
+            object LayoutX2CConfig {
+                val layouts = intArrayOf(
+                    R.layout.feature_home_entry,
+                )
+            }
+        """.trimIndent()
+
+        val rPackageName = LayoutX2CConfigParser.extractRPackageName(source)
+
+        assertEquals("com.example.feature.home", rPackageName)
+    }
 }

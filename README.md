@@ -22,7 +22,8 @@ plugins {
 ```
 
 也可以只接入 KSP processor，不写额外参数。processor 会从配置类所在源码路径推导 `src/main/res`，
-从配置类包名推导 `R` 包，并默认生成到 `${R包}.generated`：
+优先从配置类里的 `R` import / 全限定 `R.layout.*` 推导 `R` 包，其次读取 Android Gradle
+namespace，找不到 namespace 时才退回配置类包名，并默认生成到 `${R包}.generated`：
 
 ```kotlin
 // build.gradle.kts

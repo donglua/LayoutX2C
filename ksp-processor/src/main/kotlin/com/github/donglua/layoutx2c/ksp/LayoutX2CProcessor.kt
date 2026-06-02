@@ -61,11 +61,6 @@ class LayoutX2CProcessor(
         for (annotated in configAnnotated) {
             val sourceFile = annotated.containingFile ?: continue
             if (!visitedConfigFiles.add(sourceFile.filePath)) continue
-            configSources += LayoutX2CSource(
-                file = File(sourceFile.filePath),
-                packageName = annotated.packageName(),
-                ksFile = sourceFile
-            )
 
             val sourceText = try {
                 File(sourceFile.filePath).readText()
@@ -74,6 +69,12 @@ class LayoutX2CProcessor(
                 continue
             }
 
+            configSources += LayoutX2CSource(
+                file = File(sourceFile.filePath),
+                packageName = annotated.packageName(),
+                rPackageName = LayoutX2CConfigParser.extractRPackageName(sourceText),
+                ksFile = sourceFile
+            )
             layoutNames.addAll(LayoutX2CConfigParser.extractLayoutNames(sourceText))
         }
 
@@ -95,6 +96,7 @@ class LayoutX2CProcessor(
                 configSources += LayoutX2CSource(
                     file = File(sourceFile.filePath),
                     packageName = annotated.packageName(),
+                    rPackageName = sourceFile.rPackageName(),
                     ksFile = sourceFile
                 )
             }
@@ -107,6 +109,7 @@ class LayoutX2CProcessor(
                 configSources += LayoutX2CSource(
                     file = File(sourceFile.filePath),
                     packageName = annotated.packageName(),
+                    rPackageName = sourceFile.rPackageName(),
                     ksFile = sourceFile
                 )
             }
@@ -325,7 +328,15 @@ class LayoutX2CProcessor(
 
     private fun resolveConfig(configSources: List<LayoutX2CSource>): LayoutX2CProcessorConfig {
         val inferredPackageName = configSources.firstNotNullOfOrNull { it.packageName }
-        val rPackageName = options[OPTION_R_PACKAGE] ?: inferredPackageName ?: "com.github.donglua.layoutx2c"
+        val inferredRPackageName = configSources.firstNotNullOfOrNull { it.rPackageName }
+        val inferredAndroidNamespace = configSources.firstNotNullOfOrNull {
+            LayoutX2CRPackageResolver.inferAndroidNamespace(it.file)
+        }
+        val rPackageName = options[OPTION_R_PACKAGE]
+            ?: inferredRPackageName
+            ?: inferredAndroidNamespace
+            ?: inferredPackageName
+            ?: "com.github.donglua.layoutx2c"
         val packageName = options[OPTION_PACKAGE] ?: "$rPackageName.generated"
         val resDir = options[OPTION_RES_DIR]?.let(::File)
             ?: configSources.firstNotNullOfOrNull { LayoutX2CResDirResolver.inferMainResDir(it.file) }
@@ -345,6 +356,15 @@ class LayoutX2CProcessor(
         return when (this) {
             is KSDeclaration -> packageName.asString()
             else -> containingFile?.packageName?.asString()
+        }
+    }
+
+    private fun KSFile.rPackageName(): String? {
+        return try {
+            LayoutX2CConfigParser.extractRPackageName(File(filePath).readText())
+        } catch (e: Exception) {
+            logger.warn("Cannot read LayoutX2C config source: $filePath")
+            null
         }
     }
 
@@ -475,6 +495,7 @@ private data class LayoutX2CProcessorConfig(
 private data class LayoutX2CSource(
     val file: File,
     val packageName: String?,
+    val rPackageName: String?,
     val ksFile: KSFile
 )
 
