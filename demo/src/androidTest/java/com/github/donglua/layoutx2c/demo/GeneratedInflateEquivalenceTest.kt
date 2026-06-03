@@ -61,6 +61,25 @@ class GeneratedInflateEquivalenceTest {
     }
 
     @Test
+    fun generatedExplicitViewPropertiesMatchPlatformInflation() {
+        runOnMainThread {
+            val formEntry = entry("demo_form")
+            val platformForm = inflatePlatform(formEntry)
+            val generatedForm = inflateGenerated(formEntry)
+
+            assertEquivalentMinimumHeightById("demo_form/form_name", platformForm, generatedForm, R.id.form_name)
+            assertEquivalentMinimumWidthById("demo_form/form_submit", platformForm, generatedForm, R.id.form_submit)
+            assertEquivalentElevationById("demo_form/form_submit", platformForm, generatedForm, R.id.form_submit)
+
+            val relativeEntry = entry("demo_relative")
+            val platformRelative = inflatePlatform(relativeEntry)
+            val generatedRelative = inflateGenerated(relativeEntry)
+
+            assertEquivalentPaddingById("demo_relative/relative_badge", platformRelative, generatedRelative, R.id.relative_badge)
+        }
+    }
+
+    @Test
     fun registryFacadeInflatesEveryGeneratedDemoLayout() {
         runOnMainThread {
             requireTrue(LayoutX2CRegistry.initialize(context))
@@ -466,6 +485,52 @@ class GeneratedInflateEquivalenceTest {
         val actual = actualRoot.findViewById<TextView>(childId)
         val differences = mutableListOf<String>()
         checkFloatField(path, "textSize", expected.textSize, actual.textSize, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentMinimumHeightById(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<View>(childId)
+        val actual = actualRoot.findViewById<View>(childId)
+        val differences = mutableListOf<String>()
+        checkField(path, "minimumHeight", expected.minimumHeight, actual.minimumHeight, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentMinimumWidthById(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<View>(childId)
+        val actual = actualRoot.findViewById<View>(childId)
+        val differences = mutableListOf<String>()
+        checkField(path, "minimumWidth", expected.minimumWidth, actual.minimumWidth, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentElevationById(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<View>(childId)
+        val actual = actualRoot.findViewById<View>(childId)
+        val differences = mutableListOf<String>()
+        checkFloatField(path, "elevation", expected.elevation, actual.elevation, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentPaddingById(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<View>(childId)
+        val actual = actualRoot.findViewById<View>(childId)
+        val differences = mutableListOf<String>()
+        checkField(
+            path,
+            "padding",
+            PaddingSnapshot(expected.paddingLeft, expected.paddingTop, expected.paddingRight, expected.paddingBottom),
+            PaddingSnapshot(actual.paddingLeft, actual.paddingTop, actual.paddingRight, actual.paddingBottom),
+            differences
+        )
         if (differences.isNotEmpty()) {
             throw AssertionError(differences.joinToString(separator = "\n"))
         }
