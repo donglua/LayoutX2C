@@ -96,6 +96,18 @@ layoutX2C {
 }
 ```
 
+## 1.0 迁移和基准测试
+
+- [1.0 Migration Guide](docs/MIGRATION_1_0.md) 说明 `@PublicApi` / `@ExperimentalApi`
+  边界、兼容矩阵和 breaking-change policy。
+- [Benchmarks](docs/BENCHMARKS.md) 说明 demo benchmark 的运行方式、记录字段和限制。
+
+KSP digest cache 会按 layout 精确追踪直接和递归引用的资源依赖，包括 include /
+ViewStub layout、`@string`、`@dimen`、`@color`、`@drawable`、`@mipmap`、`@style`
+以及 values 资源内部的嵌套引用。修改被引用资源会触发相关 layout 重新生成；修改未引用
+values 资源不会再让无关 layout factory 失效。无法解析或动态 theme 语义仍保守记录并保持
+fallback 策略。
+
 ## 当前支持范围
 
 支持的 View：
