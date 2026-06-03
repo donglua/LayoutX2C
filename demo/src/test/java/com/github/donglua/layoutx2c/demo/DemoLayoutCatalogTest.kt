@@ -82,4 +82,12 @@ class DemoLayoutCatalogTest {
         assertEquals(DemoLayoutCatalog.Status.Generated, scrollImageDemo?.status)
         assertTrue(scrollImageDemo?.summary.orEmpty().contains("ScrollView"))
     }
+
+    @Test
+    fun `code viewer selector covers every catalog entry`() {
+        assertEquals(
+            DemoLayoutCatalog.entries.map { it.layoutName },
+            CodeViewerSelector.entries.map { it.layoutName },
+        )
+    }
 }

@@ -33,21 +33,11 @@ class CodeViewerActivity : AppCompatActivity() {
     }
 
     private fun setupLayoutSelector() {
-        val buttons = listOf(
-            findViewById<Button>(R.id.btn_demo_simple),
-            findViewById<Button>(R.id.btn_demo_nested),
-            findViewById<Button>(R.id.btn_demo_form),
-            findViewById<Button>(R.id.btn_demo_relative),
-            findViewById<Button>(R.id.btn_demo_include),
-            findViewById<Button>(R.id.btn_demo_constraint),
-            findViewById<Button>(R.id.btn_demo_recycler),
-            findViewById<Button>(R.id.btn_demo_fallback),
-            findViewById<Button>(R.id.btn_demo_binding),
-            findViewById<Button>(R.id.btn_demo_binding_enhanced),
-            findViewById<Button>(R.id.btn_demo_scroll_image)
-        )
-        require(buttons.size == demos.size) { "Code Viewer selector must cover every demo layout." }
-        buttons.zip(demos).forEach { (button, demo) ->
+        val buttonPairs = CodeViewerSelector.entries.map { selector ->
+            findViewById<Button>(selector.buttonId) to DemoLayoutCatalog.requireByLayoutName(selector.layoutName)
+        }
+        require(buttonPairs.map { it.second } == demos) { "Code Viewer selector must cover every demo layout." }
+        buttonPairs.forEach { (button, demo) ->
             button.setOnClickListener { showDemo(demo) }
         }
     }
@@ -134,21 +124,8 @@ class CodeViewerActivity : AppCompatActivity() {
     }
 
     private fun updateDemoSelection() {
-        val buttonPairs = listOf(
-            R.id.btn_demo_simple to demos[0],
-            R.id.btn_demo_nested to demos[1],
-            R.id.btn_demo_form to demos[2],
-            R.id.btn_demo_relative to demos[3],
-            R.id.btn_demo_include to demos[4],
-            R.id.btn_demo_constraint to demos[5],
-            R.id.btn_demo_recycler to demos[6],
-            R.id.btn_demo_fallback to demos[7],
-            R.id.btn_demo_binding to demos[8],
-            R.id.btn_demo_binding_enhanced to demos[9],
-            R.id.btn_demo_scroll_image to demos[10]
-        )
-        buttonPairs.forEach { (buttonId, demo) ->
-            findViewById<Button>(buttonId).isSelected = demo == currentDemo
+        CodeViewerSelector.entries.forEach { selector ->
+            findViewById<Button>(selector.buttonId).isSelected = selector.layoutName == currentDemo.layoutName
         }
     }
 
