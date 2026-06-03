@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="demo_simple_body_text_size">13.6sp</dimen>
+</resources>

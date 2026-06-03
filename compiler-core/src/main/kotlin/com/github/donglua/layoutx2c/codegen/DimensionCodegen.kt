@@ -53,3 +53,31 @@ internal fun dimensionToPxFloatCode(
         else -> "0f"
     }
 }
+
+internal fun dimensionToPixelSizeFloatCode(
+    value: String,
+    resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver,
+    rPackageName: String = ""
+): String {
+    return when {
+        value == "0" || value == "0dp" || value == "0px" -> "0f"
+        value.endsWith("dp") -> {
+            val num = value.removeSuffix("dp")
+            "java.lang.Math.round(${num}f * density).toFloat()"
+        }
+        value.endsWith("sp") -> {
+            val num = value.removeSuffix("sp")
+            "java.lang.Math.round(android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, ${num}f, context.resources.displayMetrics)).toFloat()"
+        }
+        value.endsWith("px") -> {
+            val num = value.removeSuffix("px")
+            "java.lang.Math.round(${num}f).toFloat()"
+        }
+        value.startsWith("@dimen/") -> {
+            val resName = value.removePrefix("@dimen/")
+            val resCode = resourceResolver.referenceCode("dimen", resName, rPackageName) ?: return "0f"
+            "context.resources.getDimensionPixelSize($resCode).toFloat()"
+        }
+        else -> "(${dimensionToCode(value, resourceResolver, rPackageName)}).toFloat()"
+    }
+}

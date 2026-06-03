@@ -482,8 +482,7 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("text = context.getString(R.string.app_name)")
         assertThat(generated).contains("setTextColor(ContextCompat.getColor(context, R.color.title))")
         assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX,")
-        assertThat(generated).contains("android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 16f,")
-        assertThat(generated).contains("context.resources.displayMetrics)")
+        assertThat(generated).contains("java.lang.Math.round(android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 16f,")
         assertThat(generated).contains("setTypeface(typeface, android.graphics.Typeface.BOLD_ITALIC)")
         assertThat(generated).contains("setBackgroundColor(Color.parseColor(\"#FF0000\"))")
         assertThat(generated).contains("setPadding((4f * density + 0.5f).toInt(),")
@@ -690,8 +689,23 @@ class LayoutCodeGeneratorTest {
         val generated = generator.generate(analyzed, "high_frequency_attrs", "R.layout.high_frequency_attrs").toString()
 
         assertThat(generated).contains("setTextColor(Color.parseColor(\"#112233\"))")
-        assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX, context.resources.getDimension(R.dimen.title_size))")
+        assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX, context.resources.getDimensionPixelSize(R.dimen.title_size).toFloat())")
         assertThat(generated).contains("setBackgroundResource(R.drawable.title_background)")
+    }
+
+    @Test
+    fun `text size pixel values emit platform pixel size rounding`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13.6px" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "text_size_px").root)
+        val generated = generator.generate(analyzed, "text_size_px", "R.layout.text_size_px").toString()
+
+        assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX, java.lang.Math.round(13.6f).toFloat())")
     }
 
     @Test

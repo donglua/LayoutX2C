@@ -45,6 +45,22 @@ class GeneratedInflateEquivalenceTest {
     }
 
     @Test
+    fun generatedTextSizeResourceMatchesPlatformPixelSizeRounding() {
+        runOnMainThread {
+            val entry = entry("demo_simple")
+            val platformInflated = inflatePlatform(entry)
+            val generated = inflateGenerated(entry)
+
+            assertEquivalentTextSizeById(
+                "demo_simple/demo_body",
+                platformInflated,
+                generated,
+                R.id.demo_body
+            )
+        }
+    }
+
+    @Test
     fun registryFacadeInflatesEveryGeneratedDemoLayout() {
         runOnMainThread {
             requireTrue(LayoutX2CRegistry.initialize(context))
@@ -440,6 +456,16 @@ class GeneratedInflateEquivalenceTest {
         checkField(path, "layoutParams.height", expectedParams.height, actualParams.height, differences)
         checkField(path, "layoutParams.topMargin", expectedParams.topMargin, actualParams.topMargin, differences)
         checkField(path, "layoutParams.bottomMargin", expectedParams.bottomMargin, actualParams.bottomMargin, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentTextSizeById(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<TextView>(childId)
+        val actual = actualRoot.findViewById<TextView>(childId)
+        val differences = mutableListOf<String>()
+        checkFloatField(path, "textSize", expected.textSize, actual.textSize, differences)
         if (differences.isNotEmpty()) {
             throw AssertionError(differences.joinToString(separator = "\n"))
         }

@@ -3,6 +3,7 @@ package com.github.donglua.layoutx2c.registry
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.codegen.ImageScaleTypes
 import com.github.donglua.layoutx2c.codegen.dimensionToCode
+import com.github.donglua.layoutx2c.codegen.dimensionToPixelSizeFloatCode
 import com.github.donglua.layoutx2c.codegen.dimensionToPxFloatCode
 import com.github.donglua.layoutx2c.codegen.gravityToCode
 import com.github.donglua.layoutx2c.parser.LayoutNode
@@ -433,7 +434,7 @@ open class ResourceAwareViewRegistry(
                 builder.addStatement(
                     "setTextSize(%T.COMPLEX_UNIT_PX, %L)",
                     ClassName("android.util", "TypedValue"),
-                    dimensionToPxFloatCode(value, resourceResolver, rPackageName)
+                    dimensionToPixelSizeFloatCode(value, resourceResolver, rPackageName)
                 )
             }
         }
