@@ -29,7 +29,7 @@ Run the local gates before tagging:
 ./gradlew test
 ./gradlew :demo:assembleDebug
 ./gradlew :runtime:assembleRelease
-./gradlew :demo:layoutX2CReport
+./gradlew :gradle-plugin:test
 ```
 
 Verify local publication metadata without remote credentials:

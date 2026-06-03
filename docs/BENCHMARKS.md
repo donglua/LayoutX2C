@@ -28,7 +28,15 @@ sample.
 Generate the compile report:
 
 ```bash
-./gradlew :demo:layoutX2CReport
+./gradlew :app:layoutX2CReport
+```
+
+The repository demo module wires KSP directly so it can use project
+dependencies during development. The `layoutX2CReport` task is provided by the
+published Gradle plugin and is covered by the plugin functional tests:
+
+```bash
+./gradlew :gradle-plugin:test
 ```
 
 Measure build overhead by comparing clean or cache-controlled builds with the
