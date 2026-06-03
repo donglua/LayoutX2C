@@ -61,7 +61,7 @@ internal class LayoutX2CDigestStore(private val manifestFile: File) {
 internal object LayoutX2CDigestCalculator {
 
     // Bump this when the digest inputs or hashing semantics change.
-    private const val SCHEMA_VERSION = "v6"
+    private const val SCHEMA_VERSION = "v7"
 
     fun layoutDigest(
         layoutFile: File,
@@ -94,22 +94,19 @@ internal object LayoutX2CDigestCalculator {
                 }
             }
 
-        val valuesDir = File(resDir, "values")
-        valuesDir.walkTopDown()
-            .filter { it.isFile && it.extension == "xml" }
-            .sortedBy { it.relativeTo(resDir).invariantSeparatorsPath }
-            .forEach { valuesFile ->
-                digest.updateFile(valuesFile, resDir)
-            }
-
-        resourceSymbolDirs(resDir)
-            .flatMap { resourceDir ->
-                resourceDir.walkTopDown().filter { it.isFile }.toList()
-            }
-            .sortedBy { it.relativeTo(resDir).invariantSeparatorsPath }
-            .forEach { resourceFile ->
-                digest.updateString("resource-symbol-file")
-                digest.updateString(resourceFile.relativeTo(resDir).invariantSeparatorsPath)
+        ResourceDependencyScanner.scan(layoutFile, resDir)
+            .sortedWith(
+                compareBy<ResourceDependencyScanner.Dependency> { it.key }
+                    .thenBy { dependency ->
+                        dependency.file?.relativeTo(resDir)?.invariantSeparatorsPath ?: ""
+                    }
+                    .thenBy { it.content }
+            )
+            .forEach { dependency ->
+                digest.updateString("resource-dependency")
+                digest.updateString(dependency.key)
+                digest.updateString(dependency.file?.relativeTo(resDir)?.invariantSeparatorsPath ?: "NO_FILE")
+                digest.updateString(dependency.content)
             }
 
         return digest.digest().joinToString(separator = "") { "%02x".format(it) }
@@ -150,14 +147,5 @@ internal object LayoutX2CDigestCalculator {
     private fun MessageDigest.updateString(value: String) {
         update(value.toByteArray(Charsets.UTF_8))
         update(0)
-    }
-
-    private fun resourceSymbolDirs(resDir: File): List<File> {
-        return resDir.listFiles()
-            ?.filter { resourceDir ->
-                resourceDir.isDirectory &&
-                    resourceDir.name.substringBefore("-") in setOf("color", "drawable", "layout", "mipmap")
-            }
-            ?: emptyList()
     }
 }

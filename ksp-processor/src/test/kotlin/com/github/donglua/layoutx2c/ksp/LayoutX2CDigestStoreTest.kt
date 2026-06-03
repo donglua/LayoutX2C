@@ -96,6 +96,153 @@ class LayoutX2CDigestStoreTest {
     }
 
     @Test
+    fun `layout digest ignores unrelated values resource changes`() {
+        val projectDir = tempDir.newFolder("layoutx2c-unrelated-values-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutFile = resDir.resolve("layout/demo.xml")
+        val valuesFile = resDir.resolve("values/strings.xml")
+        layoutFile.parentFile.mkdirs()
+        valuesFile.parentFile.mkdirs()
+        layoutFile.writeText("<TextView android:text=\"@string/title\" />")
+        valuesFile.writeText(
+            """
+            <resources>
+                <string name="title">Title</string>
+                <string name="unused">Before</string>
+            </resources>
+            """.trimIndent()
+        )
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        valuesFile.writeText(
+            """
+            <resources>
+                <string name="title">Title</string>
+                <string name="unused">After</string>
+            </resources>
+            """.trimIndent()
+        )
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(second).isEqualTo(first)
+    }
+
+    @Test
+    fun `layout digest changes when referenced nested value resource changes`() {
+        val projectDir = tempDir.newFolder("layoutx2c-nested-values-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutFile = resDir.resolve("layout/demo.xml")
+        val valuesFile = resDir.resolve("values/strings.xml")
+        layoutFile.parentFile.mkdirs()
+        valuesFile.parentFile.mkdirs()
+        layoutFile.writeText("<TextView android:text=\"@string/title\" />")
+        valuesFile.writeText(
+            """
+            <resources>
+                <string name="title">@string/app_name</string>
+                <string name="app_name">Before</string>
+            </resources>
+            """.trimIndent()
+        )
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        valuesFile.writeText(
+            """
+            <resources>
+                <string name="title">@string/app_name</string>
+                <string name="app_name">After</string>
+            </resources>
+            """.trimIndent()
+        )
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(second).isNotEqualTo(first)
+    }
+
+    @Test
+    fun `layout digest changes when referenced drawable file changes`() {
+        val projectDir = tempDir.newFolder("layoutx2c-drawable-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutFile = resDir.resolve("layout/demo.xml")
+        val drawableFile = resDir.resolve("drawable/logo.xml")
+        layoutFile.parentFile.mkdirs()
+        drawableFile.parentFile.mkdirs()
+        layoutFile.writeText("<ImageView android:src=\"@drawable/logo\" />")
+        drawableFile.writeText("<vector android:width=\"24dp\" />")
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        drawableFile.writeText("<vector android:width=\"32dp\" />")
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(second).isNotEqualTo(first)
+    }
+
+    @Test
+    fun `layout digest changes when missing resource becomes available`() {
+        val projectDir = tempDir.newFolder("layoutx2c-missing-resource-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutFile = resDir.resolve("layout/demo.xml")
+        val valuesFile = resDir.resolve("values/strings.xml")
+        layoutFile.parentFile.mkdirs()
+        layoutFile.writeText("<TextView android:text=\"@string/later_title\" />")
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        valuesFile.parentFile.mkdirs()
+        valuesFile.writeText("<resources><string name=\"later_title\">Now present</string></resources>")
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(second).isNotEqualTo(first)
+    }
+
+    @Test
     fun `layout digest changes when included layout changes`() {
         val projectDir = tempDir.newFolder("layoutx2c-include-digest")
         val resDir = projectDir.resolve("src/main/res")
