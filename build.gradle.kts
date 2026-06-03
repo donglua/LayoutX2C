@@ -10,7 +10,7 @@ buildscript {
     extra["targetSdk"] = 36
     extra["compileSdk"] = 36
     extra["groupId"] = "com.github.donglua.layoutx2c"
-    extra["versionName"] = "0.4.1"
+    extra["versionName"] = "1.0.0"
 }
 
 plugins {
@@ -35,6 +35,43 @@ subprojects {
 
     if (enableMavenCentralPublishing) {
         pluginManager.apply("com.vanniktech.maven.publish")
+        plugins.withId("com.vanniktech.maven.publish") {
+            configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
+                publishToMavenCentral()
+                if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+                    signAllPublications()
+                }
+                coordinates(
+                    groupId = rootProject.extra["groupId"] as String,
+                    artifactId = project.name,
+                    version = rootProject.extra["versionName"] as String
+                )
+                pom {
+                    name.set("LayoutX2C ${project.name}")
+                    description.set("Compile-time XML layout to Kotlin code generation for Android")
+                    inceptionYear.set("2026")
+                    url.set("https://github.com/donglua/LayoutX2C")
+                    licenses {
+                        license {
+                            name.set("The Apache License, Version 2.0")
+                            url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                            distribution.set("repo")
+                        }
+                    }
+                    developers {
+                        developer {
+                            id.set("donglua")
+                            name.set("donglua")
+                        }
+                    }
+                    scm {
+                        connection.set("scm:git:git://github.com/donglua/LayoutX2C.git")
+                        developerConnection.set("scm:git:ssh://github.com/donglua/LayoutX2C.git")
+                        url.set("https://github.com/donglua/LayoutX2C")
+                    }
+                }
+            }
+        }
     } else if (name == "gradle-plugin") {
         pluginManager.withPlugin("java-gradle-plugin") {
             pluginManager.apply("maven-publish")
@@ -48,42 +85,6 @@ subprojects {
                         from(components["java"])
                     }
                 }
-            }
-        }
-    }
-}
-
-plugins.withId("com.vanniktech.maven.publish") {
-    configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
-        publishToMavenCentral()
-        signAllPublications()
-        coordinates(
-            groupId = rootProject.extra["groupId"] as String,
-            artifactId = project.name,
-            version = rootProject.extra["versionName"] as String
-        )
-        pom {
-            name.set("LayoutX2C ${project.name}")
-            description.set("Compile-time XML layout to Kotlin code generation for Android")
-            inceptionYear.set("2026")
-            url.set("https://github.com/donglua/LayoutX2C")
-            licenses {
-                license {
-                    name.set("The Apache License, Version 2.0")
-                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-                    distribution.set("repo")
-                }
-            }
-            developers {
-                developer {
-                    id.set("donglua")
-                    name.set("donglua")
-                }
-            }
-            scm {
-                connection.set("scm:git:git://github.com/donglua/LayoutX2C.git")
-                developerConnection.set("scm:git:ssh://github.com/donglua/LayoutX2C.git")
-                url.set("https://github.com/donglua/LayoutX2C")
             }
         }
     }
