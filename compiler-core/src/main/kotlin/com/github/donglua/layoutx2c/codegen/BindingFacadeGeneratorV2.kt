@@ -294,6 +294,7 @@ class BindingFacadeGeneratorV2(
             bindingClassName,
             (listOf("rootView") + fields.map { it.propertyName }).joinToString(", ")
         )
+        builder.addStatement("binding.setRootTag(rootView)")
         builder.addStatement("binding.setupTwoWayBindings()")
         builder.addStatement("binding.invalidateAll()")
         builder.addStatement("return binding")

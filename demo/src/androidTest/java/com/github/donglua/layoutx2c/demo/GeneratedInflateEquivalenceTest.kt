@@ -16,6 +16,7 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintLayout.LayoutParams as ConstraintLayoutParams
+import androidx.databinding.DataBindingUtil
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.recyclerview.widget.RecyclerView
@@ -157,6 +158,10 @@ class GeneratedInflateEquivalenceTest {
             requireTrue("countText should resolve generated field", binding.countText.id == R.id.count_text)
             requireTrue("vmNameText should resolve generated field", binding.vmNameText.id == R.id.vm_name_text)
             requireTrue("vmStatusText should resolve generated field", binding.vmStatusText.id == R.id.vm_status_text)
+            requireTrue(
+                "generated binding should be registered on the root view",
+                DataBindingUtil.getBinding<DemoDataBindingEnhancedX2CBinding>(binding.root) === binding
+            )
 
             binding.title = "Android equivalence"
             binding.description = "Generated binding writes supported expressions"

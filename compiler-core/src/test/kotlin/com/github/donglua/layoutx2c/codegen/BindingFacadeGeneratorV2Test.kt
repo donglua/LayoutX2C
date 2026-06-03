@@ -168,8 +168,9 @@ class BindingFacadeGeneratorV2Test {
             dataBindingVariables = tree.rootMetadata.dataBindingVariables
         ).toString()
 
-        // bind 方法构造 binding 实例，调用 setupTwoWayBindings，然后返回
+        // bind 方法构造 binding 实例，注册 root tag，调用 setupTwoWayBindings，然后返回
         assertThat(generated).contains("val binding = ItemBindX2CBinding(rootView, titleText)")
+        assertThat(generated).contains("binding.setRootTag(rootView)")
         assertThat(generated).contains("binding.setupTwoWayBindings()")
         assertThat(generated).contains("return binding")
         // 构造函数不包含变量参数
