@@ -5,11 +5,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.LayoutRes
+import com.github.donglua.layoutx2c.runtime.annotation.PublicApi
 
 /**
  * 注册表：layoutResId -> LayoutFactory 的映射。
  * 编译期生成的代码会在 App 启动时自动注册。
  */
+@PublicApi
 object LayoutX2CRegistry {
 
     private val factories = mutableMapOf<Int, LayoutFactory>()

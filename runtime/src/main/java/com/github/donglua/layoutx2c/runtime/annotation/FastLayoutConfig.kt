@@ -11,6 +11,7 @@ package com.github.donglua.layoutx2c.runtime.annotation
  * }
  * ```
  */
+@PublicApi
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class FastLayoutConfig

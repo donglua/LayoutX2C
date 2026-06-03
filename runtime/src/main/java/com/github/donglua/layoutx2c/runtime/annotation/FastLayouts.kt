@@ -10,6 +10,7 @@ package com.github.donglua.layoutx2c.runtime.annotation
  * interface LayoutX2CConfig
  * ```
  */
+@PublicApi
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
 annotation class FastLayouts(

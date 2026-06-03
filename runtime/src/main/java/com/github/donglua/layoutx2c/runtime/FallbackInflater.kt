@@ -5,12 +5,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.LayoutRes
+import com.github.donglua.layoutx2c.runtime.annotation.PublicApi
 
 /**
  * Fallback：对不支持的布局或子树，使用原始 LayoutInflater inflate 原始 layout。
  *
  * 子树 fallback 会 inflate 原始 layout，再按路径摘取目标节点。
  */
+@PublicApi
 object FallbackInflater {
 
     /**

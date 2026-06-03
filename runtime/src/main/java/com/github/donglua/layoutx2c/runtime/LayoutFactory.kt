@@ -3,11 +3,13 @@ package com.github.donglua.layoutx2c.runtime
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import com.github.donglua.layoutx2c.runtime.annotation.PublicApi
 
 /**
  * 编译期生成的 Layout Factory 接口。
  * 每个 opt-in 的 layout XML 会生成一个实现类。
  */
+@PublicApi
 interface LayoutFactory {
 
     /**

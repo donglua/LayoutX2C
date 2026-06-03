@@ -4,11 +4,13 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
+import com.github.donglua.layoutx2c.runtime.annotation.PublicApi
 
 /**
  * LayoutInflater.Factory2 实现，拦截 setContentView / inflate 调用，
  * 优先使用 generated factory。
  */
+@PublicApi
 class LayoutX2CFactory2(
     private val delegate: LayoutInflater.Factory2?
 ) : LayoutInflater.Factory2 {
