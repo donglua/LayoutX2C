@@ -16,5 +16,6 @@ object LayoutX2CConfig {
         R.layout.demo_data_binding,
         R.layout.demo_data_binding_enhanced,
         R.layout.demo_scroll_image,
+        R.layout.demo_two_way_binding,
     )
 }

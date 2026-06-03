@@ -47,7 +47,7 @@ class DataBindingAutoBindIntegrationTest {
         ).toString()
 
         // executePendingBindings 应该包含绑定代码
-        assertThat(generated).contains("titleText.text = title ?: \"\"")
+        assertThat(generated).contains("titleText.setText(title ?: \"\")")
         // 变量仍然是类型化的
         assertThat(generated).contains("public var title: String? = null")
     }
@@ -81,7 +81,7 @@ class DataBindingAutoBindIntegrationTest {
             dataBindingVariables = tree.rootMetadata.dataBindingVariables
         ).toString()
 
-        assertThat(generated).contains("nameText.text = user?.name ?: \"\"")
+        assertThat(generated).contains("nameText.setText(user?.name ?: \"\")")
     }
 
     @Test
@@ -217,6 +217,40 @@ class DataBindingAutoBindIntegrationTest {
         assertThat(editText.dataBindingAttributes).contains("android:text")
         assertThat(editText.twoWayBindingAttributes).contains("android:text")
         assertThat(editText.unsupportedAttributes).doesNotContain("android:text")
+    }
+
+    @Test
+    fun `checked two-way binding generates forward assignment and reverse listener`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <variable name="accepted" type="boolean" />
+                </data>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <CheckBox
+                        android:id="@+id/accepted_check"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="@={accepted}" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "item_checked_two_way")
+        val analyzed = analyzer.analyze(tree.root)
+        val generated = generator.generate(
+            analyzedRoot = analyzed,
+            layoutName = "item_checked_two_way",
+            layoutResId = "R.layout.item_checked_two_way",
+            useFastPath = true,
+            dataBindingVariables = tree.rootMetadata.dataBindingVariables
+        ).toString()
+
+        assertThat(generated).contains("acceptedCheck.isChecked = accepted ?: false")
+        assertThat(generated).contains("acceptedCheck.setOnCheckedChangeListener")
+        assertThat(generated).contains("accepted = isChecked")
     }
 
     @Test

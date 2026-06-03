@@ -92,6 +92,34 @@ class BindingFieldCollectorTest {
     }
 
     @Test
+    fun `uses concrete type for compound button fields`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <CheckBox
+                    android:id="@+id/accepted_check"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/enabled_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val result = collector.collect(parser.parse(xml, "compound_fields").root)
+
+        assertThat(result).isInstanceOf(BindingFieldResult.Success::class.java)
+        val fields = (result as BindingFieldResult.Success).fields
+        assertThat(fields.map { it.propertyName }).containsExactly("acceptedCheck", "enabledSwitch").inOrder()
+        assertThat(fields.map { it.viewClass.toString() }).containsExactly(
+            "android.widget.CheckBox",
+            "androidx.appcompat.widget.SwitchCompat"
+        ).inOrder()
+    }
+
+    @Test
     fun `rejects duplicate ids`() {
         val xml = """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"

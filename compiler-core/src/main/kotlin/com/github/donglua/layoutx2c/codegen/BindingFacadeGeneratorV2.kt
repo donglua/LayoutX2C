@@ -348,7 +348,7 @@ class BindingFacadeGeneratorV2(
 
     /**
      * 构建 setupTwoWayBindings() 方法，给视图安装反向监听器，
-     * 把视图变化回写到 MutableLiveData 类型的目标变量。
+     * 把视图变化回写到 binding 类的变量属性（如 userName: String?）。
      *
      * 仅对 [DataBindingAttributeMapper.isTwoWayBindingSupported] 白名单内的
      * (viewType, attrName) 组合生效。其他双向绑定属性目前不会生成监听器代码。

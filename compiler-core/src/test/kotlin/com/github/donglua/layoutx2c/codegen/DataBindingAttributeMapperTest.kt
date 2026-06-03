@@ -16,7 +16,7 @@ class DataBindingAttributeMapperTest {
             variableName = "title",
             propertyPath = null
         )
-        assertThat(code).isEqualTo("titleText.text = title ?: \"\"")
+        assertThat(code).isEqualTo("titleText.setText(title ?: \"\")")
     }
 
     @Test
@@ -27,7 +27,7 @@ class DataBindingAttributeMapperTest {
             variableName = "user",
             propertyPath = "name"
         )
-        assertThat(code).isEqualTo("nameText.text = user?.name ?: \"\"")
+        assertThat(code).isEqualTo("nameText.setText(user?.name ?: \"\")")
     }
 
     @Test

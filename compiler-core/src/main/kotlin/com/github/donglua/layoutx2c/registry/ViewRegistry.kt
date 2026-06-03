@@ -8,6 +8,7 @@ import com.github.donglua.layoutx2c.codegen.dimensionToPxFloatCode
 import com.github.donglua.layoutx2c.codegen.gravityToCode
 import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.isButton
+import com.github.donglua.layoutx2c.parser.isCompoundButton
 import com.github.donglua.layoutx2c.parser.isEditText
 import com.github.donglua.layoutx2c.parser.isImageView
 import com.github.donglua.layoutx2c.parser.isLinearLayout
@@ -113,6 +114,30 @@ open class ResourceAwareViewRegistry(
             ClassName("androidx.appcompat.widget", "AppCompatEditText")
         ),
         ViewHandler(
+            setOf("CheckBox", "android.widget.CheckBox"),
+            ClassName("android.widget", "CheckBox")
+        ),
+        ViewHandler(
+            setOf("androidx.appcompat.widget.AppCompatCheckBox"),
+            ClassName("androidx.appcompat.widget", "AppCompatCheckBox")
+        ),
+        ViewHandler(
+            setOf("Switch", "android.widget.Switch"),
+            ClassName("android.widget", "Switch")
+        ),
+        ViewHandler(
+            setOf("androidx.appcompat.widget.SwitchCompat"),
+            ClassName("androidx.appcompat.widget", "SwitchCompat")
+        ),
+        ViewHandler(
+            setOf("RadioButton", "android.widget.RadioButton", "androidx.appcompat.widget.AppCompatRadioButton"),
+            ClassName("androidx.appcompat.widget", "AppCompatRadioButton")
+        ),
+        ViewHandler(
+            setOf("ToggleButton", "android.widget.ToggleButton"),
+            ClassName("android.widget", "ToggleButton")
+        ),
+        ViewHandler(
             setOf("ImageView", "android.widget.ImageView", "androidx.appcompat.widget.AppCompatImageView"),
             ClassName("androidx.appcompat.widget", "AppCompatImageView")
         ),
@@ -143,6 +168,7 @@ open class ResourceAwareViewRegistry(
         ImageSourceAttributeHandler(),
         ImageScaleTypeAttributeHandler,
         ImageTintAttributeHandler(),
+        CheckedAttributeHandler,
         CommonStateAttributeHandler(),
         PaddingAttributeHandler(),
         GravityAttributeHandler,
@@ -571,6 +597,26 @@ open class ResourceAwareViewRegistry(
         }
     }
 
+    private object CheckedAttributeHandler : AttributeHandler {
+        override val names = setOf("android:checked")
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return node.isCompoundButton()
+        }
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return isSupportedBoolean(value) || isSimpleDataBindingExpression(value)
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            node.node.attributes["android:checked"]
+                ?.takeIf { node.node.isCompoundButton() && isSupportedBoolean(it) }
+                ?.let { value ->
+                    builder.addStatement("isChecked = %L", value == "true")
+                }
+        }
+    }
+
     private inner class CommonStateAttributeHandler : AttributeHandler {
         override val names = setOf(
             "android:enabled",
@@ -849,6 +895,17 @@ private fun isSupportedTextStyle(value: String): Boolean {
 
 private fun isSupportedBoolean(value: String): Boolean {
     return value == "true" || value == "false"
+}
+
+private fun isSimpleDataBindingExpression(value: String): Boolean {
+    val expr = when {
+        value.startsWith("@={") && value.endsWith("}") ->
+            value.substring(3, value.length - 1).trim()
+        value.startsWith("@{") && value.endsWith("}") ->
+            value.substring(2, value.length - 1).trim()
+        else -> return false
+    }
+    return expr.matches(Regex("""[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*"""))
 }
 
 private fun isSupportedInputType(value: String): Boolean {

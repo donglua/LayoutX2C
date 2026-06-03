@@ -40,7 +40,23 @@ internal fun LayoutNode.isEditText(): Boolean {
 }
 
 internal fun LayoutNode.isTextLikeView(): Boolean {
-    return isTextView() || isButton() || isEditText()
+    return isTextView() || isButton() || isEditText() || isCompoundButton()
+}
+
+internal fun LayoutNode.isCompoundButton(): Boolean {
+    return tagName == "CompoundButton" ||
+        tagName == "android.widget.CompoundButton" ||
+        tagName == "CheckBox" ||
+        tagName == "android.widget.CheckBox" ||
+        tagName == "androidx.appcompat.widget.AppCompatCheckBox" ||
+        tagName == "Switch" ||
+        tagName == "android.widget.Switch" ||
+        tagName == "androidx.appcompat.widget.SwitchCompat" ||
+        tagName == "RadioButton" ||
+        tagName == "android.widget.RadioButton" ||
+        tagName == "androidx.appcompat.widget.AppCompatRadioButton" ||
+        tagName == "ToggleButton" ||
+        tagName == "android.widget.ToggleButton"
 }
 
 internal fun LayoutNode.isImageView(): Boolean {

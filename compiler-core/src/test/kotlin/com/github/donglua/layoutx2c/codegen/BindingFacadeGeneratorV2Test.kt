@@ -64,7 +64,7 @@ class BindingFacadeGeneratorV2Test {
         assertThat(generated).contains("override fun invalidateAll()")
         assertThat(generated).contains("override fun hasPendingBindings(): Boolean")
         assertThat(generated).contains("protected override fun executeBindings()")
-        assertThat(generated).contains("titleText.text = title ?: \"\"")
+        assertThat(generated).contains("titleText.setText(title ?: \"\")")
     }
 
     @Test

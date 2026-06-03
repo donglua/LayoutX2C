@@ -76,12 +76,25 @@ class BindingFieldCollector {
             "TextView", "android.widget.TextView" -> ClassName("android.widget", "TextView")
             "Button", "android.widget.Button" -> ClassName("android.widget", "Button")
             "EditText", "android.widget.EditText" -> ClassName("android.widget", "EditText")
+            "CheckBox", "android.widget.CheckBox" -> ClassName("android.widget", "CheckBox")
+            "Switch", "android.widget.Switch" -> ClassName("android.widget", "Switch")
+            "RadioButton", "android.widget.RadioButton" -> ClassName("android.widget", "RadioButton")
+            "ToggleButton", "android.widget.ToggleButton" -> ClassName("android.widget", "ToggleButton")
             "ImageView", "android.widget.ImageView" -> ClassName("android.widget", "ImageView")
             "View", "android.view.View" -> ClassName("android.view", "View")
             "ViewStub", "android.view.ViewStub" -> ClassName("android.view", "ViewStub")
             "androidx.appcompat.widget.AppCompatTextView" -> ClassName("androidx.appcompat.widget", "AppCompatTextView")
             "androidx.appcompat.widget.AppCompatButton" -> ClassName("androidx.appcompat.widget", "AppCompatButton")
             "androidx.appcompat.widget.AppCompatEditText" -> ClassName("androidx.appcompat.widget", "AppCompatEditText")
+            "androidx.appcompat.widget.AppCompatCheckBox" -> ClassName(
+                "androidx.appcompat.widget",
+                "AppCompatCheckBox"
+            )
+            "androidx.appcompat.widget.SwitchCompat" -> ClassName("androidx.appcompat.widget", "SwitchCompat")
+            "androidx.appcompat.widget.AppCompatRadioButton" -> ClassName(
+                "androidx.appcompat.widget",
+                "AppCompatRadioButton"
+            )
             "androidx.appcompat.widget.AppCompatImageView" -> ClassName(
                 "androidx.appcompat.widget",
                 "AppCompatImageView"

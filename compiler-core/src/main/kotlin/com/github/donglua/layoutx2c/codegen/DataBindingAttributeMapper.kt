@@ -121,10 +121,13 @@ object DataBindingAttributeMapper {
         "android.widget.CompoundButton" to "android:checked",
         "CheckBox" to "android:checked",
         "android.widget.CheckBox" to "android:checked",
+        "androidx.appcompat.widget.AppCompatCheckBox" to "android:checked",
         "Switch" to "android:checked",
         "android.widget.Switch" to "android:checked",
+        "androidx.appcompat.widget.SwitchCompat" to "android:checked",
         "RadioButton" to "android:checked",
         "android.widget.RadioButton" to "android:checked",
+        "androidx.appcompat.widget.AppCompatRadioButton" to "android:checked",
         "ToggleButton" to "android:checked",
         "android.widget.ToggleButton" to "android:checked"
     )
@@ -145,7 +148,7 @@ object DataBindingAttributeMapper {
 
     /**
      * 生成绑定代码。
-     * 例如：titleText.text = title ?: ""
+     * 例如：titleText.setText(title ?: "")
      */
     fun generateBindingCode(
         viewFieldName: String,
@@ -170,7 +173,12 @@ object DataBindingAttributeMapper {
                 val setterExpr = mapping.customSetter.invoke(fullVarRef)
                 "$viewFieldName.${mapping.propertyName} = $setterExpr"
             } else {
-                "$viewFieldName.${mapping.propertyName} = $fullVarRef ?: ${mapping.defaultValue}"
+                // 特殊处理：EditText.text 需要使用 setText() 方法而不是直接赋值
+                if (attrName == "android:text" && mapping.viewType == "TextView") {
+                    "$viewFieldName.setText($fullVarRef ?: ${mapping.defaultValue})"
+                } else {
+                    "$viewFieldName.${mapping.propertyName} = $fullVarRef ?: ${mapping.defaultValue}"
+                }
             }
         }
     }
@@ -179,8 +187,8 @@ object DataBindingAttributeMapper {
      * 生成双向绑定的反向监听器代码。
      *
      * 仅对白名单 (viewType, attrName) 组合生效（参见 [isTwoWayBindingSupported]）。
-     * 假定目标变量类型为 `androidx.lifecycle.MutableLiveData<T>`，
-     * 通过 `value` 属性回写视图变化。
+     * 目标变量是 binding 类的属性（如 `userName: String?`），监听器直接赋值给变量。
+     * 注意：当前实现不支持 LiveData，变量是简单的 nullable 类型。
      *
      * 返回值是一段多行 Kotlin 代码（已包含必要的 import 通过完全限定名），
      * 调用方需要把它写入到 BindingFacade 的 setup 方法体中。
@@ -194,12 +202,9 @@ object DataBindingAttributeMapper {
         propertyPath: String? = null
     ): String? {
         if (!isTwoWayBindingSupported(viewTagName, attrName)) return null
+        if (propertyPath != null) return null
 
-        val targetRef = if (propertyPath != null) {
-            "$variableName?.$propertyPath"
-        } else {
-            variableName
-        }
+        val targetRef = variableName
 
         return when (attrName) {
             "android:text" -> buildTextWatcherCode(viewFieldName, targetRef)
@@ -211,14 +216,15 @@ object DataBindingAttributeMapper {
     private fun buildTextWatcherCode(viewFieldName: String, targetRef: String): String {
         // 用 doAfterTextChanged 扩展会更简洁，但避免引入 androidx.core 依赖；
         // 这里直接使用 TextWatcher 匿名子类。
+        // 注意：targetRef 是变量名（如 userName），不是 LiveData，所以直接赋值而不是 .value
         return """
             $viewFieldName.addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
                 override fun afterTextChanged(s: android.text.Editable?) {
                     val newValue = s?.toString() ?: ""
-                    if ($targetRef?.value != newValue) {
-                        $targetRef?.value = newValue
+                    if ($targetRef != newValue) {
+                        $targetRef = newValue
                     }
                 }
             })
@@ -226,10 +232,11 @@ object DataBindingAttributeMapper {
     }
 
     private fun buildCheckedListenerCode(viewFieldName: String, targetRef: String): String {
+        // 注意：targetRef 是变量名（如 isAccepted），不是 LiveData，所以直接赋值而不是 .value
         return """
             $viewFieldName.setOnCheckedChangeListener { _, isChecked ->
-                if ($targetRef?.value != isChecked) {
-                    $targetRef?.value = isChecked
+                if ($targetRef != isChecked) {
+                    $targetRef = isChecked
                 }
             }
         """.trimIndent()

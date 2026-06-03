@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import com.github.donglua.layoutx2c.demo.generated.DemoConstraintX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
+import com.github.donglua.layoutx2c.demo.generated.DemoTwoWayBindingX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoFallbackX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoFormX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoIncludeX2C
@@ -148,6 +149,17 @@ object DemoLayoutCatalog {
             status = Status.Generated
         ) { context, parent ->
             DemoScrollImageX2C.inflate(context, parent)
+        },
+        Entry(
+            "Two-Way Binding",
+            "demo_two_way_binding",
+            R.layout.demo_two_way_binding,
+            "Layout_DemoTwoWayBinding",
+            summary = "Two-way binding (@={}) for EditText and CompoundButton",
+            status = Status.Binding,
+            codeViewerClassName = "DemoTwoWayBindingX2CBinding"
+        ) { context, parent ->
+            DemoTwoWayBindingX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
         },
     )
 
