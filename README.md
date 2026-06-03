@@ -101,6 +101,8 @@ layoutX2C {
 - [1.0 Migration Guide](docs/MIGRATION_1_0.md) 说明 `@PublicApi` / `@ExperimentalApi`
   边界、兼容矩阵和 breaking-change policy。
 - [Benchmarks](docs/BENCHMARKS.md) 说明 demo benchmark 的运行方式、记录字段和限制。
+- [Release Guide](docs/RELEASE.md) 说明 1.0 tag 发布、Maven Central / Gradle Plugin Portal
+  secrets 和本地验证命令。
 
 KSP digest cache 会按 layout 精确追踪直接和递归引用的资源依赖，包括 include /
 ViewStub layout、`@string`、`@dimen`、`@color`、`@drawable`、`@mipmap`、`@style`

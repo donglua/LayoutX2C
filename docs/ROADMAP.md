@@ -54,30 +54,40 @@
 - fallback 子树通过原始 layout 完整 inflate 后按 child path 摘取目标节点；`LayoutInflater` 的属性解析依赖平台 `XmlBlock.Parser`，不能安全地从 seek 后的普通 `XmlPullParser` 做 partial inflate。
 - Gradle 插件已声明 layout / values XML 输入，并传入 `layoutx2c.cacheDir`。
 - KSP 侧已落地保守 digest cache：digest 未变时可恢复 per-layout factory、facade 和 report；digest
-  已纳入 include / ViewStub layout 引用图，values XML 仍作为 coarse input。
+  已纳入 include / ViewStub layout 引用图，以及 layout 直接或递归引用的 string / dimen /
+  color / drawable / mipmap / style 资源图。values qualifier 变体会一起纳入 digest，未解析资源会以稳定 marker 记录。
 - Registry 仍是 aggregating 输出，但已通过内容 digest/cache 避免 Registry 内容未变时重复走完整生成路径。
 - Gradle 插件已提供 `layoutX2CReport`，可输出项目级 JSON / HTML 汇总，并支持 CI fallback policy。
+
+**1.0 仓库就绪状态**
+
+- Runtime-facing API 已使用 `@PublicApi` / `@ExperimentalApi` 标注，1.0 迁移边界见
+  `docs/MIGRATION_1_0.md`。
+- 版本号已准备为 `1.0.0`，Maven Central / Gradle Plugin Portal 发布配置和 release workflow
+  已就绪；真实发布仍需要 tag、Maven Central credentials、signing key，以及可选 Gradle Plugin Portal secrets。
+- `runtime` consumer ProGuard / R8 rules 已覆盖 generated factory 和 app-package generated registry。
+- benchmark 方法、release 步骤和本地验证命令分别记录在 `docs/BENCHMARKS.md` 和 `docs/RELEASE.md`。
 
 **当前限制**
 
 - `fragment`、无法解析的 include、循环 include、超出递归深度限制的 include，以及无法等价生成的特殊语义仍会保守 fallback。
-- `LayoutDigest` 还没有精确 style / dimen / color / string / drawable 引用图；values XML 仍作为 coarse input。
+- 精确资源图只用于 digest/cache invalidation，不把 style / theme 语义编译成常量；`?attr/` 和动态 theme 仍保守 fallback。
 - 复杂 DataBinding 表达式、BindingAdapter、Observable / LiveData 自动订阅和 lifecycle 观察者语义仍交给原生 DataBinding。
-- Android 端到端 generated vs inflated 等价性覆盖还需要系统补齐。
+- connected Android generated vs inflated 等价性测试依赖设备或 CI 环境运行。
 
 ---
 
 ## Next
 
-短期只推进会直接提高可用性和发布可信度的工作。
+短期路线已完成仓库侧 1.0 readiness。下一步主要是执行外部 release 和 post-1.0 能力扩展。
 
 ### 1. Android 等价性测试补齐
 
 目标：用真实 Android inflate 结果约束高风险语义，避免代码生成只在字符串测试层面正确。
 
-- 覆盖 include、nested include、include + merge、ViewStub、ConstraintLayout 安全子集。
-- 覆盖 fallback 子树和父级 LayoutParams 保留语义。
-- 对比 generated vs inflated 的 View tree、id、visibility、LayoutParams 和关键属性。
+- 已覆盖 include、nested include、include + merge、ViewStub、ConstraintLayout 安全子集。
+- 已覆盖 fallback 子树和父级 LayoutParams 保留语义。
+- 已对比 generated vs inflated 的 View tree、id、visibility、LayoutParams 和关键属性。
 
 验收口径：
 
@@ -88,9 +98,9 @@
 
 目标：让用户看到的支持范围与实际 Roadmap 保持一致。
 
-- README 更新 include / merge / ViewStub / ConstraintLayout 安全子集支持范围。
-- Demo 补齐对应 XML 样例和 benchmark 入口。
-- 明确 DataBinding binding 子类只实现 LayoutX2C 可静态保证的 `ViewDataBinding` 子集。
+- README 已更新 include / merge / ViewStub / ConstraintLayout 安全子集支持范围。
+- Demo 已补齐对应 XML 样例和 benchmark 入口。
+- 已明确 DataBinding binding 子类只实现 LayoutX2C 可静态保证的 `ViewDataBinding` 子集。
 
 验收口径：
 
@@ -101,7 +111,7 @@
 
 目标：减少无关 values 资源改动导致的保守重跑，同时保持 fallback 正确性。
 
-- 从 coarse values XML 输入推进到 style / dimen / color / string / drawable 引用图。
+- 已从 coarse values XML 输入推进到 style / dimen / color / string / drawable 引用图。
 - style / theme 引用继续默认保守 fallback，只把 digest 依赖做精确。
 - 保持 Registry aggregating 输出，不提前承诺 KSP isolating processor。
 
@@ -109,7 +119,16 @@
 
 - 修改被引用资源会触发相关 layout 重新生成。
 - 修改无关资源不触发无关 factory 重生成。
-- 无法解析或动态 theme 语义仍保守 fallback，并在 report 中可诊断。
+- 无法解析或动态 theme 语义仍保守 fallback。
+
+### 4. 执行 1.0 Release
+
+目标：使用 `docs/RELEASE.md` 中的流程执行真实外部发布。
+
+- 配置 Maven Central 和 signing secrets。
+- 可选配置 Gradle Plugin Portal secrets。
+- 推送 `1.0.0` tag 触发 release workflow。
+- 记录 release 结果和任何外部平台问题。
 
 ---
 
@@ -151,7 +170,6 @@
 **其他候选**
 
 - Java 代码生成后端，用于兼容纯 Java 项目。
-- 更精确的资源引用图，减少无关 values 改动带来的重跑。
 - Runtime debug 模式输出 generated vs inflated 差异报告。
 
 ---
@@ -175,15 +193,15 @@ v1.0 的目标是稳定 API，发布到 Maven Central，并能被生产项目保
 
 **发布工程**
 
-- Maven Central 发布 runtime、compiler-core、ksp-processor、gradle-plugin。
-- Gradle Plugin Portal 发布插件。
-- CI 自动化 staging -> release。
-- 自动生成 ProGuard / R8 规则。
+- Maven Central 发布 runtime、compiler-core、ksp-processor、gradle-plugin 的配置已就绪。
+- Gradle Plugin Portal 发布插件的配置已就绪，缺少 portal secrets 时 workflow 会显式跳过。
+- CI 自动化 staging -> release 已通过 tag workflow 表达。
+- ProGuard / R8 consumer rules 已覆盖 generated factory 和 generated registry。
 
 **性能和文档**
 
-- 公开 benchmark 数据：inflate 时间、内存占用、编译时间开销。
-- README 和文档站点说明测试设备、方法论和限制。
+- benchmark 方法论已公开，真实数据应随 release notes 或文档站点按设备记录补充。
+- README 和 docs 说明测试设备、方法论和限制。
 - 示例项目覆盖 generated inflate、fallback、DataBinding binding 子类和报告输出。
 
 ---
