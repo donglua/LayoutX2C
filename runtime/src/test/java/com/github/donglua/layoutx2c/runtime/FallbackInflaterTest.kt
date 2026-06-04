@@ -64,18 +64,30 @@ class FallbackInflaterTest {
     }
 
     @Test
-    fun `batch child fallback delegates each path to child partial inflate`() {
+    fun `batch child fallback uses a single parser pass instead of delegating each child`() {
         val source = fallbackInflaterSource()
 
         assertWithMessage("Batch child fallback should be available for sibling fallback nodes")
             .that(source)
             .contains("fun inflateChildren(")
-        assertWithMessage("Batch child fallback should avoid full-tree extraction for ordinary view siblings")
+        assertWithMessage("Batch child fallback should share parser traversal across sibling paths")
             .that(source)
-            .contains("return Array(childPaths.size) { index ->")
-        assertWithMessage("Batch child fallback should reuse the single-child optimized path")
+            .contains("inflateChildrenWithSingleParser")
+        assertWithMessage("Batch child fallback should not reopen and reseek the XML for each child")
             .that(source)
-            .contains("inflateChild(context, layoutId, childPaths[index], parent)")
+            .doesNotContain("inflateChild(context, layoutId, childPaths[index], parent)")
+    }
+
+    @Test
+    fun `batch child fallback extracts unsupported children from one full tree`() {
+        val source = fallbackInflaterSource()
+
+        assertWithMessage("Unsupported batched children should share one full-tree inflate")
+            .that(source)
+            .contains("inflateChildrenFromFullTree")
+        assertWithMessage("Single-child full-tree extraction should still be retained for the public child API")
+            .that(source)
+            .contains("inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)")
     }
 
     private fun fallbackInflaterSource(): String {

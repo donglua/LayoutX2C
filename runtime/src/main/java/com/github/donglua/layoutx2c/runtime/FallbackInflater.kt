@@ -64,7 +64,7 @@ object FallbackInflater {
     /**
      * Inflate 原始 layout 中的多个 fallback 子树。
      *
-     * 委托给 inflateChild 处理每个子树，由其自动选择 partial inflate 或 full-tree extraction。
+     * 对非重叠路径共享一次 XML 遍历；不适合局部 inflate 的目标共享一次整树提取。
      */
     fun inflateChildren(
         context: Context,
@@ -74,9 +74,179 @@ object FallbackInflater {
     ): Array<View> {
         if (childPaths.isEmpty()) return emptyArray()
 
-        return Array(childPaths.size) { index ->
-            inflateChild(context, layoutId, childPaths[index], parent)
+        if (hasOverlappingChildPaths(childPaths)) {
+            return inflateChildrenIndividually(context, layoutId, childPaths, parent)
         }
+
+        val layoutName = context.resources.getResourceName(layoutId)
+        return inflateChildrenWithSingleParser(context, layoutId, childPaths, parent, layoutName)
+    }
+
+    private fun inflateChildrenIndividually(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        childPaths: Array<IntArray>,
+        parent: ViewGroup?
+    ): Array<View> {
+        return Array(childPaths.size) { index ->
+            val childPath = childPaths[index]
+            inflateChild(context, layoutId, childPath, parent)
+        }
+    }
+
+    private fun inflateChildrenWithSingleParser(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        childPaths: Array<IntArray>,
+        parent: ViewGroup?,
+        layoutName: String
+    ): Array<View> {
+        val targets = childPaths.mapIndexed { index, childPath ->
+            ChildInflateTarget(index, childPath)
+        }.sortedWith { first, second ->
+            compareChildPaths(first.childPath, second.childPath)
+        }
+        val targetsByPath = targets.associateBy { it.childPath.toList() }
+        val inflatedChildren = arrayOfNulls<View>(childPaths.size)
+        val fullTreeTargets = mutableListOf<ChildInflateTarget>()
+        val parser = context.resources.getLayout(layoutId)
+
+        try {
+            moveToFirstStartTag(parser, layoutName)
+            if (parser.name == "layout") {
+                moveToDataBindingViewRoot(parser, layoutName)
+            }
+            inflateTargetSubtree(
+                context = context,
+                parser = parser,
+                currentPath = emptyList(),
+                targetsByPath = targetsByPath,
+                inflatedChildren = inflatedChildren,
+                fullTreeTargets = fullTreeTargets,
+                parent = parent
+            )
+        } finally {
+            parser.close()
+        }
+
+        if (fullTreeTargets.isNotEmpty()) {
+            val fullTreeChildren = inflateChildrenFromFullTree(
+                context,
+                layoutId,
+                fullTreeTargets.map { it.childPath }.toTypedArray(),
+                parent,
+                layoutName
+            )
+            for (index in fullTreeTargets.indices) {
+                inflatedChildren[fullTreeTargets[index].outputIndex] = fullTreeChildren[index]
+            }
+        }
+
+        return Array(childPaths.size) { index ->
+            inflatedChildren[index] ?: throw IllegalArgumentException(
+                "Fallback child path ${childPaths[index].toPathString()} is invalid for $layoutName"
+            )
+        }
+    }
+
+    private fun inflateTargetSubtree(
+        context: Context,
+        parser: XmlPullParser,
+        currentPath: List<Int>,
+        targetsByPath: Map<List<Int>, ChildInflateTarget>,
+        inflatedChildren: Array<View?>,
+        fullTreeTargets: MutableList<ChildInflateTarget>,
+        parent: ViewGroup?
+    ) {
+        val target = targetsByPath[currentPath]
+        if (target != null) {
+            val targetTag = parser.name
+            if (requiresFullTreeExtraction(targetTag) || !isSafeForPartialInflate(targetTag)) {
+                fullTreeTargets += target
+                skipCurrentSubtree(parser)
+            } else {
+                inflatedChildren[target.outputIndex] = LayoutInflater.from(context).inflate(
+                    ReplayCurrentStartTagXmlPullParser(parser),
+                    parent,
+                    false
+                )
+            }
+            return
+        }
+
+        val parentDepth = parser.depth
+        var childIndex = 0
+        while (true) {
+            when (parser.next()) {
+                XmlPullParser.START_TAG -> {
+                    if (parser.depth == parentDepth + 1) {
+                        inflateTargetSubtree(
+                            context = context,
+                            parser = parser,
+                            currentPath = currentPath + childIndex,
+                            targetsByPath = targetsByPath,
+                            inflatedChildren = inflatedChildren,
+                            fullTreeTargets = fullTreeTargets,
+                            parent = parent
+                        )
+                        childIndex++
+                    }
+                }
+                XmlPullParser.END_TAG -> {
+                    if (parser.depth == parentDepth) {
+                        return
+                    }
+                }
+                XmlPullParser.END_DOCUMENT -> return
+            }
+        }
+    }
+
+    private fun skipCurrentSubtree(parser: XmlPullParser) {
+        val startDepth = parser.depth
+        while (true) {
+            when (parser.next()) {
+                XmlPullParser.END_TAG -> {
+                    if (parser.depth == startDepth) {
+                        return
+                    }
+                }
+                XmlPullParser.END_DOCUMENT -> return
+            }
+        }
+    }
+
+    private fun hasOverlappingChildPaths(childPaths: Array<IntArray>): Boolean {
+        val sortedPaths = childPaths.sortedWith(::compareChildPaths)
+        for (index in 1 until sortedPaths.size) {
+            val previous = sortedPaths[index - 1]
+            val current = sortedPaths[index]
+            if (previous.isPrefixOf(current)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun compareChildPaths(first: IntArray, second: IntArray): Int {
+        val sharedSize = minOf(first.size, second.size)
+        for (index in 0 until sharedSize) {
+            val difference = first[index] - second[index]
+            if (difference != 0) {
+                return difference
+            }
+        }
+        return first.size - second.size
+    }
+
+    private fun IntArray.isPrefixOf(other: IntArray): Boolean {
+        if (size > other.size) return false
+        for (index in indices) {
+            if (this[index] != other[index]) {
+                return false
+            }
+        }
+        return true
     }
 
     private fun seekToChildStartTag(
@@ -219,6 +389,24 @@ object FallbackInflater {
         return child
     }
 
+    private fun inflateChildrenFromFullTree(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        childPaths: Array<IntArray>,
+        parent: ViewGroup?,
+        layoutName: String
+    ): Array<View> {
+        val inflater = LayoutInflater.from(context)
+        val fullTree = inflater.inflate(layoutId, parent, false)
+        val children = Array(childPaths.size) { index ->
+            findChildByPath(fullTree, childPaths[index], layoutName)
+        }
+        for (child in children) {
+            (child.parent as? ViewGroup)?.removeView(child)
+        }
+        return children
+    }
+
     private fun findChildByPath(root: View, childPath: IntArray, layoutName: String): View {
         return (FallbackChildNavigator.findChildByPath(
             AndroidFallbackChildNode(root),
@@ -234,6 +422,11 @@ object FallbackInflater {
     private fun List<Int>.toPathString(): String {
         return if (isEmpty()) "<root>" else joinToString(prefix = "[", postfix = "]")
     }
+
+    private class ChildInflateTarget(
+        val outputIndex: Int,
+        val childPath: IntArray
+    )
 
     private class AndroidFallbackChildNode(
         val view: View
