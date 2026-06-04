@@ -188,11 +188,11 @@ class LayoutX2CDigestStoreTest {
         val projectDir = tempDir.newFolder("layoutx2c-drawable-digest")
         val resDir = projectDir.resolve("src/main/res")
         val layoutFile = resDir.resolve("layout/demo.xml")
-        val drawableFile = resDir.resolve("drawable/logo.xml")
+        val drawableFile = resDir.resolve("drawable/logo.png")
         layoutFile.parentFile.mkdirs()
         drawableFile.parentFile.mkdirs()
         layoutFile.writeText("<ImageView android:src=\"@drawable/logo\" />")
-        drawableFile.writeText("<vector android:width=\"24dp\" />")
+        drawableFile.writeBytes(byteArrayOf(0x00, 0x7f, 0x50, 0x4e, 0x47, 0x01, 0x02))
 
         val first = LayoutX2CDigestCalculator.layoutDigest(
             layoutFile = layoutFile,
@@ -201,7 +201,7 @@ class LayoutX2CDigestStoreTest {
             rPackageName = "com.example"
         )
 
-        drawableFile.writeText("<vector android:width=\"32dp\" />")
+        drawableFile.writeBytes(byteArrayOf(0x00, 0x7f, 0x50, 0x4e, 0x47, 0x03, 0x04))
 
         val second = LayoutX2CDigestCalculator.layoutDigest(
             layoutFile = layoutFile,
@@ -379,6 +379,12 @@ class LayoutX2CDigestStoreTest {
         assertThat(digest).isNotEqualTo(
             "3ffb5db5cd705bbef3d8bd5281a9bdffff098fc49791dc9f7b9d051117a27042"
         )
+    }
+
+    @Test
+    fun `cache compatibility key is bumped for file resource hash semantics`() {
+        assertThat(LayoutX2CDigestCalculator.cacheCompatibilityKey("test"))
+            .isEqualTo("schema=v8|processor=test")
     }
 
     @Test
