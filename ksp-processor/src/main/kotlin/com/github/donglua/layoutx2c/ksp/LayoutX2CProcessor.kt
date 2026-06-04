@@ -8,6 +8,7 @@ import com.github.donglua.layoutx2c.codegen.DefaultLayoutParamsEmitter
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.IncludeResolver
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
+import com.github.donglua.layoutx2c.registry.CustomViewDescriptor
 import com.github.donglua.layoutx2c.registry.ResourceAwareViewRegistry
 import com.github.donglua.layoutx2c.report.SupportReportGenerator
 import com.github.donglua.layoutx2c.resources.ResourceSymbolTable
@@ -73,6 +74,7 @@ class LayoutX2CProcessor(
                 file = File(sourceFile.filePath),
                 packageName = annotated.packageName(),
                 rPackageName = LayoutX2CConfigParser.extractRPackageName(sourceText),
+                customViews = CustomViewConfigParser.extractCustomViews(sourceText),
                 ksFile = sourceFile
             )
             layoutNames.addAll(LayoutX2CConfigParser.extractLayoutNames(sourceText))
@@ -97,6 +99,7 @@ class LayoutX2CProcessor(
                     file = File(sourceFile.filePath),
                     packageName = annotated.packageName(),
                     rPackageName = sourceFile.rPackageName(),
+                    customViews = CustomViewConfigParser.extractCustomViews(File(sourceFile.filePath).readText()),
                     ksFile = sourceFile
                 )
             }
@@ -110,6 +113,7 @@ class LayoutX2CProcessor(
                     file = File(sourceFile.filePath),
                     packageName = annotated.packageName(),
                     rPackageName = sourceFile.rPackageName(),
+                    customViews = CustomViewConfigParser.extractCustomViews(File(sourceFile.filePath).readText()),
                     ksFile = sourceFile
                 )
             }
@@ -348,7 +352,8 @@ class LayoutX2CProcessor(
             resDir = resDir,
             packageName = packageName,
             rPackageName = rPackageName,
-            manifestFile = manifestFile
+            manifestFile = manifestFile,
+            customViews = configSources.flatMap { it.customViews }
         )
     }
 
@@ -489,13 +494,15 @@ private data class LayoutX2CProcessorConfig(
     val resDir: File,
     val packageName: String,
     val rPackageName: String,
-    val manifestFile: File?
+    val manifestFile: File?,
+    val customViews: List<CustomViewDescriptor>
 )
 
 private data class LayoutX2CSource(
     val file: File,
     val packageName: String?,
     val rPackageName: String?,
+    val customViews: List<CustomViewDescriptor>,
     val ksFile: KSFile
 )
 
