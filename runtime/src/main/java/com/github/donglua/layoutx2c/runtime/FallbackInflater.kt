@@ -48,7 +48,14 @@ object FallbackInflater {
             if (requiresFullTreeExtraction(targetTag)) {
                 return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
             }
-            return LayoutInflater.from(context).inflate(parser, parent, false)
+            if (!isSafeForPartialInflate(targetTag)) {
+                return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
+            }
+            return LayoutInflater.from(context).inflate(
+                ReplayCurrentStartTagXmlPullParser(parser),
+                parent,
+                false
+            )
         } finally {
             parser.close()
         }
@@ -172,6 +179,28 @@ object FallbackInflater {
         return tagName == "merge" || tagName == "include" || tagName == "fragment"
     }
 
+    private fun isSafeForPartialInflate(tagName: String): Boolean {
+        return tagName in SAFE_PARTIAL_INFLATE_TAGS
+    }
+
+    private val SAFE_PARTIAL_INFLATE_TAGS = setOf(
+        "View",
+        "TextView",
+        "ImageView",
+        "Button",
+        "EditText",
+        "LinearLayout",
+        "FrameLayout",
+        "RelativeLayout",
+        "ImageButton",
+        "CheckBox",
+        "RadioButton",
+        "ProgressBar",
+        "SeekBar",
+        "Switch",
+        "Space"
+    )
+
     /**
      * Inflate the full original layout and detach the requested child afterward.
      * Used for inflater semantic tags that cannot be safely inflated as standalone roots.
@@ -220,6 +249,26 @@ object FallbackInflater {
 
         override fun childAt(index: Int): AndroidFallbackChildNode {
             return AndroidFallbackChildNode(viewGroup!!.getChildAt(index))
+        }
+    }
+
+    private class ReplayCurrentStartTagXmlPullParser(
+        private val delegate: XmlPullParser
+    ) : XmlPullParser by delegate {
+        private var shouldReplayCurrentStartTag = true
+
+        init {
+            require(delegate.eventType == XmlPullParser.START_TAG) {
+                "ReplayCurrentStartTagXmlPullParser requires parser at START_TAG"
+            }
+        }
+
+        override fun next(): Int {
+            if (shouldReplayCurrentStartTag) {
+                shouldReplayCurrentStartTag = false
+                return XmlPullParser.START_TAG
+            }
+            return delegate.next()
         }
     }
 }

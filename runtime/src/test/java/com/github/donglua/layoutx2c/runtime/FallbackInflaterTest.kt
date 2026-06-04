@@ -10,9 +10,9 @@ class FallbackInflaterTest {
     fun `child fallback uses parser based partial inflate for ordinary view subtree`() {
         val source = fallbackInflaterSource()
 
-        assertWithMessage("Child fallback should avoid inflating the whole original layout for ordinary view subtrees")
+        assertWithMessage("Child fallback should avoid inflating the whole original layout for whitelisted ordinary view subtrees")
             .that(source)
-            .contains(".inflate(parser, parent, false)")
+            .contains("ReplayCurrentStartTagXmlPullParser(parser)")
         assertWithMessage("Child fallback should seek with the framework XmlResourceParser from Resources.getLayout")
             .that(source)
             .contains("context.resources.getLayout(layoutId)")
@@ -28,6 +28,39 @@ class FallbackInflaterTest {
         assertWithMessage("Unsupported partial roots should keep the known-correct full-tree path")
             .that(source)
             .contains("inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)")
+    }
+
+    @Test
+    fun `child fallback gates partial inflate behind a safe tag whitelist`() {
+        val source = fallbackInflaterSource()
+
+        assertWithMessage("Partial inflate should be limited to an explicit safe tag list")
+            .that(source)
+            .contains("isSafeForPartialInflate(targetTag)")
+        assertWithMessage("Non-whitelisted ordinary tags should keep the full-tree fallback path")
+            .that(source)
+            .contains("if (!isSafeForPartialInflate(targetTag))")
+        assertWithMessage("The first phase whitelist should cover common simple platform views")
+            .that(source)
+            .contains("\"TextView\"")
+        assertWithMessage("The first phase whitelist should keep ConstraintLayout out until runtime verification exists")
+            .that(source)
+            .doesNotContain("\"ConstraintLayout\"")
+    }
+
+    @Test
+    fun `replay parser wrapper replays the current start tag before delegating`() {
+        val source = fallbackInflaterSource()
+
+        assertWithMessage("Wrapper should exist so LayoutInflater does not skip the seeked target START_TAG")
+            .that(source)
+            .contains("private class ReplayCurrentStartTagXmlPullParser")
+        assertWithMessage("Wrapper should return START_TAG for the first LayoutInflater next call")
+            .that(source)
+            .contains("XmlPullParser.START_TAG")
+        assertWithMessage("Wrapper should delegate subsequent next calls to the platform parser")
+            .that(source)
+            .contains("return delegate.next()")
     }
 
     @Test
