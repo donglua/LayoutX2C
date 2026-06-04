@@ -168,6 +168,7 @@ open class ResourceAwareViewRegistry(
         TextColorAttributeHandler(),
         TextSizeAttributeHandler(),
         TextStyleAttributeHandler,
+        TextPresentationAttributeHandler(),
         HintAttributeHandler(),
         InputTypeAttributeHandler,
         ImageSourceAttributeHandler(),
@@ -492,6 +493,95 @@ open class ResourceAwareViewRegistry(
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             node.node.attributes["android:textStyle"]?.let { value ->
                 builder.addStatement("setTypeface(typeface, %L)", textStyleToCode(value))
+            }
+        }
+    }
+
+    private inner class TextPresentationAttributeHandler : AttributeHandler {
+        override val names = setOf(
+            "android:textAllCaps",
+            "android:singleLine",
+            "android:ellipsize",
+            "android:maxLines",
+            "android:minLines",
+            "android:lines",
+            "android:includeFontPadding",
+            "android:lineSpacingExtra",
+            "android:lineSpacingMultiplier",
+            "android:fontFamily",
+            "android:textIsSelectable",
+            "android:scrollHorizontally"
+        )
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return node.isTextLikeView()
+        }
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return when (attrName) {
+                "android:textAllCaps",
+                "android:singleLine",
+                "android:includeFontPadding",
+                "android:textIsSelectable",
+                "android:scrollHorizontally" -> isSupportedBoolean(value)
+                "android:ellipsize" -> ellipsizeToCode(value) != null
+                "android:maxLines",
+                "android:minLines",
+                "android:lines" -> isSupportedNonNegativeInt(value)
+                "android:lineSpacingExtra" -> isSupportedDimension(value) && supportsResourceReference(value)
+                "android:lineSpacingMultiplier" -> value.toFloatOrNull() != null
+                "android:fontFamily" -> isSupportedFontFamily(value)
+                else -> false
+            }
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            val attrs = node.node.attributes
+            attrs["android:textAllCaps"]?.let { value ->
+                builder.addStatement("setAllCaps(%L)", value == "true")
+            }
+            attrs["android:singleLine"]?.let { value ->
+                builder.addStatement("setSingleLine(%L)", value == "true")
+            }
+            attrs["android:ellipsize"]?.let { value ->
+                ellipsizeToCode(value)?.let { code ->
+                    builder.addStatement("ellipsize = %T.TruncateAt.%L", ClassName("android.text", "TextUtils"), code)
+                }
+            }
+            attrs["android:maxLines"]?.let { value ->
+                builder.addStatement("maxLines = %L", value)
+            }
+            attrs["android:minLines"]?.let { value ->
+                builder.addStatement("minLines = %L", value)
+            }
+            attrs["android:lines"]?.let { value ->
+                builder.addStatement("setLines(%L)", value)
+            }
+            attrs["android:includeFontPadding"]?.let { value ->
+                builder.addStatement("setIncludeFontPadding(%L)", value == "true")
+            }
+            val lineSpacingExtra = attrs["android:lineSpacingExtra"]
+            val lineSpacingMultiplier = attrs["android:lineSpacingMultiplier"]
+            if (lineSpacingExtra != null || lineSpacingMultiplier != null) {
+                builder.addStatement(
+                    "setLineSpacing(%L, %Lf)",
+                    dimensionToPxFloatCode(lineSpacingExtra ?: "0", resourceResolver, rPackageName),
+                    lineSpacingMultiplier?.toFloatOrNull() ?: 1.0f
+                )
+            }
+            attrs["android:fontFamily"]?.let { value ->
+                builder.addStatement(
+                    "typeface = %T.create(%S, typeface?.style ?: %T.NORMAL)",
+                    ClassName("android.graphics", "Typeface"),
+                    value,
+                    ClassName("android.graphics", "Typeface")
+                )
+            }
+            attrs["android:textIsSelectable"]?.let { value ->
+                builder.addStatement("setTextIsSelectable(%L)", value == "true")
+            }
+            attrs["android:scrollHorizontally"]?.let { value ->
+                builder.addStatement("setHorizontallyScrolling(%L)", value == "true")
             }
         }
     }
@@ -964,6 +1054,28 @@ private fun isSupportedTextStyle(value: String): Boolean {
 
 private fun isSupportedBoolean(value: String): Boolean {
     return value == "true" || value == "false"
+}
+
+private fun isSupportedNonNegativeInt(value: String): Boolean {
+    return value.toIntOrNull()?.let { it >= 0 } == true
+}
+
+private fun isSupportedFontFamily(value: String): Boolean {
+    return value.isNotBlank() &&
+        !value.startsWith("@") &&
+        !value.startsWith("?") &&
+        !value.contains("/")
+}
+
+private fun ellipsizeToCode(value: String): String? {
+    return when (value) {
+        "start" -> "START"
+        "middle" -> "MIDDLE"
+        "end" -> "END"
+        "marquee" -> "MARQUEE"
+        "none" -> null
+        else -> null
+    }
 }
 
 private fun isSimpleDataBindingExpression(value: String): Boolean {

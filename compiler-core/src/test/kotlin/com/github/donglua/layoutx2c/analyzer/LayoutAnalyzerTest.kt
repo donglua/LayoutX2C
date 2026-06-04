@@ -381,6 +381,33 @@ class LayoutAnalyzerTest {
     }
 
     @Test
+    fun `supported expanded text attributes return FULL`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAllCaps="true"
+                android:singleLine="true"
+                android:ellipsize="middle"
+                android:maxLines="3"
+                android:minLines="1"
+                android:lines="2"
+                android:includeFontPadding="false"
+                android:lineSpacingExtra="4dp"
+                android:lineSpacingMultiplier="1.2"
+                android:fontFamily="sans"
+                android:textIsSelectable="true"
+                android:scrollHorizontally="true" />
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "expanded_text_attrs")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.unsupportedAttributes).isEmpty()
+    }
+
+    @Test
     fun `unsupported high frequency attribute values return FALLBACK`() {
         val xml = """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"

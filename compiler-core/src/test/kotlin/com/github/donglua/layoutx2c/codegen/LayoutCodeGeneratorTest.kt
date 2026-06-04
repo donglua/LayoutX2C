@@ -543,6 +543,43 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `expanded text attributes emit text view property code`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAllCaps="true"
+                android:singleLine="true"
+                android:ellipsize="middle"
+                android:maxLines="3"
+                android:minLines="1"
+                android:lines="2"
+                android:includeFontPadding="false"
+                android:lineSpacingExtra="4dp"
+                android:lineSpacingMultiplier="1.2"
+                android:fontFamily="sans"
+                android:textIsSelectable="true"
+                android:scrollHorizontally="true" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "expanded_text_attrs").root)
+        val generated = generator.generate(analyzed, "expanded_text_attrs", "R.layout.expanded_text_attrs").toString()
+
+        assertThat(generated).contains("setAllCaps(true)")
+        assertThat(generated).contains("setSingleLine(true)")
+        assertThat(generated).contains("ellipsize = TextUtils.TruncateAt.MIDDLE")
+        assertThat(generated).contains("maxLines = 3")
+        assertThat(generated).contains("minLines = 1")
+        assertThat(generated).contains("setLines(2)")
+        assertThat(generated).contains("setIncludeFontPadding(false)")
+        assertThat(generated).contains("setLineSpacing((4f * density), 1.2f)")
+        assertThat(generated).contains("typeface = Typeface.create(\"sans\", typeface?.style ?: Typeface.NORMAL)")
+        assertThat(generated).contains("setTextIsSelectable(true)")
+        assertThat(generated).contains("setHorizontallyScrolling(true)")
+    }
+
+    @Test
     fun `button emits app compat button and text-like attrs`() {
         val xml = """
             <Button xmlns:android="http://schemas.android.com/apk/res/android"
