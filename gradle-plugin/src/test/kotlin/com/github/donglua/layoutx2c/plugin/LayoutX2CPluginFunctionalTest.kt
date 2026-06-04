@@ -15,7 +15,7 @@ class LayoutX2CPluginFunctionalTest {
     val tempDir = TemporaryFolder()
 
     @Test
-    fun `digest cache restores deleted outputs and invalidates changed resources`() {
+    fun `digest cache restores deleted outputs and invalidates referenced resources`() {
         val fixture = createAndroidFixture()
 
         fixture.runKsp()
@@ -88,17 +88,17 @@ class LayoutX2CPluginFunctionalTest {
 
         val afterValuesManifest = fixture.digestManifest()
         assertThat(afterValuesManifest.getProperty("demo_one"))
-            .isNotEqualTo(afterLayoutManifest.getProperty("demo_one"))
+            .isEqualTo(afterLayoutManifest.getProperty("demo_one"))
         assertThat(afterValuesManifest.getProperty("demo_two"))
             .isNotEqualTo(afterLayoutManifest.getProperty("demo_two"))
         assertThat(afterValuesManifest.getProperty("pattern_alpha"))
-            .isNotEqualTo(afterLayoutManifest.getProperty("pattern_alpha"))
+            .isEqualTo(afterLayoutManifest.getProperty("pattern_alpha"))
         assertThat(afterValuesManifest.getProperty("pattern_beta"))
-            .isNotEqualTo(afterLayoutManifest.getProperty("pattern_beta"))
-        assertThat(fixture.cacheDir("demo_one", afterLayoutManifest.getProperty("demo_one")).exists()).isFalse()
+            .isEqualTo(afterLayoutManifest.getProperty("pattern_beta"))
+        assertThat(fixture.cacheDir("demo_one", afterLayoutManifest.getProperty("demo_one")).exists()).isTrue()
         assertThat(fixture.cacheDir("demo_two", afterLayoutManifest.getProperty("demo_two")).exists()).isFalse()
-        assertThat(fixture.cacheDir("pattern_alpha", afterLayoutManifest.getProperty("pattern_alpha")).exists()).isFalse()
-        assertThat(fixture.cacheDir("pattern_beta", afterLayoutManifest.getProperty("pattern_beta")).exists()).isFalse()
+        assertThat(fixture.cacheDir("pattern_alpha", afterLayoutManifest.getProperty("pattern_alpha")).exists()).isTrue()
+        assertThat(fixture.cacheDir("pattern_beta", afterLayoutManifest.getProperty("pattern_beta")).exists()).isTrue()
         assertThat(fixture.registryFile.readText()).isEqualTo(firstRegistry)
     }
 
