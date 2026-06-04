@@ -60,6 +60,7 @@ class DemoLayoutCatalogTest {
         assertEquals("Binding Enhanced", bindingDemo?.label)
         assertEquals("DemoDataBindingEnhancedX2CBinding", bindingDemo?.codeViewerClassName)
         assertEquals(DemoLayoutCatalog.Status.Binding, bindingDemo?.status)
+        assertEquals(DemoLayoutCatalog.PreviewMode.Interactive, bindingDemo?.previewMode)
         assertEquals(true, bindingDemo?.platformInflatable)
     }
 

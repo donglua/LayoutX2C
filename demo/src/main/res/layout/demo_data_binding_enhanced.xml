@@ -29,6 +29,7 @@
             android:id="@+id/title_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textColor="@color/demo_text_primary"
             android:textSize="18sp"
             android:textStyle="bold"
             android:layout_marginBottom="8dp"
@@ -38,65 +39,100 @@
             android:id="@+id/description_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textColor="@color/code_viewer_muted_text"
             android:textSize="14sp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="16dp"
             android:text="@{description}" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="12dp">
+            android:background="@color/demo_control_surface"
+            android:orientation="vertical"
+            android:padding="14dp">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Click count:" />
+                android:text="Typed variable"
+                android:textColor="@color/code_viewer_muted_text"
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/count_text"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/demo_text_primary"
+                android:textSize="20sp"
                 android:textStyle="bold"
                 android:text="0" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/vm_name_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginBottom="8dp"
-            android:text="@{viewModel.name}" />
-
-        <TextView
-            android:id="@+id/vm_status_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="#666666"
-            android:layout_marginBottom="12dp"
-            android:text="@{viewModel.status}" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_horizontal">
+            android:layout_marginTop="12dp"
+            android:background="@color/demo_surface_variant"
+            android:orientation="vertical"
+            android:padding="14dp">
 
-            <Button
-                android:id="@+id/btn_update"
-                android:layout_width="wrap_content"
+            <TextView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="Update" />
+                android:text="ViewModel property access"
+                android:textColor="@color/code_viewer_muted_text"
+                android:textSize="12sp" />
 
-            <Button
-                android:id="@+id/btn_toggle"
-                android:layout_width="wrap_content"
+            <TextView
+                android:id="@+id/vm_name_text"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Toggle" />
+                android:layout_marginTop="8dp"
+                android:text="@{viewModel.name}"
+                android:textColor="@color/demo_text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/vm_status_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@{viewModel.status}"
+                android:textColor="@color/code_viewer_muted_text"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="lifecycleOwner and typed setters are available on the generated binding facade."
+                android:textColor="@color/code_viewer_muted_text"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="end"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_update"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:minWidth="96dp"
+                    android:text="Update" />
+
+                <Button
+                    android:id="@+id/btn_toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="96dp"
+                    android:text="Toggle" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </layout>

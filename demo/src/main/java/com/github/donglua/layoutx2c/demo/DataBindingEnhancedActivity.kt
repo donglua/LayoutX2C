@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.LifecycleOwner
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 
 /**
@@ -22,9 +23,6 @@ class DataBindingEnhancedActivity : AppCompatActivity() {
 
     private lateinit var binding: DemoDataBindingEnhancedX2CBinding
 
-    private var clickCount: Int = 0
-    private var visible: Boolean = true
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -34,9 +32,21 @@ class DataBindingEnhancedActivity : AppCompatActivity() {
         setContentView(binding.root)
         applySystemBarInsetsToContent()
 
-        // V2 类型化赋值 — 编译器会检查类型
+        DataBindingEnhancedDemo.setup(binding, this)
+    }
+}
+
+object DataBindingEnhancedDemo {
+
+    fun setup(
+        binding: DemoDataBindingEnhancedX2CBinding,
+        lifecycleOwner: LifecycleOwner?
+    ) {
+        var clickCount = 0
+        var visible = true
+
         binding.title = "DataBinding Enhanced Demo"
-        binding.description = "Typed variables · Simple expressions · Fallback strategy"
+        binding.description = "Typed variables · Simple expressions · ViewModel property access"
         binding.count = clickCount
         binding.isVisible = visible
         binding.viewModel = ItemViewModel(
@@ -44,11 +54,9 @@ class DataBindingEnhancedActivity : AppCompatActivity() {
             status = "Ready",
             itemId = 1
         )
+        binding.lifecycleOwner = lifecycleOwner
 
-        // 设置 lifecycleOwner（V2 类型为 LifecycleOwner?）
-        binding.lifecycleOwner = this
-
-        applyBindingsToViews()
+        binding.applyBindingsToViews()
 
         binding.btnUpdate.setOnClickListener {
             clickCount += 1
@@ -58,7 +66,7 @@ class DataBindingEnhancedActivity : AppCompatActivity() {
                 status = "Updated x$clickCount",
                 itemId = 1
             )
-            applyBindingsToViews()
+            binding.applyBindingsToViews()
         }
 
         binding.btnToggle.setOnClickListener {
@@ -69,16 +77,8 @@ class DataBindingEnhancedActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * 将 binding 上的类型化变量同步到视图。
-     * V2 生成器在 executePendingBindings() 中自动处理 @{} 绑定，
-     * 不再需要手动 binding.titleText.text = binding.title。
-     *
-     * count 字段在 layout 里没用 @{count}（int → text 需要 toString），
-     * 所以单独手动同步一次。
-     */
-    private fun applyBindingsToViews() {
-        binding.countText.text = (binding.count ?: 0).toString()
-        binding.executePendingBindings()
+    private fun DemoDataBindingEnhancedX2CBinding.applyBindingsToViews() {
+        countText.text = (count ?: 0).toString()
+        executePendingBindings()
     }
 }

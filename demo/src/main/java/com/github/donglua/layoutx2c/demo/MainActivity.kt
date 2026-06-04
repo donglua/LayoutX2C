@@ -64,7 +64,8 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(16), dp(14), dp(16), dp(14))
             isClickable = true
             isFocusable = true
-            contentDescription = "${demo.label}, ${statusLabel(demo.status)}, ${demo.summary}"
+            contentDescription =
+                "${demo.label}, ${statusLabel(demo.status)}, ${previewModeLabel(demo.previewMode)}, ${demo.summary}"
             foreground = selectableItemBackground()
             setOnClickListener(openPreview)
             layoutParams = LinearLayout.LayoutParams(
@@ -78,7 +79,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         row.addView(TextView(this).apply {
-            text = "${demo.label}  ·  ${statusLabel(demo.status)}"
+            text = "${demo.label}  ·  ${statusLabel(demo.status)}  ·  ${previewModeLabel(demo.previewMode)}"
             setTextColor(getColor(R.color.demo_text_primary))
             textSize = 15f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
@@ -127,6 +128,13 @@ class MainActivity : AppCompatActivity() {
             DemoLayoutCatalog.Status.Generated -> "Generated"
             DemoLayoutCatalog.Status.Binding -> "Binding"
             DemoLayoutCatalog.Status.Fallback -> "Fallback"
+        }
+    }
+
+    private fun previewModeLabel(mode: DemoLayoutCatalog.PreviewMode): String {
+        return when (mode) {
+            DemoLayoutCatalog.PreviewMode.DisplayOnly -> "Display-only"
+            DemoLayoutCatalog.PreviewMode.Interactive -> "Interactive"
         }
     }
 

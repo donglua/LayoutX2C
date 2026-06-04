@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.databinding.DataBindingUtil
 import com.github.donglua.layoutx2c.demo.generated.DemoConstraintX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
@@ -25,6 +26,11 @@ object DemoLayoutCatalog {
         Fallback,
     }
 
+    enum class PreviewMode {
+        DisplayOnly,
+        Interactive,
+    }
+
     data class Entry(
         val label: String,
         val layoutName: String,
@@ -34,6 +40,8 @@ object DemoLayoutCatalog {
         val status: Status,
         val codeViewerClassName: String = generatedClassName,
         val platformInflatable: Boolean = true,
+        val previewMode: PreviewMode = PreviewMode.DisplayOnly,
+        val configurePreview: (Context, View) -> Unit = { _, _ -> },
         val generatedInflater: (Context, ViewGroup?) -> View
     )
 
@@ -136,7 +144,13 @@ object DemoLayoutCatalog {
             "Layout_DemoDataBindingEnhanced",
             summary = "Typed variables and simple DataBinding expression execution",
             status = Status.Binding,
-            codeViewerClassName = "DemoDataBindingEnhancedX2CBinding"
+            codeViewerClassName = "DemoDataBindingEnhancedX2CBinding",
+            previewMode = PreviewMode.Interactive,
+            configurePreview = { context, preview ->
+                val binding = DataBindingUtil.getBinding<DemoDataBindingEnhancedX2CBinding>(preview)
+                    ?: DemoDataBindingEnhancedX2CBinding.bind(preview)
+                DataBindingEnhancedDemo.setup(binding, context as? androidx.lifecycle.LifecycleOwner)
+            }
         ) { context, parent ->
             DemoDataBindingEnhancedX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
         },

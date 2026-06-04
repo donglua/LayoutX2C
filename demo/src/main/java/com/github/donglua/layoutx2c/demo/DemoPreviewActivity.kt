@@ -31,7 +31,7 @@ class DemoPreviewActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.preview_title).text = demo.label
         findViewById<TextView>(R.id.preview_summary).text = demo.summary
         findViewById<TextView>(R.id.preview_metadata).text =
-            "${demo.layoutName} · ${displayClassName(demo)} · ${statusLabel(demo.status)}"
+            "${demo.layoutName} · ${displayClassName(demo)} · ${statusLabel(demo.status)} · ${previewModeLabel(demo.previewMode)}"
 
         val host = findViewById<FrameLayout>(R.id.preview_host)
         host.removeAllViews()
@@ -42,6 +42,7 @@ class DemoPreviewActivity : AppCompatActivity() {
             if (preview.parent == null) {
                 host.addView(preview)
             }
+            demo.configurePreview(this, preview)
         }.onFailure { throwable ->
             host.addView(errorView("Preview failed: ${throwable.message.orEmpty()}"))
         }
@@ -78,6 +79,13 @@ class DemoPreviewActivity : AppCompatActivity() {
             DemoLayoutCatalog.Status.Generated -> "Generated"
             DemoLayoutCatalog.Status.Binding -> "Binding"
             DemoLayoutCatalog.Status.Fallback -> "Fallback"
+        }
+    }
+
+    private fun previewModeLabel(mode: DemoLayoutCatalog.PreviewMode): String {
+        return when (mode) {
+            DemoLayoutCatalog.PreviewMode.DisplayOnly -> "Display-only"
+            DemoLayoutCatalog.PreviewMode.Interactive -> "Interactive"
         }
     }
 
