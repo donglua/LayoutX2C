@@ -1,6 +1,7 @@
 package com.github.donglua.layoutx2c.ksp
 
 import com.google.common.truth.Truth.assertThat
+import java.security.MessageDigest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -90,9 +91,8 @@ class ResourceDependencyScannerTest {
         resDir.resolve("layout/demo.xml").writeText(
             """<ImageView android:src="@drawable/logo" />"""
         )
-        resDir.resolve("drawable/logo.xml").writeText(
-            """<vector android:width="24dp" android:height="24dp" />"""
-        )
+        val logoBytes = byteArrayOf(0x00, 0x7f, 0x50, 0x4e, 0x47, 0x01, 0x02)
+        resDir.resolve("drawable/logo.png").writeBytes(logoBytes)
 
         val dependencies = ResourceDependencyScanner.scan(
             layoutFile = resDir.resolve("layout/demo.xml"),
@@ -100,8 +100,8 @@ class ResourceDependencyScannerTest {
         )
 
         val logo = dependencies.single { it.key == "drawable/logo" }
-        assertThat(logo.file?.relativeTo(resDir)?.invariantSeparatorsPath).isEqualTo("drawable/logo.xml")
-        assertThat(logo.content).contains("vector")
+        assertThat(logo.file?.relativeTo(resDir)?.invariantSeparatorsPath).isEqualTo("drawable/logo.png")
+        assertThat(logo.content).isEqualTo(sha256Hex(logoBytes))
     }
 
     @Test
@@ -138,5 +138,11 @@ class ResourceDependencyScannerTest {
         )
 
         assertThat(dependencies).isEmpty()
+    }
+
+    private fun sha256Hex(bytes: ByteArray): String {
+        return MessageDigest.getInstance("SHA-256")
+            .digest(bytes)
+            .joinToString(separator = "") { "%02x".format(it) }
     }
 }

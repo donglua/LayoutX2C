@@ -1,6 +1,7 @@
 package com.github.donglua.layoutx2c.ksp
 
 import java.io.File
+import java.security.MessageDigest
 import javax.xml.parsers.SAXParserFactory
 import org.xml.sax.Attributes
 import org.xml.sax.helpers.DefaultHandler
@@ -81,16 +82,17 @@ internal object ResourceDependencyScanner {
         val fileResources = fileResources(ref, resDir)
         if (fileResources.isNotEmpty()) {
             fileResources.forEach { file ->
-                val content = file.readText()
                 dependencies.add(
                     Dependency(
                         key = ref.key,
                         file = file,
-                        content = content
+                        content = file.sha256Hex()
                     )
                 )
-                extractResourceRefs(content).forEach { nested ->
-                    resolve(nested, resDir, values, dependencies, seenRefs)
+                file.readTextOrNull()?.let { content ->
+                    extractResourceRefs(content).forEach { nested ->
+                        resolve(nested, resDir, values, dependencies, seenRefs)
+                    }
                 }
             }
             return
@@ -261,6 +263,16 @@ internal object ResourceDependencyScanner {
         return qName?.takeIf { it.isNotBlank() }
             ?: localName?.takeIf { it.isNotBlank() }
             ?: ""
+    }
+
+    private fun File.sha256Hex(): String {
+        return MessageDigest.getInstance("SHA-256")
+            .digest(readBytes())
+            .joinToString(separator = "") { "%02x".format(it) }
+    }
+
+    private fun File.readTextOrNull(): String? {
+        return runCatching { readText() }.getOrNull()
     }
 
     private val resourceRefRegex = Regex("""@(?!(?:\+?id|android):?)([A-Za-z0-9_]+)/([A-Za-z0-9_.]+)""")
