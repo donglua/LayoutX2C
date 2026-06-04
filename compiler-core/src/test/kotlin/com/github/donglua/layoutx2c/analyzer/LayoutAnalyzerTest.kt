@@ -432,6 +432,64 @@ class LayoutAnalyzerTest {
     }
 
     @Test
+    fun `supported widget controls return FULL`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <ProgressBar
+                    android:id="@+id/loading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="false"
+                    android:max="100"
+                    android:progress="40"
+                    android:secondaryProgress="60"
+                    android:progressTint="@color/title"
+                    android:indeterminateTint="@color/title" />
+                <SeekBar
+                    android:id="@+id/slider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="10"
+                    android:progress="4"
+                    android:thumb="@drawable/title_background"
+                    android:splitTrack="false" />
+                <RatingBar
+                    android:id="@+id/rating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:numStars="5"
+                    android:rating="3.5"
+                    android:stepSize="0.5"
+                    android:isIndicator="true" />
+                <Spinner
+                    android:id="@+id/filter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+                <Space
+                    android:id="@+id/gap"
+                    android:layout_width="1dp"
+                    android:layout_height="8dp" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "supported_widget_controls")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.unsupportedAttributes).isEmpty()
+        assertThat(result.children.map { it.supportLevel }).containsExactly(
+            SupportLevel.FULL,
+            SupportLevel.FULL,
+            SupportLevel.FULL,
+            SupportLevel.FULL,
+            SupportLevel.FULL
+        )
+    }
+
+    @Test
     fun `unsupported high frequency attribute values return FALLBACK`() {
         val xml = """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"

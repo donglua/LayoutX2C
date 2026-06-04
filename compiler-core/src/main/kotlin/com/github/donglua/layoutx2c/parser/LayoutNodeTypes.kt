@@ -76,6 +76,18 @@ internal fun LayoutNode.isRecyclerView(): Boolean {
     return tagName == "androidx.recyclerview.widget.RecyclerView"
 }
 
+internal fun LayoutNode.isProgressBar(): Boolean {
+    return tagName == "ProgressBar" || tagName == "android.widget.ProgressBar"
+}
+
+internal fun LayoutNode.isSeekBar(): Boolean {
+    return tagName == "SeekBar" || tagName == "android.widget.SeekBar"
+}
+
+internal fun LayoutNode.isRatingBar(): Boolean {
+    return tagName == "RatingBar" || tagName == "android.widget.RatingBar"
+}
+
 internal fun LayoutNode.isConstraintLayout(): Boolean {
     return tagName == "androidx.constraintlayout.widget.ConstraintLayout"
 }

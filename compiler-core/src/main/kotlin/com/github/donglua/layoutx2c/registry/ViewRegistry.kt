@@ -13,8 +13,11 @@ import com.github.donglua.layoutx2c.parser.isEditText
 import com.github.donglua.layoutx2c.parser.isFrameLayout
 import com.github.donglua.layoutx2c.parser.isImageView
 import com.github.donglua.layoutx2c.parser.isLinearLayout
+import com.github.donglua.layoutx2c.parser.isProgressBar
+import com.github.donglua.layoutx2c.parser.isRatingBar
 import com.github.donglua.layoutx2c.parser.isRecyclerView
 import com.github.donglua.layoutx2c.parser.isScrollView
+import com.github.donglua.layoutx2c.parser.isSeekBar
 import com.github.donglua.layoutx2c.parser.isTextLikeView
 import com.github.donglua.layoutx2c.resources.PermissiveResourceReferenceResolver
 import com.github.donglua.layoutx2c.resources.ResourceReferenceResolver
@@ -143,6 +146,26 @@ open class ResourceAwareViewRegistry(
             ClassName("androidx.appcompat.widget", "AppCompatImageView")
         ),
         ViewHandler(
+            setOf("ProgressBar", "android.widget.ProgressBar"),
+            ClassName("android.widget", "ProgressBar")
+        ),
+        ViewHandler(
+            setOf("SeekBar", "android.widget.SeekBar"),
+            ClassName("android.widget", "SeekBar")
+        ),
+        ViewHandler(
+            setOf("RatingBar", "android.widget.RatingBar"),
+            ClassName("android.widget", "RatingBar")
+        ),
+        ViewHandler(
+            setOf("Spinner", "android.widget.Spinner"),
+            ClassName("android.widget", "Spinner")
+        ),
+        ViewHandler(
+            setOf("Space", "android.widget.Space"),
+            ClassName("android.widget", "Space")
+        ),
+        ViewHandler(
             setOf("View", "android.view.View"),
             ClassName("android.view", "View")
         ),
@@ -175,6 +198,7 @@ open class ResourceAwareViewRegistry(
         ImageSourceAttributeHandler(),
         ImageScaleTypeAttributeHandler,
         ImageTintAttributeHandler(),
+        WidgetControlAttributeHandler(),
         CheckedAttributeHandler,
         CommonStateAttributeHandler(),
         CommonViewPresentationAttributeHandler(),
@@ -696,6 +720,127 @@ open class ResourceAwareViewRegistry(
                             resCode
                         )
                     }
+                }
+            }
+        }
+    }
+
+    private inner class WidgetControlAttributeHandler : AttributeHandler {
+        override val names = setOf(
+            "android:indeterminate",
+            "android:max",
+            "android:progress",
+            "android:secondaryProgress",
+            "android:progressTint",
+            "android:indeterminateTint",
+            "android:thumb",
+            "android:splitTrack",
+            "android:numStars",
+            "android:rating",
+            "android:stepSize",
+            "android:isIndicator"
+        )
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return when (attrName) {
+                "android:indeterminate",
+                "android:max",
+                "android:progress",
+                "android:secondaryProgress",
+                "android:progressTint",
+                "android:indeterminateTint" -> node.isProgressBar() || node.isSeekBar()
+                "android:thumb",
+                "android:splitTrack" -> node.isSeekBar()
+                "android:numStars",
+                "android:rating",
+                "android:stepSize",
+                "android:isIndicator" -> node.isRatingBar()
+                else -> false
+            }
+        }
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return when (attrName) {
+                "android:indeterminate",
+                "android:splitTrack",
+                "android:isIndicator" -> isSupportedBoolean(value)
+                "android:max",
+                "android:progress",
+                "android:secondaryProgress",
+                "android:numStars" -> isSupportedNonNegativeInt(value)
+                "android:progressTint",
+                "android:indeterminateTint" -> value.startsWith("@color/") && supportsResourceReference(value)
+                "android:thumb" -> isSupportedDrawableReference(value) && supportsResourceReference(value)
+                "android:rating",
+                "android:stepSize" -> value.toFloatOrNull() != null
+                else -> false
+            }
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            val attrs = node.node.attributes
+            attrs["android:indeterminate"]?.takeIf { node.node.isProgressBar() || node.node.isSeekBar() }?.let { value ->
+                builder.addStatement("isIndeterminate = %L", value == "true")
+            }
+            attrs["android:max"]?.takeIf { node.node.isProgressBar() || node.node.isSeekBar() }?.let { value ->
+                builder.addStatement("max = %L", value)
+            }
+            attrs["android:progress"]?.takeIf { node.node.isProgressBar() || node.node.isSeekBar() }?.let { value ->
+                builder.addStatement("progress = %L", value)
+            }
+            attrs["android:secondaryProgress"]?.takeIf { node.node.isProgressBar() || node.node.isSeekBar() }?.let { value ->
+                builder.addStatement("secondaryProgress = %L", value)
+            }
+            attrs["android:progressTint"]?.takeIf { node.node.isProgressBar() || node.node.isSeekBar() }?.let { value ->
+                emitColorStateListAssignment(builder, "progressTintList", value)
+            }
+            attrs["android:indeterminateTint"]?.takeIf { node.node.isProgressBar() || node.node.isSeekBar() }?.let { value ->
+                emitColorStateListAssignment(builder, "indeterminateTintList", value)
+            }
+            attrs["android:thumb"]?.takeIf { node.node.isSeekBar() }?.let { value ->
+                emitDrawableAssignment(builder, "thumb", value)
+            }
+            attrs["android:splitTrack"]?.takeIf { node.node.isSeekBar() }?.let { value ->
+                builder.addStatement("splitTrack = %L", value == "true")
+            }
+            attrs["android:numStars"]?.takeIf { node.node.isRatingBar() }?.let { value ->
+                builder.addStatement("numStars = %L", value)
+            }
+            attrs["android:rating"]?.takeIf { node.node.isRatingBar() }?.let { value ->
+                builder.addStatement("rating = %Lf", value.toFloat())
+            }
+            attrs["android:stepSize"]?.takeIf { node.node.isRatingBar() }?.let { value ->
+                builder.addStatement("stepSize = %Lf", value.toFloat())
+            }
+            attrs["android:isIndicator"]?.takeIf { node.node.isRatingBar() }?.let { value ->
+                builder.addStatement("isIndicator = %L", value == "true")
+            }
+        }
+
+        private fun emitColorStateListAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            if (value.startsWith("@color/")) {
+                val resName = value.removePrefix("@color/")
+                resourceCode("color", resName)?.let { resCode ->
+                    builder.addStatement(
+                        "%L = %T.getColorStateList(context, %L)",
+                        propertyName,
+                        ClassName("androidx.core.content", "ContextCompat"),
+                        resCode
+                    )
+                }
+            }
+        }
+
+        private fun emitDrawableAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            if (value.startsWith("@drawable/")) {
+                val resName = value.removePrefix("@drawable/")
+                resourceCode("drawable", resName)?.let { resCode ->
+                    builder.addStatement(
+                        "%L = %T.getDrawable(context, %L)",
+                        propertyName,
+                        ClassName("androidx.core.content", "ContextCompat"),
+                        resCode
+                    )
                 }
             }
         }

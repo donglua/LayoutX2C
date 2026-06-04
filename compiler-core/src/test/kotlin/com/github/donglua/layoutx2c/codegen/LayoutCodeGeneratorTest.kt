@@ -617,6 +617,74 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `widget controls emit construction and property code`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <ProgressBar
+                    android:id="@+id/loading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="false"
+                    android:max="100"
+                    android:progress="40"
+                    android:secondaryProgress="60"
+                    android:progressTint="@color/title"
+                    android:indeterminateTint="@color/title" />
+                <SeekBar
+                    android:id="@+id/slider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="10"
+                    android:progress="4"
+                    android:thumb="@drawable/title_background"
+                    android:splitTrack="false" />
+                <RatingBar
+                    android:id="@+id/rating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:numStars="5"
+                    android:rating="3.5"
+                    android:stepSize="0.5"
+                    android:isIndicator="true" />
+                <Spinner
+                    android:id="@+id/filter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+                <Space
+                    android:id="@+id/gap"
+                    android:layout_width="1dp"
+                    android:layout_height="8dp" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "supported_widget_controls").root)
+        val generated = generator.generate(analyzed, "supported_widget_controls", "R.layout.supported_widget_controls").toString()
+
+        assertThat(generated).contains("val root_child0 = ProgressBar(context).apply {")
+        assertThat(generated).contains("id = R.id.loading")
+        assertThat(generated).contains("isIndeterminate = false")
+        assertThat(generated).contains("max = 100")
+        assertThat(generated).contains("progress = 40")
+        assertThat(generated).contains("secondaryProgress = 60")
+        assertThat(generated).contains("progressTintList = ContextCompat.getColorStateList(context, R.color.title)")
+        assertThat(generated).contains("indeterminateTintList = ContextCompat.getColorStateList(context, R.color.title)")
+        assertThat(generated).contains("val root_child1 = SeekBar(context).apply {")
+        assertThat(generated).contains("thumb = ContextCompat.getDrawable(context, R.drawable.title_background)")
+        assertThat(generated).contains("splitTrack = false")
+        assertThat(generated).contains("val root_child2 = RatingBar(context).apply {")
+        assertThat(generated).contains("numStars = 5")
+        assertThat(generated).contains("rating = 3.5f")
+        assertThat(generated).contains("stepSize = 0.5f")
+        assertThat(generated).contains("isIndicator = true")
+        assertThat(generated).contains("val root_child3 = Spinner(context)")
+        assertThat(generated).contains("val root_child4 = Space(context)")
+        assertThat(generated).doesNotContain("FallbackInflater")
+    }
+
+    @Test
     fun `button emits app compat button and text-like attrs`() {
         val xml = """
             <Button xmlns:android="http://schemas.android.com/apk/res/android"
