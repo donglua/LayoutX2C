@@ -195,7 +195,7 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
-    fun `constraint root without emitted attrs falls back whole layout when multiple direct children fallback`() {
+    fun `constraint root without emitted attrs still generates root when multiple direct children fallback`() {
         val xml = """
             <layout xmlns:android="http://schemas.android.com/apk/res/android"
                 xmlns:app="http://schemas.android.com/apk/res-auto">
@@ -229,9 +229,15 @@ class LayoutCodeGeneratorTest {
         val analyzed = analyzer.analyze(parser.parse(xml, "activity_main_like").root)
         val generated = generator.generate(analyzed, "activity_main_like", "R.layout.activity_main_like").toString()
 
-        assertThat(generated).contains("val root = FallbackInflater.inflate(context, R.layout.activity_main_like, parent)")
-        assertThat(generated).doesNotContain("FallbackInflater.inflateChild(context, R.layout.activity_main_like,")
-        assertThat(generated).doesNotContain("val root_child0 =")
+        assertThat(generated).contains("val root = ConstraintLayout(context)")
+        assertThat(generated).contains(
+            "val root_fallbackChildren = FallbackInflater.inflateChildren(context, R.layout.activity_main_like, " +
+                "arrayOf(intArrayOf(1), intArrayOf(2)), root)"
+        )
+        assertThat(generated).contains("val root_child0 = AppCompatTextView(context).apply {")
+        assertThat(generated).contains("val root_child1 = root_fallbackChildren[0]")
+        assertThat(generated).contains("val root_child2 = root_fallbackChildren[1]")
+        assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.activity_main_like, parent)")
     }
 
     @Test
