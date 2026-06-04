@@ -8,17 +8,20 @@ import com.github.donglua.layoutx2c.codegen.dimensionToPxFloatCode
 import com.github.donglua.layoutx2c.codegen.gravityToCode
 import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.isButton
+import com.github.donglua.layoutx2c.parser.isCardView
 import com.github.donglua.layoutx2c.parser.isCompoundButton
 import com.github.donglua.layoutx2c.parser.isEditText
 import com.github.donglua.layoutx2c.parser.isFrameLayout
 import com.github.donglua.layoutx2c.parser.isImageView
 import com.github.donglua.layoutx2c.parser.isLinearLayout
+import com.github.donglua.layoutx2c.parser.isMaterialCardView
 import com.github.donglua.layoutx2c.parser.isProgressBar
 import com.github.donglua.layoutx2c.parser.isRatingBar
 import com.github.donglua.layoutx2c.parser.isRecyclerView
 import com.github.donglua.layoutx2c.parser.isScrollView
 import com.github.donglua.layoutx2c.parser.isSeekBar
 import com.github.donglua.layoutx2c.parser.isTextLikeView
+import com.github.donglua.layoutx2c.parser.isToolbar
 import com.github.donglua.layoutx2c.resources.PermissiveResourceReferenceResolver
 import com.github.donglua.layoutx2c.resources.ResourceReferenceResolver
 import com.github.donglua.layoutx2c.resources.parseResourceReference
@@ -166,6 +169,26 @@ open class ResourceAwareViewRegistry(
             ClassName("android.widget", "Space")
         ),
         ViewHandler(
+            setOf("androidx.cardview.widget.CardView"),
+            ClassName("androidx.cardview.widget", "CardView")
+        ),
+        ViewHandler(
+            setOf("com.google.android.material.card.MaterialCardView"),
+            ClassName("com.google.android.material.card", "MaterialCardView")
+        ),
+        ViewHandler(
+            setOf("androidx.appcompat.widget.Toolbar"),
+            ClassName("androidx.appcompat.widget", "Toolbar")
+        ),
+        ViewHandler(
+            setOf("com.google.android.material.appbar.MaterialToolbar"),
+            ClassName("com.google.android.material.appbar", "MaterialToolbar")
+        ),
+        ViewHandler(
+            setOf("androidx.viewpager2.widget.ViewPager2"),
+            ClassName("androidx.viewpager2.widget", "ViewPager2")
+        ),
+        ViewHandler(
             setOf("View", "android.view.View"),
             ClassName("android.view", "View")
         ),
@@ -199,6 +222,7 @@ open class ResourceAwareViewRegistry(
         ImageScaleTypeAttributeHandler,
         ImageTintAttributeHandler(),
         WidgetControlAttributeHandler(),
+        RichContainerAttributeHandler(),
         CheckedAttributeHandler,
         CommonStateAttributeHandler(),
         CommonViewPresentationAttributeHandler(),
@@ -846,6 +870,124 @@ open class ResourceAwareViewRegistry(
                         propertyName,
                         ClassName("androidx.core.content", "ContextCompat"),
                         resCode
+                    )
+                }
+            }
+        }
+
+        private fun emitDrawableAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            if (value.startsWith("@drawable/")) {
+                val resName = value.removePrefix("@drawable/")
+                resourceCode("drawable", resName)?.let { resCode ->
+                    builder.addStatement(
+                        "%L = %T.getDrawable(context, %L)",
+                        propertyName,
+                        ClassName("androidx.core.content", "ContextCompat"),
+                        resCode
+                    )
+                }
+            }
+        }
+    }
+
+    private inner class RichContainerAttributeHandler : AttributeHandler {
+        override val names = setOf(
+            "app:cardCornerRadius",
+            "app:cardElevation",
+            "app:cardUseCompatPadding",
+            "app:strokeColor",
+            "app:strokeWidth",
+            "app:title",
+            "app:subtitle",
+            "app:navigationIcon"
+        )
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return when (attrName) {
+                "app:cardCornerRadius",
+                "app:cardElevation",
+                "app:cardUseCompatPadding" -> node.isCardView()
+                "app:strokeColor",
+                "app:strokeWidth" -> node.isMaterialCardView()
+                "app:title",
+                "app:subtitle",
+                "app:navigationIcon" -> node.isToolbar()
+                else -> false
+            }
+        }
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return when (attrName) {
+                "app:cardCornerRadius",
+                "app:cardElevation",
+                "app:strokeWidth" -> isSupportedDimension(value) && supportsResourceReference(value)
+                "app:cardUseCompatPadding" -> isSupportedBoolean(value)
+                "app:strokeColor" -> isSupportedColor(value) && supportsResourceReference(value)
+                "app:title",
+                "app:subtitle" -> isSupportedLiteralOrStringReference(value) && supportsResourceReference(value)
+                "app:navigationIcon" -> isSupportedDrawableReference(value) && supportsResourceReference(value)
+                else -> false
+            }
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            val attrs = node.node.attributes
+            attrs["app:cardCornerRadius"]?.takeIf { node.node.isCardView() }?.let { value ->
+                builder.addStatement("radius = %L", dimensionToPxFloatCode(value, resourceResolver, rPackageName))
+            }
+            attrs["app:cardElevation"]?.takeIf { node.node.isCardView() }?.let { value ->
+                builder.addStatement("cardElevation = %L", dimensionToPxFloatCode(value, resourceResolver, rPackageName))
+            }
+            attrs["app:cardUseCompatPadding"]?.takeIf { node.node.isCardView() }?.let { value ->
+                builder.addStatement("useCompatPadding = %L", value == "true")
+            }
+            attrs["app:strokeColor"]?.takeIf { node.node.isMaterialCardView() }?.let { value ->
+                emitColorAssignment(builder, "strokeColor", value)
+            }
+            attrs["app:strokeWidth"]?.takeIf { node.node.isMaterialCardView() }?.let { value ->
+                builder.addStatement("strokeWidth = %L", dimensionToCode(value, resourceResolver, rPackageName))
+            }
+            attrs["app:title"]?.takeIf { node.node.isToolbar() }?.let { value ->
+                emitCharSequenceAssignment(builder, "title", value)
+            }
+            attrs["app:subtitle"]?.takeIf { node.node.isToolbar() }?.let { value ->
+                emitCharSequenceAssignment(builder, "subtitle", value)
+            }
+            attrs["app:navigationIcon"]?.takeIf { node.node.isToolbar() }?.let { value ->
+                emitDrawableAssignment(builder, "navigationIcon", value)
+            }
+        }
+
+        private fun emitCharSequenceAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            if (value.startsWith("@string/")) {
+                val resName = value.removePrefix("@string/")
+                resourceCode("string", resName)?.let { resCode ->
+                    builder.addStatement("%L = context.getString(%L)", propertyName, resCode)
+                }
+            } else {
+                builder.addStatement("%L = %S", propertyName, value)
+            }
+        }
+
+        private fun emitColorAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            when {
+                value.startsWith("@color/") -> {
+                    val resName = value.removePrefix("@color/")
+                    resourceCode("color", resName)?.let { resCode ->
+                        builder.addStatement(
+                            "%L = %T.getColor(context, %L)",
+                            propertyName,
+                            ClassName("androidx.core.content", "ContextCompat"),
+                            resCode
+                        )
+                    }
+                }
+                value.startsWith("#") -> {
+                    builder.addStatement(
+                        "%L = %T.parseColor(%S)",
+                        propertyName,
+                        ClassName("android.graphics", "Color"),
+                        value
                     )
                 }
             }

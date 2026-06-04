@@ -88,6 +88,20 @@ internal fun LayoutNode.isRatingBar(): Boolean {
     return tagName == "RatingBar" || tagName == "android.widget.RatingBar"
 }
 
+internal fun LayoutNode.isCardView(): Boolean {
+    return tagName == "androidx.cardview.widget.CardView" ||
+        tagName == "com.google.android.material.card.MaterialCardView"
+}
+
+internal fun LayoutNode.isMaterialCardView(): Boolean {
+    return tagName == "com.google.android.material.card.MaterialCardView"
+}
+
+internal fun LayoutNode.isToolbar(): Boolean {
+    return tagName == "androidx.appcompat.widget.Toolbar" ||
+        tagName == "com.google.android.material.appbar.MaterialToolbar"
+}
+
 internal fun LayoutNode.isConstraintLayout(): Boolean {
     return tagName == "androidx.constraintlayout.widget.ConstraintLayout"
 }

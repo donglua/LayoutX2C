@@ -850,6 +850,63 @@ class LayoutAnalyzerTest {
     }
 
     @Test
+    fun `supported rich container and app bar controls return FULL`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="2dp"
+                    app:cardUseCompatPadding="true" />
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/material_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:strokeColor="@color/title"
+                    app:strokeWidth="1dp" />
+                <androidx.appcompat.widget.Toolbar
+                    android:id="@+id/toolbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:title="@string/app_name"
+                    app:subtitle="Details"
+                    app:navigationIcon="@drawable/title_background" />
+                <com.google.android.material.appbar.MaterialToolbar
+                    android:id="@+id/material_toolbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:title="Material"
+                    app:subtitle="@string/app_name" />
+                <androidx.viewpager2.widget.ViewPager2
+                    android:id="@+id/pager"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "rich_container_app_bar_controls")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.unsupportedAttributes).isEmpty()
+        assertThat(result.children.map { it.supportLevel }).containsExactly(
+            SupportLevel.FULL,
+            SupportLevel.FULL,
+            SupportLevel.FULL,
+            SupportLevel.FULL,
+            SupportLevel.FULL
+        )
+    }
+
+    @Test
     fun `relative layout supports every declared rule and false boolean rules`() {
         val xml = """
             <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"

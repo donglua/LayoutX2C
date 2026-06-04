@@ -1150,6 +1150,75 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `rich container and app bar controls emit construction and property code`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="2dp"
+                    app:cardUseCompatPadding="true" />
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/material_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:strokeColor="@color/title"
+                    app:strokeWidth="1dp" />
+                <androidx.appcompat.widget.Toolbar
+                    android:id="@+id/toolbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:title="@string/app_name"
+                    app:subtitle="Details"
+                    app:navigationIcon="@drawable/title_background" />
+                <com.google.android.material.appbar.MaterialToolbar
+                    android:id="@+id/material_toolbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:title="Material"
+                    app:subtitle="@string/app_name" />
+                <androidx.viewpager2.widget.ViewPager2
+                    android:id="@+id/pager"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "rich_container_app_bar_controls").root)
+        val generated = generator.generate(
+            analyzed,
+            "rich_container_app_bar_controls",
+            "R.layout.rich_container_app_bar_controls"
+        ).toString()
+
+        assertThat(generated).contains("val root_child0 = CardView(context).apply {")
+        assertThat(generated).contains("radius = (8f * density)")
+        assertThat(generated).contains("cardElevation = (2f * density)")
+        assertThat(generated).contains("useCompatPadding = true")
+        assertThat(generated).contains("val root_child1 = MaterialCardView(context).apply {")
+        assertThat(generated).contains("radius = (12f * density)")
+        assertThat(generated).contains("strokeColor = ContextCompat.getColor(context, R.color.title)")
+        assertThat(generated).contains("strokeWidth = (1f * density + 0.5f).toInt()")
+        assertThat(generated).contains("val root_child2 = Toolbar(context).apply {")
+        assertThat(generated).contains("title = context.getString(R.string.app_name)")
+        assertThat(generated).contains("subtitle = \"Details\"")
+        assertThat(generated).contains("navigationIcon = ContextCompat.getDrawable(context, R.drawable.title_background)")
+        assertThat(generated).contains("val root_child3 = MaterialToolbar(context).apply {")
+        assertThat(generated).contains("title = \"Material\"")
+        assertThat(generated).contains("subtitle = context.getString(R.string.app_name)")
+        assertThat(generated).contains("val root_child4 = ViewPager2(context)")
+        assertThat(generated).doesNotContain("FallbackInflater")
+    }
+
+    @Test
     fun `constraint layout helper child triggers subtree fallback in codegen`() {
         val xml = """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
