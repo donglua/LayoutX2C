@@ -408,6 +408,30 @@ class LayoutAnalyzerTest {
     }
 
     @Test
+    fun `supported common view presentation attributes return FULL`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0.75"
+                android:contentDescription="@string/app_name"
+                android:tag="panel"
+                android:backgroundTint="@color/title"
+                android:foreground="@drawable/title_background"
+                android:foregroundGravity="center"
+                android:importantForAccessibility="yes"
+                android:overScrollMode="never"
+                android:scrollbars="vertical" />
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "common_view_presentation_attrs")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.unsupportedAttributes).isEmpty()
+    }
+
+    @Test
     fun `unsupported high frequency attribute values return FALLBACK`() {
         val xml = """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"

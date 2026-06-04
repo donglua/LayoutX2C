@@ -10,6 +10,7 @@ import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.isButton
 import com.github.donglua.layoutx2c.parser.isCompoundButton
 import com.github.donglua.layoutx2c.parser.isEditText
+import com.github.donglua.layoutx2c.parser.isFrameLayout
 import com.github.donglua.layoutx2c.parser.isImageView
 import com.github.donglua.layoutx2c.parser.isLinearLayout
 import com.github.donglua.layoutx2c.parser.isRecyclerView
@@ -176,6 +177,7 @@ open class ResourceAwareViewRegistry(
         ImageTintAttributeHandler(),
         CheckedAttributeHandler,
         CommonStateAttributeHandler(),
+        CommonViewPresentationAttributeHandler(),
         PaddingAttributeHandler(),
         GravityAttributeHandler,
         FillViewportAttributeHandler,
@@ -776,6 +778,141 @@ open class ResourceAwareViewRegistry(
         }
     }
 
+    private inner class CommonViewPresentationAttributeHandler : AttributeHandler {
+        override val names = setOf(
+            "android:alpha",
+            "android:contentDescription",
+            "android:tag",
+            "android:backgroundTint",
+            "android:foreground",
+            "android:foregroundGravity",
+            "android:importantForAccessibility",
+            "android:overScrollMode",
+            "android:scrollbars"
+        )
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return when (attrName) {
+                "android:foreground", "android:foregroundGravity" -> node.isFrameLayout()
+                else -> true
+            }
+        }
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return when (attrName) {
+                "android:alpha" -> value.toFloatOrNull() != null
+                "android:contentDescription" -> isSupportedLiteralOrStringReference(value) && supportsResourceReference(value)
+                "android:tag" -> isSupportedLiteralOrStringReference(value) && supportsResourceReference(value)
+                "android:backgroundTint" -> isSupportedColor(value) && supportsResourceReference(value)
+                "android:foreground" -> isSupportedDrawableReference(value) && supportsResourceReference(value)
+                "android:foregroundGravity" -> true
+                "android:importantForAccessibility" -> importantForAccessibilityToCode(value) != null
+                "android:overScrollMode" -> overScrollModeToCode(value) != null
+                "android:scrollbars" -> scrollbarsToCode(value) != null
+                else -> false
+            }
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            val attrs = node.node.attributes
+            attrs["android:alpha"]?.let { value ->
+                builder.addStatement("alpha = %Lf", value.toFloat())
+            }
+            attrs["android:contentDescription"]?.let { value ->
+                emitCharSequenceAssignment(builder, "contentDescription", value)
+            }
+            attrs["android:tag"]?.let { value ->
+                emitAnyAssignment(builder, "tag", value)
+            }
+            attrs["android:backgroundTint"]?.let { value ->
+                emitColorStateListAssignment(builder, "backgroundTintList", value)
+            }
+            attrs["android:foreground"]?.takeIf { node.node.isFrameLayout() }?.let { value ->
+                emitDrawableAssignment(builder, "foreground", value)
+            }
+            attrs["android:foregroundGravity"]?.takeIf { node.node.isFrameLayout() }?.let { value ->
+                builder.addStatement("foregroundGravity = %L", gravityToCode(value))
+            }
+            attrs["android:importantForAccessibility"]?.let { value ->
+                importantForAccessibilityToCode(value)?.let { code ->
+                    builder.addStatement("importantForAccessibility = %T.%L", ClassName("android.view", "View"), code)
+                }
+            }
+            attrs["android:overScrollMode"]?.let { value ->
+                overScrollModeToCode(value)?.let { code ->
+                    builder.addStatement("overScrollMode = %T.%L", ClassName("android.view", "View"), code)
+                }
+            }
+            attrs["android:scrollbars"]?.let { value ->
+                scrollbarsToCode(value)?.let { (horizontal, vertical) ->
+                    builder.addStatement("isHorizontalScrollBarEnabled = %L", horizontal)
+                    builder.addStatement("isVerticalScrollBarEnabled = %L", vertical)
+                }
+            }
+        }
+
+        private fun emitCharSequenceAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            if (value.startsWith("@string/")) {
+                val resName = value.removePrefix("@string/")
+                resourceCode("string", resName)?.let { resCode ->
+                    builder.addStatement("%L = context.getString(%L)", propertyName, resCode)
+                }
+            } else {
+                builder.addStatement("%L = %S", propertyName, value)
+            }
+        }
+
+        private fun emitAnyAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            if (value.startsWith("@string/")) {
+                val resName = value.removePrefix("@string/")
+                resourceCode("string", resName)?.let { resCode ->
+                    builder.addStatement("%L = context.getString(%L)", propertyName, resCode)
+                }
+            } else {
+                builder.addStatement("%L = %S", propertyName, value)
+            }
+        }
+
+        private fun emitColorStateListAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            when {
+                value.startsWith("@color/") -> {
+                    val resName = value.removePrefix("@color/")
+                    resourceCode("color", resName)?.let { resCode ->
+                        builder.addStatement(
+                            "%L = %T.getColorStateList(context, %L)",
+                            propertyName,
+                            ClassName("androidx.core.content", "ContextCompat"),
+                            resCode
+                        )
+                    }
+                }
+                value.startsWith("#") -> {
+                    builder.addStatement(
+                        "%L = %T.valueOf(%T.parseColor(%S))",
+                        propertyName,
+                        ClassName("android.content.res", "ColorStateList"),
+                        ClassName("android.graphics", "Color"),
+                        value
+                    )
+                }
+            }
+        }
+
+        private fun emitDrawableAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
+            if (value.startsWith("@drawable/")) {
+                val resName = value.removePrefix("@drawable/")
+                resourceCode("drawable", resName)?.let { resCode ->
+                    builder.addStatement(
+                        "%L = %T.getDrawable(context, %L)",
+                        propertyName,
+                        ClassName("androidx.core.content", "ContextCompat"),
+                        resCode
+                    )
+                }
+            }
+        }
+    }
+
     private inner class PaddingAttributeHandler : AttributeHandler {
         override val names = setOf(
             "android:padding",
@@ -1048,6 +1185,15 @@ private fun isSupportedBackground(value: String): Boolean {
     return value.startsWith("@drawable/") || isSupportedColor(value)
 }
 
+private fun isSupportedDrawableReference(value: String): Boolean {
+    return value.startsWith("@drawable/")
+}
+
+private fun isSupportedLiteralOrStringReference(value: String): Boolean {
+    return !value.startsWith("?") &&
+        (value.startsWith("@string/") || !value.startsWith("@"))
+}
+
 private fun isSupportedTextStyle(value: String): Boolean {
     return value.split("|").map { it.trim() }.all { it in setOf("normal", "bold", "italic") }
 }
@@ -1076,6 +1222,32 @@ private fun ellipsizeToCode(value: String): String? {
         "none" -> null
         else -> null
     }
+}
+
+private fun importantForAccessibilityToCode(value: String): String? {
+    return when (value) {
+        "auto" -> "IMPORTANT_FOR_ACCESSIBILITY_AUTO"
+        "yes" -> "IMPORTANT_FOR_ACCESSIBILITY_YES"
+        "no" -> "IMPORTANT_FOR_ACCESSIBILITY_NO"
+        "noHideDescendants" -> "IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS"
+        else -> null
+    }
+}
+
+private fun overScrollModeToCode(value: String): String? {
+    return when (value) {
+        "always" -> "OVER_SCROLL_ALWAYS"
+        "ifContentScrolls" -> "OVER_SCROLL_IF_CONTENT_SCROLLS"
+        "never" -> "OVER_SCROLL_NEVER"
+        else -> null
+    }
+}
+
+private fun scrollbarsToCode(value: String): Pair<Boolean, Boolean>? {
+    val parts = value.split("|").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    if (parts.isEmpty() || parts.any { it !in setOf("none", "horizontal", "vertical") }) return null
+    if ("none" in parts && parts.size > 1) return null
+    return Pair("horizontal" in parts, "vertical" in parts)
 }
 
 private fun isSimpleDataBindingExpression(value: String): Boolean {

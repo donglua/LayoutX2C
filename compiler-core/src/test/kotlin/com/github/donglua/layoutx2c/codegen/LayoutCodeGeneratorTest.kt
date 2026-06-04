@@ -580,6 +580,43 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `common view presentation attributes emit property code`() {
+        val xml = """
+            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/panel"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0.75"
+                android:contentDescription="@string/app_name"
+                android:tag="panel"
+                android:backgroundTint="@color/title"
+                android:foreground="@drawable/title_background"
+                android:foregroundGravity="center"
+                android:importantForAccessibility="yes"
+                android:overScrollMode="never"
+                android:scrollbars="vertical" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "common_view_presentation_attrs").root)
+        val generated = generator.generate(
+            analyzed,
+            "common_view_presentation_attrs",
+            "R.layout.common_view_presentation_attrs"
+        ).toString()
+
+        assertThat(generated).contains("alpha = 0.75f")
+        assertThat(generated).contains("contentDescription = context.getString(R.string.app_name)")
+        assertThat(generated).contains("tag = \"panel\"")
+        assertThat(generated).contains("backgroundTintList = ContextCompat.getColorStateList(context, R.color.title)")
+        assertThat(generated).contains("foreground = ContextCompat.getDrawable(context, R.drawable.title_background)")
+        assertThat(generated).contains("foregroundGravity = android.view.Gravity.CENTER")
+        assertThat(generated).contains("importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES")
+        assertThat(generated).contains("overScrollMode = View.OVER_SCROLL_NEVER")
+        assertThat(generated).contains("isHorizontalScrollBarEnabled = false")
+        assertThat(generated).contains("isVerticalScrollBarEnabled = true")
+    }
+
+    @Test
     fun `button emits app compat button and text-like attrs`() {
         val xml = """
             <Button xmlns:android="http://schemas.android.com/apk/res/android"
