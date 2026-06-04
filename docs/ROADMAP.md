@@ -79,56 +79,56 @@
 
 ## Next
 
-短期路线已完成仓库侧 1.0 readiness。下一步主要是执行外部 release 和 post-1.0 能力扩展。
+**仓库侧 1.0 工作已全部完成**。下一步是执行外部发布。
 
-### 1. Android 等价性测试补齐
+### ✅ 已完成的 1.0 准备工作
 
-目标：用真实 Android inflate 结果约束高风险语义，避免代码生成只在字符串测试层面正确。
+以下任务已在仓库中完成：
 
-- 已覆盖 include、nested include、include + merge、ViewStub、ConstraintLayout 安全子集。
-- 已覆盖 fallback 子树和父级 LayoutParams 保留语义。
-- 已对比 generated vs inflated 的 View tree、id、visibility、LayoutParams 和关键属性。
+1. **Android 等价性测试补齐** ✅
+   - 已覆盖 include、nested include、include + merge、ViewStub、ConstraintLayout 安全子集
+   - 已覆盖 fallback 子树和父级 LayoutParams 保留语义
+   - 已对比 generated vs inflated 的 View tree、id、visibility、LayoutParams 和关键属性
 
-验收口径：
+2. **README 和 Demo 同步** ✅
+   - README 已更新完整支持范围
+   - Demo 已补齐所有 XML 样例和 benchmark 入口
+   - 已明确 DataBinding binding 子类的支持边界
 
-- 每类特殊语义都有最小端到端 Android 测试。
-- 失败信息能指出 layout、节点路径和不一致属性。
+3. **精确资源引用图** ✅
+   - 已实现 layout → style/dimen/color/string/drawable 精确依赖追踪
+   - 修改被引用资源会触发相关 layout 重新生成
+   - 修改无关资源不触发无关 factory 重生成
 
-### 2. README 和 Demo 同步
+4. **API 标注和文档** ✅
+   - `@PublicApi` / `@ExperimentalApi` 已完成标注
+   - `docs/MIGRATION_1_0.md`、`docs/BENCHMARKS.md`、`docs/RELEASE.md` 已完成
+   - 版本号已设为 `1.0.0`
 
-目标：让用户看到的支持范围与实际 Roadmap 保持一致。
+### 🚀 待执行：1.0 外部发布
 
-- README 已更新 include / merge / ViewStub / ConstraintLayout 安全子集支持范围。
-- Demo 已补齐对应 XML 样例和 benchmark 入口。
-- 已明确 DataBinding binding 子类只实现 LayoutX2C 可静态保证的 `ViewDataBinding` 子集。
+**唯一剩余任务**：执行真实外部发布（需要维护者权限）
 
-验收口径：
+按照 `docs/RELEASE.md` 流程：
 
-- README 的支持范围、限制和 Roadmap 一致。
-- Demo 能覆盖主要成功路径和 fallback 路径。
+1. **配置 GitHub Secrets**（一次性配置）
+   - `MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD`
+   - `SIGNING_IN_MEMORY_KEY` / `SIGNING_IN_MEMORY_KEY_PASSWORD`
+   - `GRADLE_PUBLISH_KEY` / `GRADLE_PUBLISH_SECRET`（可选）
 
-### 3. 精确资源引用图
+2. **打 tag 触发发布**
+   ```bash
+   git tag -a 1.0.0 -m "Release 1.0.0"
+   git push origin 1.0.0
+   ```
 
-目标：减少无关 values 资源改动导致的保守重跑，同时保持 fallback 正确性。
+3. **验证发布结果**
+   - Maven Central: `com.github.donglua.layoutx2c:runtime:1.0.0`
+   - Gradle Plugin Portal: `com.github.donglua.layoutx2c`（如已配置）
 
-- 已从 coarse values XML 输入推进到 style / dimen / color / string / drawable 引用图。
-- style / theme 引用继续默认保守 fallback，只把 digest 依赖做精确。
-- 保持 Registry aggregating 输出，不提前承诺 KSP isolating processor。
-
-验收口径：
-
-- 修改被引用资源会触发相关 layout 重新生成。
-- 修改无关资源不触发无关 factory 重生成。
-- 无法解析或动态 theme 语义仍保守 fallback。
-
-### 4. 执行 1.0 Release
-
-目标：使用 `docs/RELEASE.md` 中的流程执行真实外部发布。
-
-- 配置 Maven Central 和 signing secrets。
-- 可选配置 Gradle Plugin Portal secrets。
-- 推送 `1.0.0` tag 触发 release workflow。
-- 记录 release 结果和任何外部平台问题。
+4. **发布 GitHub Release**
+   - 附上 changelog 和 migration guide 链接
+   - 说明性能基准和兼容性矩阵
 
 ---
 
