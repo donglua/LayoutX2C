@@ -58,6 +58,24 @@ Benchmark notes should include:
 - Whether Gradle build cache was warm.
 - Which layouts were FULL, PARTIAL, or FALLBACK in the report.
 
+Use this table format for release notes or regression records:
+
+| Layout | Support level | Platform median ms | Generated median ms | Samples | Notes |
+| --- | --- | ---: | ---: | ---: | --- |
+| `demo_simple` | FULL | TBD | TBD | TBD | Discard first warm-up run |
+| `demo_relative` | FULL | TBD | TBD | TBD |  |
+| `demo_constraint_safe` | FULL | TBD | TBD | TBD | Safe subset only |
+| `demo_include_merge` | FULL | TBD | TBD | TBD | Include and merge path |
+| `demo_view_stub` | FULL | TBD | TBD | TBD | Stub inflation path |
+| `demo_databinding_*` | FALLBACK / generated binding | TBD | TBD | TBD | Use DataBinding-aware path only |
+
+Record build overhead separately:
+
+| Build state | Command | Wall time | Notes |
+| --- | --- | ---: | --- |
+| Clean | `./gradlew clean :demo:assembleDebug` | TBD | Same daemon and SDK state |
+| Warm | `./gradlew :demo:assembleDebug` | TBD | Same daemon and SDK state |
+
 ## Limits
 
 Local numbers are useful for regression checks, not universal claims. Inflater
