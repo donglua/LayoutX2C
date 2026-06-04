@@ -17,6 +17,10 @@ internal object ConstraintLayoutRules {
         "app:layout_constraintStart_toEndOf",
         "app:layout_constraintEnd_toStartOf",
         "app:layout_constraintEnd_toEndOf",
+        "app:layout_constraintLeft_toLeftOf",
+        "app:layout_constraintLeft_toRightOf",
+        "app:layout_constraintRight_toLeftOf",
+        "app:layout_constraintRight_toRightOf",
         "app:layout_constraintTop_toTopOf",
         "app:layout_constraintTop_toBottomOf",
         "app:layout_constraintBottom_toTopOf",
@@ -29,8 +33,16 @@ internal object ConstraintLayoutRules {
         "app:layout_constraintVertical_bias"
     )
 
+    /** Guideline 特定属性。 */
+    val guidelineAttributes: Set<String> = setOf(
+        "android:orientation",
+        "app:layout_constraintGuide_begin",
+        "app:layout_constraintGuide_end",
+        "app:layout_constraintGuide_percent"
+    )
+
     /** 安全子集支持的全部 ConstraintLayout 子属性。 */
-    val supportedAttributes: Set<String> = anchorAttributes + biasAttributes
+    val supportedAttributes: Set<String> = anchorAttributes + biasAttributes + guidelineAttributes
 
     /** 锚点属性 -> ConstraintLayout.LayoutParams 字段名。 */
     val anchorFieldByAttribute: Map<String, String> = mapOf(
@@ -38,21 +50,24 @@ internal object ConstraintLayoutRules {
         "app:layout_constraintStart_toEndOf" to "startToEnd",
         "app:layout_constraintEnd_toStartOf" to "endToStart",
         "app:layout_constraintEnd_toEndOf" to "endToEnd",
+        "app:layout_constraintLeft_toLeftOf" to "leftToLeft",
+        "app:layout_constraintLeft_toRightOf" to "leftToRight",
+        "app:layout_constraintRight_toLeftOf" to "rightToLeft",
+        "app:layout_constraintRight_toRightOf" to "rightToRight",
         "app:layout_constraintTop_toTopOf" to "topToTop",
         "app:layout_constraintTop_toBottomOf" to "topToBottom",
         "app:layout_constraintBottom_toTopOf" to "bottomToTop",
         "app:layout_constraintBottom_toBottomOf" to "bottomToBottom"
     )
 
-    /** ConstraintLayout 帮助类标签 / 复杂特性标签 -> 一旦出现就 fallback。 */
+    /** ConstraintLayout 帮助类标签 / 复杂特性标签 -> 一旦出现就 fallback。
+     * Guideline 已从此列表移除，现在支持生成。 */
     private val helperTagNames: Set<String> = setOf(
-        "androidx.constraintlayout.widget.Guideline",
         "androidx.constraintlayout.widget.Barrier",
         "androidx.constraintlayout.widget.Group",
         "androidx.constraintlayout.widget.Placeholder",
         "androidx.constraintlayout.helper.widget.Flow",
         "androidx.constraintlayout.helper.widget.Layer",
-        "Guideline",
         "Barrier",
         "Group",
         "Placeholder",
@@ -86,5 +101,21 @@ internal object ConstraintLayoutRules {
     fun parentIsConstraintLayout(parentTagName: String?): Boolean {
         val tagName = parentTagName ?: return false
         return LayoutNode(tagName, emptyMap(), emptyList()).isConstraintLayout()
+    }
+
+    /** 检查节点是否为 Guideline。 */
+    fun isGuideline(tagName: String): Boolean {
+        return tagName == "androidx.constraintlayout.widget.Guideline" || tagName == "Guideline"
+    }
+
+    /** Guideline orientation 值是否有效（vertical 或 horizontal）。 */
+    fun isSupportedGuidelineOrientation(value: String): Boolean {
+        return value == "vertical" || value == "horizontal"
+    }
+
+    /** Guideline guide_percent 值是否有效（0.0 到 1.0 之间的浮点数）。 */
+    fun isSupportedGuidelinePercent(value: String): Boolean {
+        val percent = value.toFloatOrNull() ?: return false
+        return percent in 0.0f..1.0f
     }
 }

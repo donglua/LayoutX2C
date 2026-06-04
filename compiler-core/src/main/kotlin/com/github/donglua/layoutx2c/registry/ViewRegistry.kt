@@ -148,6 +148,10 @@ open class ResourceAwareViewRegistry(
         ViewHandler(
             setOf("ViewStub", "android.view.ViewStub"),
             ClassName("android.view", "ViewStub")
+        ),
+        ViewHandler(
+            setOf("Guideline", "androidx.constraintlayout.widget.Guideline"),
+            ClassName("androidx.constraintlayout.widget", "Guideline")
         )
     )
 
@@ -156,6 +160,7 @@ open class ResourceAwareViewRegistry(
 
     private val attributeHandlers = listOf(
         IdAttributeHandler,
+        GuidelineAttributeHandler(),
         OrientationAttributeHandler,
         VisibilityAttributeHandler,
         BackgroundAttributeHandler(),
@@ -177,8 +182,10 @@ open class ResourceAwareViewRegistry(
         ViewStubAttributeHandler()
     )
 
-    private val attributeHandlerByName: Map<String, AttributeHandler> =
-        attributeHandlers.flatMap { handler -> handler.names.map { attrName -> attrName to handler } }.toMap()
+    private val attributeHandlersByName: Map<String, List<AttributeHandler>> =
+        attributeHandlers
+            .flatMap { handler -> handler.names.map { attrName -> attrName to handler } }
+            .groupBy({ it.first }, { it.second })
 
     private val layoutAttributeNames = setOf(
         "android:layout_width",
@@ -215,16 +222,18 @@ open class ResourceAwareViewRegistry(
             return true
         }
 
-        val handler = attributeHandlerByName[attrName] ?: return false
-        return handler.supports(node, parentTagName, attrName)
+        return attributeHandlersByName[attrName]
+            ?.any { handler -> handler.supports(node, parentTagName, attrName) }
+            ?: false
     }
 
     override fun hasUnsupportedAttributeValue(node: LayoutNode, parentTagName: String?): Boolean {
         for ((attrName, value) in node.attributes) {
-            val handler = attributeHandlerByName[attrName] ?: continue
-            if (handler.supports(node, parentTagName, attrName) &&
-                !handler.supportsValue(node, parentTagName, attrName, value)
-            ) {
+            val supportingHandlers = attributeHandlersByName[attrName]
+                ?.filter { handler -> handler.supports(node, parentTagName, attrName) }
+                ?: continue
+            if (supportingHandlers.isNotEmpty() &&
+                supportingHandlers.none { handler -> handler.supportsValue(node, parentTagName, attrName, value) }) {
                 return true
             }
         }
@@ -267,8 +276,11 @@ open class ResourceAwareViewRegistry(
     }
 
     override fun canEmitAttribute(node: AnalyzedNode, attrName: String): Boolean {
-        val handler = attributeHandlerByName[attrName] ?: return false
-        return handler.canEmit(node, attrName)
+        return attributeHandlersByName[attrName]
+            ?.any { handler ->
+                handler.supports(node.node, node.parentTagName, attrName) && handler.canEmit(node, attrName)
+            }
+            ?: false
     }
 
     override fun emitAttributes(builder: CodeBlock.Builder, node: AnalyzedNode) {
@@ -780,6 +792,63 @@ open class ResourceAwareViewRegistry(
                 if (value.startsWith("@+id/") || value.startsWith("@id/")) {
                     val idName = value.substringAfter("/")
                     builder.addStatement("inflatedId = R.id.%L", idName)
+                }
+            }
+        }
+    }
+
+    private inner class GuidelineAttributeHandler : AttributeHandler {
+        override val names = setOf(
+            "android:orientation",
+            "app:layout_constraintGuide_begin",
+            "app:layout_constraintGuide_end",
+            "app:layout_constraintGuide_percent"
+        )
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return ConstraintLayoutRules.isGuideline(node.tagName) &&
+                ConstraintLayoutRules.parentIsConstraintLayout(parentTagName)
+        }
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return when (attrName) {
+                "android:orientation" -> ConstraintLayoutRules.isSupportedGuidelineOrientation(value)
+                "app:layout_constraintGuide_percent" -> ConstraintLayoutRules.isSupportedGuidelinePercent(value)
+                "app:layout_constraintGuide_begin", "app:layout_constraintGuide_end" -> {
+                    // Should be a dimension resource or dp value
+                    value.startsWith("@dimen/") || value.endsWith("dp") || value.endsWith("px")
+                }
+                else -> false
+            }
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            // Orientation
+            node.node.attributes["android:orientation"]?.let { value ->
+                val orientationConstant = when (value) {
+                    "vertical" -> "ConstraintLayout.LayoutParams.VERTICAL"
+                    "horizontal" -> "ConstraintLayout.LayoutParams.HORIZONTAL"
+                    else -> return@let
+                }
+                builder.addStatement("orientation = %L", orientationConstant)
+            }
+
+            // Guide begin
+            node.node.attributes["app:layout_constraintGuide_begin"]?.let { value ->
+                val dimensionCode = dimensionToCode(value, resourceResolver, rPackageName)
+                builder.addStatement("setGuidelineBegin(%L)", dimensionCode)
+            }
+
+            // Guide end
+            node.node.attributes["app:layout_constraintGuide_end"]?.let { value ->
+                val dimensionCode = dimensionToCode(value, resourceResolver, rPackageName)
+                builder.addStatement("setGuidelineEnd(%L)", dimensionCode)
+            }
+
+            // Guide percent
+            node.node.attributes["app:layout_constraintGuide_percent"]?.let { value ->
+                value.toFloatOrNull()?.let { percent ->
+                    builder.addStatement("setGuidelinePercent(%Lf)", percent)
                 }
             }
         }
