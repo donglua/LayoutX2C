@@ -170,8 +170,8 @@ class LayoutX2CPluginFunctionalTest {
 
             includeBuild("$repoPath") {
                 dependencySubstitution {
-                    substitute(module("com.github.donglua.layoutx2c:runtime")).using(project(":runtime"))
-                    substitute(module("com.github.donglua.layoutx2c:ksp-processor")).using(project(":ksp-processor"))
+                    substitute(module("io.github.donglua.layoutx2c:runtime")).using(project(":runtime"))
+                    substitute(module("io.github.donglua.layoutx2c:ksp-processor")).using(project(":ksp-processor"))
                 }
             }
 
@@ -187,7 +187,7 @@ class LayoutX2CPluginFunctionalTest {
             """
             plugins {
                 id("com.android.application") version "9.2.1"
-                id("com.github.donglua.layoutx2c")
+                id("io.github.donglua.layoutx2c")
             }
 
             android {

@@ -1,5 +1,7 @@
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.api.tasks.bundling.Zip
 
 buildscript {
     extra["kotlinVersion"] = "2.2.21"
@@ -9,8 +11,8 @@ buildscript {
     extra["minSdk"] = 23
     extra["targetSdk"] = 36
     extra["compileSdk"] = 36
-    extra["groupId"] = "com.github.donglua.layoutx2c"
-    extra["versionName"] = "1.0.0"
+    extra["groupId"] = "io.github.donglua.layoutx2c"
+    extra["versionName"] = "1.0.0-rc.1"
 }
 
 plugins {
@@ -28,6 +30,42 @@ val publishingGroup = providers.environmentVariable("GROUP")
 val publishingVersion = providers.environmentVariable("VERSION")
     .orElse(rootProject.extra["versionName"] as String)
 val enableMavenCentralPublishing = providers.gradleProperty("layoutx2c.enablePublishing").isPresent
+val centralPortalBundleRepositoryName = "centralPortalBundle"
+val centralPortalStagingDir = layout.buildDirectory.dir("central-portal/staging")
+
+val validateCentralPortalBundleInputs = tasks.register("validateCentralPortalBundleInputs") {
+    group = "publishing"
+    description = "Validates signing properties required for a Central Portal upload bundle."
+    doLast {
+        val missing = listOf("signingInMemoryKey", "signingInMemoryKeyPassword")
+            .filterNot { providers.gradleProperty(it).isPresent }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Missing required Gradle properties for Central Portal bundle: ${missing.joinToString()}"
+            )
+        }
+    }
+}
+
+val cleanCentralPortalBundle = tasks.register<Delete>("cleanCentralPortalBundle") {
+    group = "publishing"
+    description = "Deletes Central Portal bundle staging outputs."
+    delete(layout.buildDirectory.dir("central-portal"))
+}
+
+val publishCentralPortalBundleComponents = tasks.register("publishCentralPortalBundleComponents") {
+    group = "publishing"
+    description = "Publishes all LayoutX2C components to a local Central Portal staging repository."
+}
+
+tasks.register<Zip>("buildCentralPortalBundle") {
+    group = "publishing"
+    description = "Builds a Maven Repository Layout zip for Sonatype Central Portal Publish Component."
+    archiveFileName.set("layoutx2c-${publishingVersion.get()}-central-bundle.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("central-portal"))
+    from(centralPortalStagingDir)
+    dependsOn(publishCentralPortalBundleComponents)
+}
 
 subprojects {
     group = publishingGroup.get()
@@ -42,9 +80,9 @@ subprojects {
                     signAllPublications()
                 }
                 coordinates(
-                    groupId = rootProject.extra["groupId"] as String,
+                    groupId = publishingGroup.get(),
                     artifactId = project.name,
-                    version = rootProject.extra["versionName"] as String
+                    version = publishingVersion.get()
                 )
                 pom {
                     name.set("LayoutX2C ${project.name}")
@@ -72,6 +110,16 @@ subprojects {
                 }
             }
         }
+        plugins.withId("maven-publish") {
+            extensions.configure<PublishingExtension>("publishing") {
+                repositories {
+                    maven {
+                        name = centralPortalBundleRepositoryName
+                        url = centralPortalStagingDir.get().asFile.toURI()
+                    }
+                }
+            }
+        }
     } else if (name == "gradle-plugin") {
         pluginManager.withPlugin("java-gradle-plugin") {
             pluginManager.apply("maven-publish")
@@ -87,5 +135,21 @@ subprojects {
                 }
             }
         }
+    }
+}
+
+gradle.projectsEvaluated {
+    val bundlePublishTasks = subprojects.flatMap { subproject ->
+        subproject.tasks.withType(PublishToMavenRepository::class.java)
+            .matching { it.repository.name == centralPortalBundleRepositoryName }
+            .toList()
+    }
+
+    bundlePublishTasks.forEach {
+        it.dependsOn(validateCentralPortalBundleInputs, cleanCentralPortalBundle)
+    }
+
+    publishCentralPortalBundleComponents.configure {
+        dependsOn(bundlePublishTasks)
     }
 }

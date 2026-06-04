@@ -63,7 +63,7 @@
 
 - Runtime-facing API 已使用 `@PublicApi` / `@ExperimentalApi` 标注，1.0 迁移边界见
   `docs/MIGRATION_1_0.md`。
-- 版本号已准备为 `1.0.0`，Maven Central / Gradle Plugin Portal 发布配置和 release workflow
+- 版本号已准备为 `1.0.0-rc.1`，Maven Central / Gradle Plugin Portal 发布配置和 release workflow
   已就绪；真实发布仍需要 tag、Maven Central credentials、signing key，以及可选 Gradle Plugin Portal secrets。
 - `runtime` consumer ProGuard / R8 rules 已覆盖 generated factory 和 app-package generated registry。
 - benchmark 方法、release 步骤和本地验证命令分别记录在 `docs/BENCHMARKS.md` 和 `docs/RELEASE.md`。
@@ -103,7 +103,7 @@
 4. **API 标注和文档** ✅
    - `@PublicApi` / `@ExperimentalApi` 已完成标注
    - `docs/MIGRATION_1_0.md`、`docs/BENCHMARKS.md`、`docs/RELEASE.md` 已完成
-   - 版本号已设为 `1.0.0`
+   - 版本号已设为 `1.0.0-rc.1`
 
 ### 🚀 待执行：1.0 外部发布
 
@@ -118,13 +118,13 @@
 
 2. **打 tag 触发发布**
    ```bash
-   git tag -a 1.0.0 -m "Release 1.0.0"
-   git push origin 1.0.0
+   git tag -a 1.0.0-rc.1 -m "Release 1.0.0-rc.1"
+   git push origin 1.0.0-rc.1
    ```
 
 3. **验证发布结果**
-   - Maven Central: `com.github.donglua.layoutx2c:runtime:1.0.0`
-   - Gradle Plugin Portal: `com.github.donglua.layoutx2c`（如已配置）
+   - Maven Central: `io.github.donglua.layoutx2c:runtime:1.0.0-rc.1`
+   - Gradle Plugin Portal: `io.github.donglua.layoutx2c`（如已配置）
 
 4. **发布 GitHub Release**
    - 附上 changelog 和 migration guide 链接

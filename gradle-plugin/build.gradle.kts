@@ -20,7 +20,7 @@ gradlePlugin {
     vcsUrl.set("https://github.com/donglua/LayoutX2C.git")
     plugins {
         create("layoutx2c") {
-            id = "com.github.donglua.layoutx2c"
+            id = "io.github.donglua.layoutx2c"
             implementationClass = "com.github.donglua.layoutx2c.plugin.LayoutX2CPlugin"
             displayName = "LayoutX2C Gradle Plugin"
             description = "Compile-time XML layout to code generation"

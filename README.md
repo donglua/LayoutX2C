@@ -17,7 +17,7 @@
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("com.github.donglua.layoutx2c")
+    id("io.github.donglua.layoutx2c")
 }
 ```
 
@@ -33,8 +33,8 @@ plugins {
 }
 
 dependencies {
-    implementation("com.github.donglua.layoutx2c:runtime:<version>")
-    ksp("com.github.donglua.layoutx2c:ksp-processor:<version>")
+    implementation("io.github.donglua.layoutx2c:runtime:<version>")
+    ksp("io.github.donglua.layoutx2c:ksp-processor:<version>")
 }
 ```
 

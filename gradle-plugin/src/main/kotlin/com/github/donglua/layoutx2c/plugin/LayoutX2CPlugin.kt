@@ -17,7 +17,7 @@ import org.gradle.process.CommandLineArgumentProvider
  * 用户只需要：
  * ```
  * plugins {
- *     id("com.github.donglua.layoutx2c")
+ *     id("io.github.donglua.layoutx2c")
  * }
  * ```
  */
@@ -25,8 +25,8 @@ class LayoutX2CPlugin : Plugin<Project> {
 
     companion object {
         const val EXTENSION_NAME = "layoutX2C"
-        const val GROUP = "com.github.donglua.layoutx2c"
-        const val VERSION = "0.4.1"
+        const val GROUP = "io.github.donglua.layoutx2c"
+        const val VERSION = "1.0.0-rc.1"
     }
 
     override fun apply(project: Project) {
