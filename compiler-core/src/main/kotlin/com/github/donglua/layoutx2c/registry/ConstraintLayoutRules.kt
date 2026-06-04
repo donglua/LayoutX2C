@@ -35,7 +35,6 @@ internal object ConstraintLayoutRules {
 
     /** Guideline 特定属性。 */
     val guidelineAttributes: Set<String> = setOf(
-        "android:orientation",
         "app:layout_constraintGuide_begin",
         "app:layout_constraintGuide_end",
         "app:layout_constraintGuide_percent"

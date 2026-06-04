@@ -466,6 +466,33 @@ class LayoutAnalyzerTest {
     }
 
     @Test
+    fun `constraint layout with safe left and right anchors returns FULL`() {
+        val xml = """
+            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    android:text="Title" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "test")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children).hasSize(1)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[0].unsupportedAttributes).isEmpty()
+    }
+
+    @Test
     fun `constraint layout helper tag children fall back the subtree`() {
         val xml = """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -480,11 +507,10 @@ class LayoutAnalyzerTest {
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
-                    <androidx.constraintlayout.widget.Guideline
-                        android:id="@+id/guide"
+                    <androidx.constraintlayout.widget.Barrier
+                        android:id="@+id/barrier"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:layout_constraintGuide_percent="0.5" />
+                        android:layout_height="wrap_content" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </LinearLayout>
         """.trimIndent()
@@ -525,11 +551,10 @@ class LayoutAnalyzerTest {
                         android:layout_height="48dp"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toBottomOf="@id/title" />
-                    <androidx.constraintlayout.widget.Guideline
-                        android:id="@+id/guide"
+                    <androidx.constraintlayout.widget.Barrier
+                        android:id="@+id/barrier"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:layout_constraintGuide_percent="0.5" />
+                        android:layout_height="wrap_content" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </layout>
         """.trimIndent()

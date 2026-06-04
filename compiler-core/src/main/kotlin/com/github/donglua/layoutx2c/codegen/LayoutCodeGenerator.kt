@@ -116,7 +116,7 @@ class LayoutCodeGenerator(
         isRoot: Boolean,
         childPath: List<Int>
     ) {
-        if (node.supportLevel == SupportLevel.FALLBACK) {
+        if (node.supportLevel == SupportLevel.FALLBACK || shouldCollapseToFallback(node)) {
             val fallbackInflater = ClassName("com.github.donglua.layoutx2c.runtime", "FallbackInflater")
             if (isRoot) {
                 builder.addStatement(
@@ -217,7 +217,7 @@ class LayoutCodeGenerator(
     }
 
     private fun usesDensity(node: AnalyzedNode, isRoot: Boolean): Boolean {
-        if (node.supportLevel == SupportLevel.FALLBACK) {
+        if (node.supportLevel == SupportLevel.FALLBACK || shouldCollapseToFallback(node)) {
             return !isRoot && fallbackChildLayoutParamsUseDensity(node)
         }
         return node.node.attributes.values.any { value -> value.endsWith("dp") } ||
@@ -241,6 +241,18 @@ class LayoutCodeGenerator(
                 !attrName.startsWith("android:layout_") &&
                 viewRegistry.canEmitAttribute(node, attrName)
         }
+    }
+
+    private fun shouldCollapseToFallback(node: AnalyzedNode): Boolean {
+        if (node.supportLevel == SupportLevel.FALLBACK || node.isMerge || node.includedLayoutRef != null) {
+            return false
+        }
+        if (hasEmittedAttributes(node)) {
+            return false
+        }
+        return node.children.count { child ->
+            child.supportLevel == SupportLevel.FALLBACK || shouldCollapseToFallback(child)
+        } > 1
     }
 
     private fun layoutNameToClassName(layoutName: String): String {

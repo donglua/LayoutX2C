@@ -44,6 +44,32 @@ class DefaultViewRegistryTest {
     }
 
     @Test
+    fun `guideline orientation is not a generic constraint layout child attribute`() {
+        val root = parser.parse(
+            """
+                <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <androidx.constraintlayout.widget.Guideline
+                        android:layout_width="wrap_content"
+                        android:layout_height="0dp"
+                        android:orientation="vertical" />
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            """.trimIndent(),
+            "constraint_orientation_scope"
+        ).root
+        val guideline = root.children[0]
+        val frameLayout = root.children[1]
+
+        assertThat(registry.isSupportedAttribute(guideline, root.tagName, "android:orientation")).isTrue()
+        assertThat(registry.isSupportedAttribute(frameLayout, root.tagName, "android:orientation")).isFalse()
+    }
+
+    @Test
     fun `unsupported attribute values are rejected`() {
         val textView = parser.parse(
             """

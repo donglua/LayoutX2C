@@ -166,11 +166,10 @@ class LayoutCodeGeneratorTest {
                         android:layout_height="48dp"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toBottomOf="@id/title" />
-                    <androidx.constraintlayout.widget.Guideline
-                        android:id="@+id/guide"
+                    <androidx.constraintlayout.widget.Barrier
+                        android:id="@+id/barrier"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:layout_constraintGuide_percent="0.5" />
+                        android:layout_height="wrap_content" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </layout>
         """.trimIndent()
@@ -189,6 +188,46 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("intArrayOf(1), root)")
         assertThat(generated).contains("intArrayOf(2), root)")
         assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.feature_home_entry, parent)")
+    }
+
+    @Test
+    fun `constraint root without emitted attrs falls back whole layout when multiple direct children fallback`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        android:text="Title" />
+                    <com.example.widget.HomeTabLayout
+                        android:id="@+id/home_tabs"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/title" />
+                    <com.example.widget.HomePager
+                        android:id="@+id/home_pager"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/home_tabs" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </layout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "activity_main_like").root)
+        val generated = generator.generate(analyzed, "activity_main_like", "R.layout.activity_main_like").toString()
+
+        assertThat(generated).contains("val root = FallbackInflater.inflate(context, R.layout.activity_main_like, parent)")
+        assertThat(generated).doesNotContain("FallbackInflater.inflateChild(context, R.layout.activity_main_like,")
+        assertThat(generated).doesNotContain("val root_child0 =")
     }
 
     @Test
@@ -882,6 +921,38 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `constraint layout emits left and right anchor field assignments`() {
+        val xml = """
+            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    android:text="Title" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "constraint_left_right").root)
+        val generated = generator.generate(analyzed, "constraint_left_right", "R.layout.constraint_left_right").toString()
+
+        assertThat(generated).contains("ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_CONSTRAINT,")
+        assertThat(generated).contains(
+            "(root_child0.layoutParams as ConstraintLayout.LayoutParams).leftToLeft = " +
+                "ConstraintLayout.LayoutParams.PARENT_ID"
+        )
+        assertThat(generated).contains(
+            "(root_child0.layoutParams as ConstraintLayout.LayoutParams).rightToRight = " +
+                "ConstraintLayout.LayoutParams.PARENT_ID"
+        )
+    }
+
+    @Test
     fun `constraint layout helper child triggers subtree fallback in codegen`() {
         val xml = """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -892,10 +963,9 @@ class LayoutCodeGeneratorTest {
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
-                    <androidx.constraintlayout.widget.Guideline
+                    <androidx.constraintlayout.widget.Barrier
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:layout_constraintGuide_percent="0.5" />
+                        android:layout_height="wrap_content" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </LinearLayout>
         """.trimIndent()
