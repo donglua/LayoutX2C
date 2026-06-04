@@ -6,11 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.LayoutRes
 import com.github.donglua.layoutx2c.runtime.annotation.PublicApi
+import org.xmlpull.v1.XmlPullParser
 
 /**
  * Fallback：对不支持的布局或子树，使用原始 LayoutInflater inflate 原始 layout。
  *
- * 子树 fallback 会 inflate 原始 layout，再按路径摘取目标节点。
+ * 子树 fallback 优先 seek 到原始 XML 中的目标节点做局部 inflate。
  */
 @PublicApi
 object FallbackInflater {
@@ -41,14 +42,22 @@ object FallbackInflater {
         parent: ViewGroup?
     ): View {
         val layoutName = context.resources.getResourceName(layoutId)
-        return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
+        val parser = context.resources.getLayout(layoutId)
+        try {
+            val targetTag = seekToChildStartTag(parser, childPath, layoutName)
+            if (requiresFullTreeExtraction(targetTag)) {
+                return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
+            }
+            return LayoutInflater.from(context).inflate(parser, parent, false)
+        } finally {
+            parser.close()
+        }
     }
 
     /**
-     * Inflate 原始 layout 一次，并批量摘取多个 fallback 子树。
+     * Inflate 原始 layout 中的多个 fallback 子树。
      *
-     * 所有目标节点会先按原始路径定位，再统一从原树 detach，避免前一个节点移除后导致后续
-     * sibling index 变化。
+     * 委托给 inflateChild 处理每个子树，由其自动选择 partial inflate 或 full-tree extraction。
      */
     fun inflateChildren(
         context: Context,
@@ -58,22 +67,114 @@ object FallbackInflater {
     ): Array<View> {
         if (childPaths.isEmpty()) return emptyArray()
 
-        val layoutName = context.resources.getResourceName(layoutId)
-        val inflater = LayoutInflater.from(context)
-        val fullTree = inflater.inflate(layoutId, parent, false)
-        val children = childPaths.map { childPath ->
-            findChildByPath(fullTree, childPath, layoutName)
+        return Array(childPaths.size) { index ->
+            inflateChild(context, layoutId, childPaths[index], parent)
         }
-        children.forEach { child ->
-            (child.parent as? ViewGroup)?.removeView(child)
+    }
+
+    private fun seekToChildStartTag(
+        parser: XmlPullParser,
+        childPath: IntArray,
+        layoutName: String
+    ): String {
+        moveToFirstStartTag(parser, layoutName)
+        if (parser.name == "layout") {
+            moveToDataBindingViewRoot(parser, layoutName)
         }
-        return children.toTypedArray()
+
+        val traversed = mutableListOf<Int>()
+        for (index in childPath) {
+            moveToChildAt(parser, index, traversed, childPath, layoutName)
+            traversed += index
+        }
+
+        return parser.name
+    }
+
+    private fun moveToFirstStartTag(parser: XmlPullParser, layoutName: String) {
+        while (true) {
+            when (parser.next()) {
+                XmlPullParser.START_TAG -> return
+                XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException(
+                    "Fallback child path is invalid for $layoutName: layout XML has no root tag"
+                )
+            }
+        }
+    }
+
+    private fun moveToDataBindingViewRoot(parser: XmlPullParser, layoutName: String) {
+        val layoutDepth = parser.depth
+        while (true) {
+            when (parser.next()) {
+                XmlPullParser.START_TAG -> {
+                    if (parser.depth == layoutDepth + 1 && parser.name != "data") {
+                        return
+                    }
+                }
+                XmlPullParser.END_TAG -> {
+                    if (parser.depth == layoutDepth) {
+                        throw IllegalArgumentException(
+                            "Fallback child path is invalid for $layoutName: data binding layout has no view root"
+                        )
+                    }
+                }
+                XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException(
+                    "Fallback child path is invalid for $layoutName: data binding layout has no view root"
+                )
+            }
+        }
+    }
+
+    private fun moveToChildAt(
+        parser: XmlPullParser,
+        targetIndex: Int,
+        traversed: List<Int>,
+        childPath: IntArray,
+        layoutName: String
+    ) {
+        if (targetIndex < 0) {
+            throw IllegalArgumentException(
+                "Fallback child path ${childPath.toPathString()} is invalid for $layoutName: " +
+                    "index $targetIndex is out of bounds at ${traversed.toPathString()}"
+            )
+        }
+
+        val parentDepth = parser.depth
+        var childIndex = 0
+        while (true) {
+            when (parser.next()) {
+                XmlPullParser.START_TAG -> {
+                    if (parser.depth == parentDepth + 1) {
+                        if (childIndex == targetIndex) {
+                            return
+                        }
+                        childIndex++
+                    }
+                }
+                XmlPullParser.END_TAG -> {
+                    if (parser.depth == parentDepth) {
+                        throw IllegalArgumentException(
+                            "Fallback child path ${childPath.toPathString()} is invalid for $layoutName: " +
+                                "index $targetIndex is out of bounds at ${traversed.toPathString()} " +
+                                "with childCount=$childIndex"
+                        )
+                    }
+                }
+                XmlPullParser.END_DOCUMENT -> throw IllegalArgumentException(
+                    "Fallback child path ${childPath.toPathString()} is invalid for $layoutName: " +
+                        "index $targetIndex is out of bounds with childCount=$childIndex"
+                )
+            }
+        }
+    }
+
+    private fun requiresFullTreeExtraction(tagName: String): Boolean {
+        return tagName == "merge" || tagName == "include" || tagName == "fragment"
     }
 
     /**
      * Inflate the full original layout and detach the requested child afterward.
-     * Android's platform inflater expects framework XmlBlock parsers for styled attributes,
-     * so partial inflation from a custom seeked parser is not compatible on all devices.
+     * Used for inflater semantic tags that cannot be safely inflated as standalone roots.
      */
     private fun inflateChildFromFullTree(
         context: Context,
@@ -95,6 +196,14 @@ object FallbackInflater {
             childPath,
             layoutName
         ) as AndroidFallbackChildNode).view
+    }
+
+    private fun IntArray.toPathString(): String {
+        return toList().toPathString()
+    }
+
+    private fun List<Int>.toPathString(): String {
+        return if (isEmpty()) "<root>" else joinToString(prefix = "[", postfix = "]")
     }
 
     private class AndroidFallbackChildNode(

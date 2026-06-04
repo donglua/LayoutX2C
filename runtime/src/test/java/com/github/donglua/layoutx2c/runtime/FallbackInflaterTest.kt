@@ -7,38 +7,51 @@ import org.junit.Test
 class FallbackInflaterTest {
 
     @Test
-    fun `child fallback does not use parser based LayoutInflater inflate`() {
-        val moduleDir = listOf(File("."), File("runtime"))
-            .map { it.canonicalFile }
-            .first { File(it, "src/main/java").isDirectory }
-        val source = File(
-            moduleDir,
-            "src/main/java/com/github/donglua/layoutx2c/runtime/FallbackInflater.kt"
-        ).readText()
+    fun `child fallback uses parser based partial inflate for ordinary view subtree`() {
+        val source = fallbackInflaterSource()
 
-        assertWithMessage("Partial parser inflation crashes when platform code requires XmlBlock.Parser")
+        assertWithMessage("Child fallback should avoid inflating the whole original layout for ordinary view subtrees")
             .that(source)
-            .doesNotContain(".inflate(parser,")
+            .contains(".inflate(parser, parent, false)")
+        assertWithMessage("Child fallback should seek with the framework XmlResourceParser from Resources.getLayout")
+            .that(source)
+            .contains("context.resources.getLayout(layoutId)")
     }
 
     @Test
-    fun `batch child fallback uses one full platform inflate`() {
-        val moduleDir = listOf(File("."), File("runtime"))
-            .map { it.canonicalFile }
-            .first { File(it, "src/main/java").isDirectory }
-        val source = File(
-            moduleDir,
-            "src/main/java/com/github/donglua/layoutx2c/runtime/FallbackInflater.kt"
-        ).readText()
+    fun `child fallback keeps full tree extraction for inflater semantic tags`() {
+        val source = fallbackInflaterSource()
+
+        assertWithMessage("merge include and fragment depend on LayoutInflater host semantics")
+            .that(source)
+            .contains("requiresFullTreeExtraction")
+        assertWithMessage("Unsupported partial roots should keep the known-correct full-tree path")
+            .that(source)
+            .contains("inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)")
+    }
+
+    @Test
+    fun `batch child fallback delegates each path to child partial inflate`() {
+        val source = fallbackInflaterSource()
 
         assertWithMessage("Batch child fallback should be available for sibling fallback nodes")
             .that(source)
             .contains("fun inflateChildren(")
-        assertWithMessage("Batch child fallback should inflate the original layout once")
+        assertWithMessage("Batch child fallback should avoid full-tree extraction for ordinary view siblings")
             .that(source)
-            .contains("val fullTree = inflater.inflate(layoutId, parent, false)")
-        assertWithMessage("Batch child fallback should locate all children before detaching")
+            .contains("return Array(childPaths.size) { index ->")
+        assertWithMessage("Batch child fallback should reuse the single-child optimized path")
             .that(source)
-            .contains("childPaths.map { childPath ->")
+            .contains("inflateChild(context, layoutId, childPaths[index], parent)")
+    }
+
+    private fun fallbackInflaterSource(): String {
+        val moduleDir = listOf(File("."), File("runtime"))
+            .map { it.canonicalFile }
+            .first { File(it, "src/main/java").isDirectory }
+        return File(
+            moduleDir,
+            "src/main/java/com/github/donglua/layoutx2c/runtime/FallbackInflater.kt"
+        ).readText()
     }
 }
