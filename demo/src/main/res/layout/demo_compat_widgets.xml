@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/compat_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:fontFamily="monospace"
+        android:includeFontPadding="false"
+        android:lineSpacingExtra="3dp"
+        android:maxLines="1"
+        android:scrollHorizontally="true"
+        android:singleLine="true"
+        android:text="Compat text attributes"
+        android:textAllCaps="false"
+        android:textIsSelectable="true"
+        android:textSize="14sp" />
+
+    <FrameLayout
+        android:id="@+id/compat_panel"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:layout_marginTop="8dp"
+        android:alpha="0.75"
+        android:background="@color/demo_control_surface"
+        android:backgroundTint="@color/demo_primary"
+        android:contentDescription="@string/app_name"
+        android:foreground="@drawable/code_viewer_panel"
+        android:foregroundGravity="center"
+        android:importantForAccessibility="yes"
+        android:overScrollMode="never"
+        android:scrollbars="none"
+        android:tag="compat-panel" />
+
+    <ProgressBar
+        android:id="@+id/compat_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:indeterminate="false"
+        android:indeterminateTint="@color/demo_primary"
+        android:max="100"
+        android:progress="40"
+        android:progressTint="@color/demo_primary"
+        android:secondaryProgress="60" />
+
+    <SeekBar
+        android:id="@+id/compat_seek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="10"
+        android:progress="4"
+        android:splitTrack="false"
+        android:thumb="@drawable/code_viewer_chip" />
+
+    <RatingBar
+        android:id="@+id/compat_rating"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:isIndicator="true"
+        android:numStars="5"
+        android:rating="3.5"
+        android:stepSize="0.5" />
+
+    <Spinner
+        android:id="@+id/compat_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <Space
+        android:id="@+id/compat_gap"
+        android:layout_width="1dp"
+        android:layout_height="8dp" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/compat_constraint"
+        android:layout_width="match_parent"
+        android:layout_height="96dp"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/compat_constrained"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:text="Ratio"
+            app:layout_constraintDimensionRatio="16:9"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHeight_percent="0.25"
+            app:layout_constraintHorizontal_chainStyle="packed"
+            app:layout_constraintHorizontal_weight="1.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_chainStyle="spread_inside"
+            app:layout_constraintVertical_weight="2"
+            app:layout_constraintWidth_percent="0.5"
+            app:layout_goneMarginStart="8dp"
+            app:layout_goneMarginTop="4dp" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/compat_card"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:layout_marginTop="8dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="2dp"
+        app:cardUseCompatPadding="true" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/compat_material_card"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:layout_marginTop="8dp"
+        app:cardCornerRadius="12dp"
+        app:strokeColor="@color/demo_primary"
+        app:strokeWidth="1dp" />
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/compat_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:navigationIcon="@drawable/code_viewer_chip"
+        app:subtitle="Details"
+        app:title="@string/app_name" />
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/compat_material_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:subtitle="@string/app_name"
+        app:title="Material" />
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/compat_pager"
+        android:layout_width="match_parent"
+        android:layout_height="32dp" />
+</LinearLayout>

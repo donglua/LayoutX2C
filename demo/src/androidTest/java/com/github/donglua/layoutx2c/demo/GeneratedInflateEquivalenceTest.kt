@@ -2,6 +2,7 @@ package com.github.donglua.layoutx2c.demo
 
 import android.content.Context
 import android.os.Looper
+import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,16 +13,24 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.RatingBar
 import android.widget.RelativeLayout
+import android.widget.SeekBar
 import android.widget.TextView
+import androidx.appcompat.widget.Toolbar
+import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintLayout.LayoutParams as ConstraintLayoutParams
 import androidx.databinding.DataBindingUtil
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.viewpager2.widget.ViewPager2
 import androidx.recyclerview.widget.RecyclerView
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.runtime.LayoutX2CRegistry
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.appbar.MaterialToolbar
 import kotlin.math.abs
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,7 +39,10 @@ import org.junit.runner.RunWith
 class GeneratedInflateEquivalenceTest {
 
     private val context: Context
-        get() = InstrumentationRegistry.getInstrumentation().targetContext
+        get() = ContextThemeWrapper(
+            InstrumentationRegistry.getInstrumentation().targetContext,
+            R.style.Theme_LayoutX2CDemo
+        )
 
     @Test
     fun generatedDemoLayoutsMatchPlatformInflatedViewTrees() {
@@ -161,6 +173,111 @@ class GeneratedInflateEquivalenceTest {
             assertEquivalentConstraintParams("demo_constraint/constraint_title", platformInflated, generated, R.id.constraint_title)
             assertEquivalentConstraintParams("demo_constraint/constraint_subtitle", platformInflated, generated, R.id.constraint_subtitle)
             assertEquivalentConstraintParams("demo_constraint/constraint_end", platformInflated, generated, R.id.constraint_end)
+        }
+    }
+
+    @Test
+    fun generatedCompatWidgetsPreserveExpandedProperties() {
+        runOnMainThread {
+            val entry = entry("demo_compat_widgets")
+            val platformInflated = inflatePlatform(entry)
+            val generated = inflateGenerated(entry)
+            val differences = mutableListOf<String>()
+
+            val expectedText = platformInflated.findViewById<TextView>(R.id.compat_text)
+            val actualText = generated.findViewById<TextView>(R.id.compat_text)
+            checkField(entry.layoutName, "compat_text.maxLines", expectedText.maxLines, actualText.maxLines, differences)
+            checkField(entry.layoutName, "compat_text.includeFontPadding", expectedText.includeFontPadding, actualText.includeFontPadding, differences)
+            checkFloatField(entry.layoutName, "compat_text.lineSpacingExtra", expectedText.lineSpacingExtra, actualText.lineSpacingExtra, differences)
+            checkFloatField(entry.layoutName, "compat_text.lineSpacingMultiplier", expectedText.lineSpacingMultiplier, actualText.lineSpacingMultiplier, differences)
+            checkField(entry.layoutName, "compat_text.isTextSelectable", expectedText.isTextSelectable, actualText.isTextSelectable, differences)
+
+            val expectedPanel = platformInflated.findViewById<FrameLayout>(R.id.compat_panel)
+            val actualPanel = generated.findViewById<FrameLayout>(R.id.compat_panel)
+            checkFloatField(entry.layoutName, "compat_panel.alpha", expectedPanel.alpha, actualPanel.alpha, differences)
+            checkField(entry.layoutName, "compat_panel.contentDescription", expectedPanel.contentDescription?.toString(), actualPanel.contentDescription?.toString(), differences)
+            checkField(entry.layoutName, "compat_panel.tag", expectedPanel.tag, actualPanel.tag, differences)
+            checkField(entry.layoutName, "compat_panel.backgroundTint", expectedPanel.backgroundTintList?.defaultColor, actualPanel.backgroundTintList?.defaultColor, differences)
+            checkField(entry.layoutName, "compat_panel.foreground", expectedPanel.foreground != null, actualPanel.foreground != null, differences)
+            checkField(entry.layoutName, "compat_panel.foregroundGravity", expectedPanel.foregroundGravity, actualPanel.foregroundGravity, differences)
+            checkField(entry.layoutName, "compat_panel.importantForAccessibility", expectedPanel.importantForAccessibility, actualPanel.importantForAccessibility, differences)
+            checkField(entry.layoutName, "compat_panel.overScrollMode", expectedPanel.overScrollMode, actualPanel.overScrollMode, differences)
+            checkField(entry.layoutName, "compat_panel.horizontalScrollbar", expectedPanel.isHorizontalScrollBarEnabled, actualPanel.isHorizontalScrollBarEnabled, differences)
+            checkField(entry.layoutName, "compat_panel.verticalScrollbar", expectedPanel.isVerticalScrollBarEnabled, actualPanel.isVerticalScrollBarEnabled, differences)
+
+            val expectedProgress = platformInflated.findViewById<ProgressBar>(R.id.compat_progress)
+            val actualProgress = generated.findViewById<ProgressBar>(R.id.compat_progress)
+            checkField(entry.layoutName, "compat_progress.indeterminate", expectedProgress.isIndeterminate, actualProgress.isIndeterminate, differences)
+            checkField(entry.layoutName, "compat_progress.max", expectedProgress.max, actualProgress.max, differences)
+            checkField(entry.layoutName, "compat_progress.progress", expectedProgress.progress, actualProgress.progress, differences)
+            checkField(entry.layoutName, "compat_progress.secondaryProgress", expectedProgress.secondaryProgress, actualProgress.secondaryProgress, differences)
+            checkField(entry.layoutName, "compat_progress.progressTint", expectedProgress.progressTintList?.defaultColor, actualProgress.progressTintList?.defaultColor, differences)
+            checkField(entry.layoutName, "compat_progress.indeterminateTint", expectedProgress.indeterminateTintList?.defaultColor, actualProgress.indeterminateTintList?.defaultColor, differences)
+
+            val expectedSeek = platformInflated.findViewById<SeekBar>(R.id.compat_seek)
+            val actualSeek = generated.findViewById<SeekBar>(R.id.compat_seek)
+            checkField(entry.layoutName, "compat_seek.max", expectedSeek.max, actualSeek.max, differences)
+            checkField(entry.layoutName, "compat_seek.progress", expectedSeek.progress, actualSeek.progress, differences)
+            checkField(entry.layoutName, "compat_seek.thumb", expectedSeek.thumb != null, actualSeek.thumb != null, differences)
+            checkField(entry.layoutName, "compat_seek.splitTrack", expectedSeek.splitTrack, actualSeek.splitTrack, differences)
+
+            val expectedRating = platformInflated.findViewById<RatingBar>(R.id.compat_rating)
+            val actualRating = generated.findViewById<RatingBar>(R.id.compat_rating)
+            checkField(entry.layoutName, "compat_rating.numStars", expectedRating.numStars, actualRating.numStars, differences)
+            checkFloatField(entry.layoutName, "compat_rating.rating", expectedRating.rating, actualRating.rating, differences)
+            checkFloatField(entry.layoutName, "compat_rating.stepSize", expectedRating.stepSize, actualRating.stepSize, differences)
+            checkField(entry.layoutName, "compat_rating.isIndicator", expectedRating.isIndicator, actualRating.isIndicator, differences)
+
+            val expectedConstraintParams = platformInflated
+                .findViewById<TextView>(R.id.compat_constrained)
+                .layoutParams as ConstraintLayoutParams
+            val actualConstraintParams = generated
+                .findViewById<TextView>(R.id.compat_constrained)
+                .layoutParams as ConstraintLayoutParams
+            checkField(entry.layoutName, "constraint.dimensionRatio", expectedConstraintParams.dimensionRatio, actualConstraintParams.dimensionRatio, differences)
+            checkFloatField(entry.layoutName, "constraint.widthPercent", expectedConstraintParams.matchConstraintPercentWidth, actualConstraintParams.matchConstraintPercentWidth, differences)
+            checkFloatField(entry.layoutName, "constraint.heightPercent", expectedConstraintParams.matchConstraintPercentHeight, actualConstraintParams.matchConstraintPercentHeight, differences)
+            checkField(entry.layoutName, "constraint.horizontalChainStyle", expectedConstraintParams.horizontalChainStyle, actualConstraintParams.horizontalChainStyle, differences)
+            checkField(entry.layoutName, "constraint.verticalChainStyle", expectedConstraintParams.verticalChainStyle, actualConstraintParams.verticalChainStyle, differences)
+            checkFloatField(entry.layoutName, "constraint.horizontalWeight", expectedConstraintParams.horizontalWeight, actualConstraintParams.horizontalWeight, differences)
+            checkFloatField(entry.layoutName, "constraint.verticalWeight", expectedConstraintParams.verticalWeight, actualConstraintParams.verticalWeight, differences)
+            checkField(entry.layoutName, "constraint.goneStartMargin", expectedConstraintParams.goneStartMargin, actualConstraintParams.goneStartMargin, differences)
+            checkField(entry.layoutName, "constraint.goneTopMargin", expectedConstraintParams.goneTopMargin, actualConstraintParams.goneTopMargin, differences)
+
+            val expectedCard = platformInflated.findViewById<CardView>(R.id.compat_card)
+            val actualCard = generated.findViewById<CardView>(R.id.compat_card)
+            checkFloatField(entry.layoutName, "compat_card.radius", expectedCard.radius, actualCard.radius, differences)
+            checkFloatField(entry.layoutName, "compat_card.cardElevation", expectedCard.cardElevation, actualCard.cardElevation, differences)
+            checkField(entry.layoutName, "compat_card.useCompatPadding", expectedCard.useCompatPadding, actualCard.useCompatPadding, differences)
+
+            val expectedMaterialCard = platformInflated.findViewById<MaterialCardView>(R.id.compat_material_card)
+            val actualMaterialCard = generated.findViewById<MaterialCardView>(R.id.compat_material_card)
+            checkFloatField(entry.layoutName, "compat_material_card.radius", expectedMaterialCard.radius, actualMaterialCard.radius, differences)
+            checkField(entry.layoutName, "compat_material_card.strokeColor", expectedMaterialCard.strokeColor, actualMaterialCard.strokeColor, differences)
+            checkField(entry.layoutName, "compat_material_card.strokeWidth", expectedMaterialCard.strokeWidth, actualMaterialCard.strokeWidth, differences)
+
+            val expectedToolbar = platformInflated.findViewById<Toolbar>(R.id.compat_toolbar)
+            val actualToolbar = generated.findViewById<Toolbar>(R.id.compat_toolbar)
+            checkField(entry.layoutName, "compat_toolbar.title", expectedToolbar.title?.toString(), actualToolbar.title?.toString(), differences)
+            checkField(entry.layoutName, "compat_toolbar.subtitle", expectedToolbar.subtitle?.toString(), actualToolbar.subtitle?.toString(), differences)
+            checkField(entry.layoutName, "compat_toolbar.navigationIcon", expectedToolbar.navigationIcon != null, actualToolbar.navigationIcon != null, differences)
+
+            val expectedMaterialToolbar = platformInflated.findViewById<MaterialToolbar>(R.id.compat_material_toolbar)
+            val actualMaterialToolbar = generated.findViewById<MaterialToolbar>(R.id.compat_material_toolbar)
+            checkField(entry.layoutName, "compat_material_toolbar.title", expectedMaterialToolbar.title?.toString(), actualMaterialToolbar.title?.toString(), differences)
+            checkField(entry.layoutName, "compat_material_toolbar.subtitle", expectedMaterialToolbar.subtitle?.toString(), actualMaterialToolbar.subtitle?.toString(), differences)
+
+            checkField(
+                entry.layoutName,
+                "compat_pager.class",
+                platformInflated.findViewById<ViewPager2>(R.id.compat_pager).javaClass.name,
+                generated.findViewById<ViewPager2>(R.id.compat_pager).javaClass.name,
+                differences
+            )
+
+            if (differences.isNotEmpty()) {
+                throw AssertionError(differences.joinToString(separator = "\n"))
+            }
         }
     }
 

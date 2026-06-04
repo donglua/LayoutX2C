@@ -317,7 +317,7 @@ class LayoutAnalyzerTest {
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:alpha="0.5">
+                android:rotation="10">
             </LinearLayout>
         """.trimIndent()
 
@@ -325,7 +325,7 @@ class LayoutAnalyzerTest {
         val result = analyzer.analyze(tree.root)
 
         assertThat(result.supportLevel).isEqualTo(SupportLevel.PARTIAL)
-        assertThat(result.unsupportedAttributes).contains("android:alpha")
+        assertThat(result.unsupportedAttributes).contains("android:rotation")
     }
 
     @Test
@@ -682,7 +682,7 @@ class LayoutAnalyzerTest {
     }
 
     @Test
-    fun `constraint layout chain attribute on child falls back the child subtree`() {
+    fun `constraint layout complex circle attribute on child falls back the child subtree`() {
         val xml = """
             <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -693,7 +693,7 @@ class LayoutAnalyzerTest {
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintHorizontal_chainStyle="spread"
+                    app:layout_constraintCircle="@id/a"
                     android:text="A" />
             </androidx.constraintlayout.widget.ConstraintLayout>
         """.trimIndent()
@@ -708,7 +708,7 @@ class LayoutAnalyzerTest {
     }
 
     @Test
-    fun `constraint layout dimension ratio on child falls back the child subtree`() {
+    fun `constraint layout unsupported circle radius on child falls back the child subtree`() {
         val xml = """
             <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -719,7 +719,7 @@ class LayoutAnalyzerTest {
                     android:layout_width="0dp"
                     android:layout_height="0dp"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintDimensionRatio="H,16:9" />
+                    app:layout_constraintCircleRadius="12dp" />
             </androidx.constraintlayout.widget.ConstraintLayout>
         """.trimIndent()
 

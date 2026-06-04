@@ -195,7 +195,7 @@ class FallbackSemanticsRegressionTest {
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        app:layout_constraintWidth_percent="0.5"
+                        app:layout_constraintCircle="@id/missing"
                         app:layout_constraintStart_toStartOf="parent" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </LinearLayout>

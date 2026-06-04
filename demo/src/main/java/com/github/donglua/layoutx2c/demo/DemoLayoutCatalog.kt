@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import com.github.donglua.layoutx2c.demo.generated.DemoConstraintX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoCompatWidgetsX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoTwoWayBindingX2CBinding
@@ -174,6 +175,16 @@ object DemoLayoutCatalog {
             codeViewerClassName = "DemoTwoWayBindingX2CBinding"
         ) { context, parent ->
             DemoTwoWayBindingX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
+        },
+        Entry(
+            "Compat Widgets",
+            "demo_compat_widgets",
+            R.layout.demo_compat_widgets,
+            "Layout_DemoCompatWidgets",
+            summary = "Expanded text, widget, ConstraintLayout, card, toolbar, and pager support",
+            status = Status.Generated
+        ) { context, parent ->
+            DemoCompatWidgetsX2C.inflate(context, parent)
         },
     )
 

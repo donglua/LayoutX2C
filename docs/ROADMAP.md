@@ -20,20 +20,31 @@
 **已支持的布局和 View**
 
 - 容器：`LinearLayout`、`FrameLayout`、`RelativeLayout`、`ScrollView`、`HorizontalScrollView`。
-- 常用 View：`TextView`、`Button`、`EditText`、`ImageView`、`View`。
-- AndroidX：`RecyclerView` 作为容器创建；`ConstraintLayout` 已有安全子集支持。
+- 常用 View：`TextView`、`Button`、`EditText`、`CheckBox`、`Switch`、`RadioButton`、
+  `ToggleButton`、`ImageView`、`ProgressBar`、`SeekBar`、`RatingBar`、`Spinner`、
+  `Space`、`View`。
+- AndroidX / Material：`RecyclerView` 和 `ViewPager2` 作为容器创建；`ConstraintLayout`
+  已有扩展安全子集支持；`CardView`、`MaterialCardView`、`Toolbar`、`MaterialToolbar`
+  已支持基础属性。
 - 特殊标签：`include`、`merge`、`ViewStub` 已进入编译期支持路径。
 - DataBinding `<layout>` root 会透明解包到真实 View root，并生成继承 `ViewDataBinding` 的
   `{Name}X2CBinding`。
 
 **已支持的关键属性**
 
-- 通用：尺寸、padding、margin、gravity、visibility、id、background。
-- Text-like：text、textColor、textSize、textStyle、hint、inputType。
+- 通用：尺寸、padding、margin、gravity、visibility、id、background、alpha、
+  contentDescription、tag、backgroundTint、foreground、importantForAccessibility、
+  overScrollMode、scrollbars。
+- Text-like：text、textColor、textSize、textStyle、hint、inputType、textAllCaps、
+  singleLine、ellipsize、line count、fontFamily、lineSpacing、selectable / horizontal scroll。
 - ImageView：src、scaleType、tint。
+- Progress / selection widgets：checked、progress、tint、thumb、rating 等基础属性。
+- Card / Toolbar：corner radius、elevation、stroke、title、subtitle、navigationIcon。
 - ScrollView：fillViewport。
 - RelativeLayout 常见规则。
-- ConstraintLayout 安全子集：普通 start/end/top/bottom 约束、`0dp` match constraint、horizontal/vertical bias。
+- ConstraintLayout 安全子集：普通 start/end/top/bottom 约束、`0dp` match constraint、
+  horizontal/vertical bias、Guideline、dimension ratio、percent、chain style / weight、
+  gone margin。
 
 **DataBinding 子集**
 
@@ -155,11 +166,11 @@
 - 运行时 ViewStub inflate 可选择走生成 factory。
 - 必须保持原生 ViewStub 替换、inflatedId 和 LayoutParams 语义。
 
-**ConstraintLayout 扩展**
+**ConstraintLayout helpers**
 
-- 逐项引入 chains、guidelines、barriers、dimension ratio、percent 等能力。
+- 逐项引入 Barrier、Group、Placeholder、Flow、Layer 等 helper 语义。
 - 默认保守 fallback；每项能力必须有 generated vs inflated 等价性测试。
-- 复杂 ConstraintLayout 不作为 v1.0 前置条件。
+- 复杂 helper 不作为当前发布前置条件。
 
 **Lint / IDE 辅助**
 

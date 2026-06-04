@@ -382,7 +382,7 @@ class LayoutAnalyzerIncludeTest {
             attributes = mapOf(
                 "android:layout_width" to "match_parent",
                 "android:layout_height" to "wrap_content",
-                "android:alpha" to "0.5"  // unsupported attribute → PARTIAL
+                "android:rotation" to "10"  // unsupported attribute → PARTIAL
             ),
             children = emptyList(),
             indexInParent = 0

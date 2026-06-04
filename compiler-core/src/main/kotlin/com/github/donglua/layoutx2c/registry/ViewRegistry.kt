@@ -635,7 +635,7 @@ open class ResourceAwareViewRegistry(
             if (lineSpacingExtra != null || lineSpacingMultiplier != null) {
                 builder.addStatement(
                     "setLineSpacing(%L, %Lf)",
-                    dimensionToPxFloatCode(lineSpacingExtra ?: "0", resourceResolver, rPackageName),
+                    dimensionToPixelSizeFloatCode(lineSpacingExtra ?: "0", resourceResolver, rPackageName),
                     lineSpacingMultiplier?.toFloatOrNull() ?: 1.0f
                 )
             }
@@ -857,7 +857,7 @@ open class ResourceAwareViewRegistry(
                 builder.addStatement("stepSize = %Lf", value.toFloat())
             }
             attrs["android:isIndicator"]?.takeIf { node.node.isRatingBar() }?.let { value ->
-                builder.addStatement("isIndicator = %L", value == "true")
+                builder.addStatement("setIsIndicator(%L)", value == "true")
             }
         }
 
