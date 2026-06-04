@@ -2,6 +2,7 @@ import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.tasks.bundling.Zip
+import org.gradle.plugins.signing.SigningExtension
 
 buildscript {
     extra["kotlinVersion"] = "2.2.21"
@@ -30,6 +31,9 @@ val publishingGroup = providers.environmentVariable("GROUP")
 val publishingVersion = providers.environmentVariable("VERSION")
     .orElse(rootProject.extra["versionName"] as String)
 val enableMavenCentralPublishing = providers.gradleProperty("layoutx2c.enablePublishing").isPresent
+val useGpgSigning = providers.gradleProperty("layoutx2c.useGpgSigning")
+    .map(String::toBoolean)
+    .orElse(false)
 val centralPortalBundleRepositoryName = "centralPortalBundle"
 val centralPortalStagingDir = layout.buildDirectory.dir("central-portal/staging")
 
@@ -76,7 +80,7 @@ subprojects {
         plugins.withId("com.vanniktech.maven.publish") {
             configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
                 publishToMavenCentral()
-                if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+                if (providers.gradleProperty("signingInMemoryKey").isPresent || useGpgSigning.get()) {
                     signAllPublications()
                 }
                 coordinates(
@@ -117,6 +121,13 @@ subprojects {
                         name = centralPortalBundleRepositoryName
                         url = centralPortalStagingDir.get().asFile.toURI()
                     }
+                }
+            }
+        }
+        plugins.withId("signing") {
+            extensions.configure<SigningExtension>("signing") {
+                if (useGpgSigning.get()) {
+                    useGpgCmd()
                 }
             }
         }
