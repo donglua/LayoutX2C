@@ -36,16 +36,31 @@ class FallbackInflaterTest {
 
         assertWithMessage("Partial inflate should be limited to an explicit safe tag list")
             .that(source)
-            .contains("isSafeForPartialInflate(targetTag)")
+            .contains("requiresFullTreeExtraction(targetTag, childPlan)")
         assertWithMessage("Non-whitelisted ordinary tags should keep the full-tree fallback path")
             .that(source)
-            .contains("if (!isSafeForPartialInflate(targetTag))")
+            .contains("return requiresFullTreeExtraction(tagName) || !isSafeForPartialInflate(tagName)")
         assertWithMessage("The first phase whitelist should cover common simple platform views")
             .that(source)
             .contains("\"TextView\"")
         assertWithMessage("The first phase whitelist should keep ConstraintLayout out until runtime verification exists")
             .that(source)
             .doesNotContain("\"ConstraintLayout\"")
+    }
+
+    @Test
+    fun `child fallback exposes compile-time fallback plans`() {
+        val source = fallbackInflaterSource()
+
+        assertWithMessage("Generated code should be able to pass precomputed fallback metadata")
+            .that(source)
+            .contains("class FallbackChildPlan")
+        assertWithMessage("Single-child fallback should accept a compile-time fallback plan")
+            .that(source)
+            .contains("childPlan: FallbackChildPlan")
+        assertWithMessage("Batched child fallback should accept compile-time fallback plans")
+            .that(source)
+            .contains("childPlans: Array<FallbackChildPlan>")
     }
 
     @Test

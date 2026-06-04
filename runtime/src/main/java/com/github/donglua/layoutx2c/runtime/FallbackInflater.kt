@@ -14,6 +14,13 @@ import org.xmlpull.v1.XmlPullParser
  * 子树 fallback 优先 seek 到原始 XML 中的目标节点做局部 inflate。
  */
 @PublicApi
+class FallbackChildPlan(
+    val childPath: IntArray,
+    val targetTag: String,
+    val partialInflateAllowed: Boolean
+)
+
+@PublicApi
 object FallbackInflater {
 
     /**
@@ -41,14 +48,30 @@ object FallbackInflater {
         childPath: IntArray,
         parent: ViewGroup?
     ): View {
+        return inflateChildWithPlan(context, layoutId, childPath, childPlan = null, parent)
+    }
+
+    fun inflateChild(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        childPlan: FallbackChildPlan,
+        parent: ViewGroup?
+    ): View {
+        return inflateChildWithPlan(context, layoutId, childPlan.childPath, childPlan, parent)
+    }
+
+    private fun inflateChildWithPlan(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        childPath: IntArray,
+        childPlan: FallbackChildPlan?,
+        parent: ViewGroup?
+    ): View {
         val layoutName = context.resources.getResourceName(layoutId)
         val parser = context.resources.getLayout(layoutId)
         try {
             val targetTag = seekToChildStartTag(parser, childPath, layoutName)
-            if (requiresFullTreeExtraction(targetTag)) {
-                return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
-            }
-            if (!isSafeForPartialInflate(targetTag)) {
+            if (requiresFullTreeExtraction(targetTag, childPlan)) {
                 return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
             }
             return LayoutInflater.from(context).inflate(
@@ -79,7 +102,37 @@ object FallbackInflater {
         }
 
         val layoutName = context.resources.getResourceName(layoutId)
-        return inflateChildrenWithSingleParser(context, layoutId, childPaths, parent, layoutName)
+        val targets = childPaths.mapIndexed { index, childPath ->
+            ChildInflateTarget(index, childPath, childPlan = null)
+        }.sortedWith { first, second ->
+            compareChildPaths(first.childPath, second.childPath)
+        }
+        return inflateChildrenWithSingleParser(context, layoutId, targets, parent, layoutName)
+    }
+
+    fun inflateChildren(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        childPlans: Array<FallbackChildPlan>,
+        parent: ViewGroup?
+    ): Array<View> {
+        if (childPlans.isEmpty()) return emptyArray()
+
+        val childPaths = Array(childPlans.size) { index -> childPlans[index].childPath }
+        if (hasOverlappingChildPaths(childPaths)) {
+            return Array(childPlans.size) { index ->
+                val childPlan = childPlans[index]
+                inflateChild(context, layoutId, childPlan, parent)
+            }
+        }
+
+        val layoutName = context.resources.getResourceName(layoutId)
+        val targets = childPlans.mapIndexed { index, childPlan ->
+            ChildInflateTarget(index, childPlan.childPath, childPlan)
+        }.sortedWith { first, second ->
+            compareChildPaths(first.childPath, second.childPath)
+        }
+        return inflateChildrenWithSingleParser(context, layoutId, targets, parent, layoutName)
     }
 
     private fun inflateChildrenIndividually(
@@ -97,17 +150,12 @@ object FallbackInflater {
     private fun inflateChildrenWithSingleParser(
         context: Context,
         @LayoutRes layoutId: Int,
-        childPaths: Array<IntArray>,
+        targets: List<ChildInflateTarget>,
         parent: ViewGroup?,
         layoutName: String
     ): Array<View> {
-        val targets = childPaths.mapIndexed { index, childPath ->
-            ChildInflateTarget(index, childPath)
-        }.sortedWith { first, second ->
-            compareChildPaths(first.childPath, second.childPath)
-        }
         val targetsByPath = targets.associateBy { it.childPath.toList() }
-        val inflatedChildren = arrayOfNulls<View>(childPaths.size)
+        val inflatedChildren = arrayOfNulls<View>(targets.size)
         val fullTreeTargets = mutableListOf<ChildInflateTarget>()
         val parser = context.resources.getLayout(layoutId)
 
@@ -142,9 +190,9 @@ object FallbackInflater {
             }
         }
 
-        return Array(childPaths.size) { index ->
+        return Array(targets.size) { index ->
             inflatedChildren[index] ?: throw IllegalArgumentException(
-                "Fallback child path ${childPaths[index].toPathString()} is invalid for $layoutName"
+                "Fallback child path ${targets[index].childPath.toPathString()} is invalid for $layoutName"
             )
         }
     }
@@ -161,7 +209,7 @@ object FallbackInflater {
         val target = targetsByPath[currentPath]
         if (target != null) {
             val targetTag = parser.name
-            if (requiresFullTreeExtraction(targetTag) || !isSafeForPartialInflate(targetTag)) {
+            if (requiresFullTreeExtraction(targetTag, target.childPlan)) {
                 fullTreeTargets += target
                 skipCurrentSubtree(parser)
             } else {
@@ -349,6 +397,13 @@ object FallbackInflater {
         return tagName == "merge" || tagName == "include" || tagName == "fragment"
     }
 
+    private fun requiresFullTreeExtraction(tagName: String, childPlan: FallbackChildPlan?): Boolean {
+        if (childPlan != null && childPlan.targetTag == tagName) {
+            return !childPlan.partialInflateAllowed
+        }
+        return requiresFullTreeExtraction(tagName) || !isSafeForPartialInflate(tagName)
+    }
+
     private fun isSafeForPartialInflate(tagName: String): Boolean {
         return tagName in SAFE_PARTIAL_INFLATE_TAGS
     }
@@ -425,7 +480,8 @@ object FallbackInflater {
 
     private class ChildInflateTarget(
         val outputIndex: Int,
-        val childPath: IntArray
+        val childPath: IntArray,
+        val childPlan: FallbackChildPlan?
     )
 
     private class AndroidFallbackChildNode(

@@ -80,7 +80,8 @@ class LayoutX2CGenerationFixtureTest {
         assertThat(generated).contains("setBackgroundResource(R.drawable.home_header_bg)")
         assertThat(generated).contains(
             "FallbackInflater.inflateChildren(context, R.layout.feature_home_entry, " +
-                "arrayOf(intArrayOf(1), intArrayOf(2)), root)"
+                "arrayOf(FallbackChildPlan(intArrayOf(1), \"com.fixture.widget.HomeTabLayout\", false), " +
+                "FallbackChildPlan(intArrayOf(2), \"androidx.constraintlayout.widget.Barrier\", false)), root)"
         )
         assertThat(generated).doesNotContain("FallbackInflater.inflateChild(context, R.layout.feature_home_entry,")
         assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.feature_home_entry, parent)")

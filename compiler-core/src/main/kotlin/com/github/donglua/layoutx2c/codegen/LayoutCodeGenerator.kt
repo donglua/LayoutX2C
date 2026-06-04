@@ -133,7 +133,7 @@ class LayoutCodeGenerator(
                     varName,
                     fallbackInflater,
                     layoutResId,
-                    childPathToCode(childPath),
+                    childPlanToCode(childPath, node),
                     parentVarName
                 )
                 layoutParamsEmitter.emit(builder, varName, node, parentVarName)
@@ -204,13 +204,13 @@ class LayoutCodeGenerator(
 
         if (fallbackBatchVarName != null) {
             val fallbackInflater = ClassName("com.github.donglua.layoutx2c.runtime", "FallbackInflater")
-            val fallbackPaths = fallbackChildren.map { (_, child) -> childPath + child.indexInParent }
+            val fallbackPlans = fallbackChildren.map { (_, child) -> (childPath + child.indexInParent) to child }
             builder.addStatement(
                 "val %L = %T.inflateChildren(context, %L, %L, %L)",
                 fallbackBatchVarName,
                 fallbackInflater,
                 layoutResId,
-                childPathsToCode(fallbackPaths),
+                childPlansToCode(fallbackPlans),
                 varName
             )
         }
@@ -245,10 +245,66 @@ class LayoutCodeGenerator(
         return childPath.joinToString(prefix = "intArrayOf(", postfix = ")")
     }
 
-    private fun childPathsToCode(childPaths: List<List<Int>>): String {
-        return childPaths.joinToString(prefix = "arrayOf(", postfix = ")") { childPath ->
-            childPathToCode(childPath)
+    private fun childPlanToCode(childPath: List<Int>, node: AnalyzedNode): CodeBlock {
+        return CodeBlock.of(
+            "%T(%L, %S, %L)",
+            fallbackChildPlan,
+            childPathToCode(childPath),
+            node.node.tagName,
+            isSafeForFallbackPartialInflate(node.node.tagName)
+        )
+    }
+
+    private fun childPlansToCode(childPlans: List<Pair<List<Int>, AnalyzedNode>>): CodeBlock {
+        val builder = CodeBlock.builder()
+        builder.add("arrayOf(")
+        for ((index, childPlan) in childPlans.withIndex()) {
+            if (index > 0) {
+                builder.add(", ")
+            }
+            val (childPath, node) = childPlan
+            builder.add("%L", childPlanToCode(childPath, node))
         }
+        builder.add(")")
+        return builder.build()
+    }
+
+    private fun isSafeForFallbackPartialInflate(tagName: String): Boolean {
+        return tagName in safePartialInflateTags
+    }
+
+    private companion object {
+        val fallbackChildPlan = ClassName("com.github.donglua.layoutx2c.runtime", "FallbackChildPlan")
+
+        val safePartialInflateTags = setOf(
+            "View",
+            "TextView",
+            "ImageView",
+            "Button",
+            "EditText",
+            "LinearLayout",
+            "FrameLayout",
+            "RelativeLayout",
+            "ImageButton",
+            "CheckBox",
+            "RadioButton",
+            "ProgressBar",
+            "SeekBar",
+            "Switch",
+            "Space"
+        )
+
+        val fallbackChildLayoutParamAttributes = setOf(
+            "android:layout_width",
+            "android:layout_height",
+            "android:layout_margin",
+            "android:layout_marginLeft",
+            "android:layout_marginStart",
+            "android:layout_marginTop",
+            "android:layout_marginRight",
+            "android:layout_marginEnd",
+            "android:layout_marginBottom"
+        )
     }
 
     private fun usesDensity(node: AnalyzedNode, isRoot: Boolean): Boolean {
@@ -259,6 +315,7 @@ class LayoutCodeGenerator(
         return node.node.attributes.values.any { value -> value.endsWith("dp") } ||
             node.children.any { child -> usesDensity(child, isRoot = false) }
     }
+
 
     private fun fallbackChildLayoutParamsUseDensity(node: AnalyzedNode): Boolean {
         val attrs = node.node.attributes
@@ -303,19 +360,5 @@ class LayoutCodeGenerator(
         return layoutName.split("_").joinToString("") {
             it.replaceFirstChar { char -> char.uppercaseChar() }
         } + "X2C"
-    }
-
-    private companion object {
-        val fallbackChildLayoutParamAttributes = setOf(
-            "android:layout_width",
-            "android:layout_height",
-            "android:layout_margin",
-            "android:layout_marginLeft",
-            "android:layout_marginStart",
-            "android:layout_marginTop",
-            "android:layout_marginRight",
-            "android:layout_marginEnd",
-            "android:layout_marginBottom"
-        )
     }
 }
