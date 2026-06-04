@@ -16,6 +16,7 @@ object LayoutX2CRegistry {
 
     private val factories = mutableMapOf<Int, LayoutFactory>()
     private val initializedPackages = mutableSetOf<String>()
+    private val failedPackages = mutableSetOf<String>()
 
     /**
      * 注册一个 layout 的 generated factory。
@@ -60,17 +61,24 @@ object LayoutX2CRegistry {
         if (packageName in initializedPackages) {
             return true
         }
+        if (packageName in failedPackages) {
+            return false
+        }
 
-        val registered = runCatching {
+        return try {
             val generated = Class.forName("$packageName.generated.LayoutX2CGenerated")
             val instance = generated.getField("INSTANCE").get(null)
             generated.getMethod("register").invoke(instance)
-        }.isSuccess
-
-        if (registered) {
             initializedPackages.add(packageName)
+            true
+        } catch (_: ClassNotFoundException) {
+            failedPackages.add(packageName)
+            false
+        } catch (_: ReflectiveOperationException) {
+            false
+        } catch (_: LinkageError) {
+            false
         }
-        return registered
     }
 
     /**
