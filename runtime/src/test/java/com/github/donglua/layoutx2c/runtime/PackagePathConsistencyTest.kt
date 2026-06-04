@@ -69,6 +69,10 @@ class PackagePathConsistencyTest {
             "com/github/donglua/layoutx2c/runtime/LayoutX2CRegistry.kt",
             "com/github/donglua/layoutx2c/runtime/LayoutX2CFactory2.kt",
             "com/github/donglua/layoutx2c/runtime/FallbackInflater.kt",
+            "com/github/donglua/layoutx2c/runtime/annotation/FastCustomViews.kt",
+            "com/github/donglua/layoutx2c/runtime/annotation/FastCustomView.kt",
+            "com/github/donglua/layoutx2c/runtime/annotation/FastCustomViewAttr.kt",
+            "com/github/donglua/layoutx2c/runtime/annotation/FastCustomViewAttrKind.kt",
             "com/github/donglua/layoutx2c/runtime/annotation/FastLayoutConfig.kt",
             "com/github/donglua/layoutx2c/runtime/annotation/FastLayouts.kt",
             "com/github/donglua/layoutx2c/runtime/annotation/FastLayoutPattern.kt"
