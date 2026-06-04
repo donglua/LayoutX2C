@@ -298,6 +298,26 @@ open class ResourceAwareViewRegistry(
             if (attrName in ConstraintLayoutRules.biasAttributes && !ConstraintLayoutRules.isSupportedBiasValue(value)) {
                 return true
             }
+            when (attrName) {
+                "app:layout_constraintDimensionRatio" ->
+                    if (!ConstraintLayoutRules.isSupportedDimensionRatio(value)) return true
+                "app:layout_constraintWidth_percent",
+                "app:layout_constraintHeight_percent" ->
+                    if (!ConstraintLayoutRules.isSupportedPercentValue(value)) return true
+                "app:layout_constraintHorizontal_chainStyle",
+                "app:layout_constraintVertical_chainStyle" ->
+                    if (!ConstraintLayoutRules.isSupportedChainStyle(value)) return true
+                "app:layout_constraintHorizontal_weight",
+                "app:layout_constraintVertical_weight" ->
+                    if (!ConstraintLayoutRules.isSupportedWeightValue(value)) return true
+                "app:layout_goneMarginStart",
+                "app:layout_goneMarginEnd",
+                "app:layout_goneMarginLeft",
+                "app:layout_goneMarginRight",
+                "app:layout_goneMarginTop",
+                "app:layout_goneMarginBottom" ->
+                    if (!isSupportedDimension(value)) return true
+            }
         }
         return false
     }

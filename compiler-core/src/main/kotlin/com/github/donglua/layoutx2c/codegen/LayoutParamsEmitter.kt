@@ -272,6 +272,71 @@ class DefaultLayoutParamsEmitter(
                     )
                 }
             }
+
+            if (attrName == "app:layout_constraintDimensionRatio") {
+                builder.addStatement(
+                    "(%L.layoutParams as %T).dimensionRatio = %S",
+                    varName,
+                    constraintLayoutParamsClass,
+                    value
+                )
+                continue
+            }
+
+            val percentField = constraintPercentFields[attrName]
+            if (percentField != null) {
+                value.toFloatOrNull()?.let { percent ->
+                    builder.addStatement(
+                        "(%L.layoutParams as %T).%L = %Lf",
+                        varName,
+                        constraintLayoutParamsClass,
+                        percentField,
+                        percent
+                    )
+                }
+                continue
+            }
+
+            val chainStyleField = constraintChainStyleFields[attrName]
+            if (chainStyleField != null) {
+                constraintChainStyleConstants[value]?.let { chainStyle ->
+                    builder.addStatement(
+                        "(%L.layoutParams as %T).%L = %T.%L",
+                        varName,
+                        constraintLayoutParamsClass,
+                        chainStyleField,
+                        constraintLayoutParamsClass,
+                        chainStyle
+                    )
+                }
+                continue
+            }
+
+            val weightField = constraintWeightFields[attrName]
+            if (weightField != null) {
+                value.toFloatOrNull()?.let { weight ->
+                    builder.addStatement(
+                        "(%L.layoutParams as %T).%L = %Lf",
+                        varName,
+                        constraintLayoutParamsClass,
+                        weightField,
+                        weight
+                    )
+                }
+                continue
+            }
+
+            val goneMarginField = constraintGoneMarginFields[attrName]
+            if (goneMarginField != null) {
+                builder.addStatement(
+                    "(%L.layoutParams as %T).%L = %L",
+                    varName,
+                    constraintLayoutParamsClass,
+                    goneMarginField,
+                    dimensionValueToCode(value)
+                )
+                continue
+            }
         }
     }
 
@@ -314,6 +379,31 @@ class DefaultLayoutParamsEmitter(
         val relativeLayoutParamsClass = ClassName("android.widget", "RelativeLayout", "LayoutParams")
         val constraintLayoutClass = ClassName("androidx.constraintlayout.widget", "ConstraintLayout")
         val constraintLayoutParamsClass = ClassName("androidx.constraintlayout.widget", "ConstraintLayout", "LayoutParams")
+        val constraintPercentFields = mapOf(
+            "app:layout_constraintWidth_percent" to "matchConstraintPercentWidth",
+            "app:layout_constraintHeight_percent" to "matchConstraintPercentHeight"
+        )
+        val constraintChainStyleFields = mapOf(
+            "app:layout_constraintHorizontal_chainStyle" to "horizontalChainStyle",
+            "app:layout_constraintVertical_chainStyle" to "verticalChainStyle"
+        )
+        val constraintChainStyleConstants = mapOf(
+            "spread" to "CHAIN_SPREAD",
+            "spread_inside" to "CHAIN_SPREAD_INSIDE",
+            "packed" to "CHAIN_PACKED"
+        )
+        val constraintWeightFields = mapOf(
+            "app:layout_constraintHorizontal_weight" to "horizontalWeight",
+            "app:layout_constraintVertical_weight" to "verticalWeight"
+        )
+        val constraintGoneMarginFields = mapOf(
+            "app:layout_goneMarginStart" to "goneStartMargin",
+            "app:layout_goneMarginEnd" to "goneEndMargin",
+            "app:layout_goneMarginLeft" to "goneLeftMargin",
+            "app:layout_goneMarginRight" to "goneRightMargin",
+            "app:layout_goneMarginTop" to "goneTopMargin",
+            "app:layout_goneMarginBottom" to "goneBottomMargin"
+        )
         val relativeLayoutIdRules = mapOf(
             "android:layout_above" to "ABOVE",
             "android:layout_below" to "BELOW",

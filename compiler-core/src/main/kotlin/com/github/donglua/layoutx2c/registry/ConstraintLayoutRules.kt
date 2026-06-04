@@ -40,8 +40,25 @@ internal object ConstraintLayoutRules {
         "app:layout_constraintGuide_percent"
     )
 
+    /** 可安全映射到 ConstraintLayout.LayoutParams 字段的扩展属性。 */
+    val extendedAttributes: Set<String> = setOf(
+        "app:layout_constraintDimensionRatio",
+        "app:layout_constraintWidth_percent",
+        "app:layout_constraintHeight_percent",
+        "app:layout_constraintHorizontal_chainStyle",
+        "app:layout_constraintVertical_chainStyle",
+        "app:layout_constraintHorizontal_weight",
+        "app:layout_constraintVertical_weight",
+        "app:layout_goneMarginStart",
+        "app:layout_goneMarginEnd",
+        "app:layout_goneMarginLeft",
+        "app:layout_goneMarginRight",
+        "app:layout_goneMarginTop",
+        "app:layout_goneMarginBottom"
+    )
+
     /** 安全子集支持的全部 ConstraintLayout 子属性。 */
-    val supportedAttributes: Set<String> = anchorAttributes + biasAttributes + guidelineAttributes
+    val supportedAttributes: Set<String> = anchorAttributes + biasAttributes + guidelineAttributes + extendedAttributes
 
     /** 锚点属性 -> ConstraintLayout.LayoutParams 字段名。 */
     val anchorFieldByAttribute: Map<String, String> = mapOf(
@@ -116,5 +133,22 @@ internal object ConstraintLayoutRules {
     fun isSupportedGuidelinePercent(value: String): Boolean {
         val percent = value.toFloatOrNull() ?: return false
         return percent in 0.0f..1.0f
+    }
+
+    fun isSupportedPercentValue(value: String): Boolean {
+        val percent = value.toFloatOrNull() ?: return false
+        return percent in 0.0f..1.0f
+    }
+
+    fun isSupportedWeightValue(value: String): Boolean {
+        return value.toFloatOrNull() != null
+    }
+
+    fun isSupportedChainStyle(value: String): Boolean {
+        return value in setOf("spread", "spread_inside", "packed")
+    }
+
+    fun isSupportedDimensionRatio(value: String): Boolean {
+        return value.isNotBlank() && !value.startsWith("@") && !value.startsWith("?")
     }
 }

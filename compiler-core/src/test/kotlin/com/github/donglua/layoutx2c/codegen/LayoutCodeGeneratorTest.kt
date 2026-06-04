@@ -1105,6 +1105,51 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `constraint layout emits extended layout params`() {
+        val xml = """
+            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintDimensionRatio="16:9"
+                    app:layout_constraintWidth_percent="0.5"
+                    app:layout_constraintHeight_percent="0.25"
+                    app:layout_constraintHorizontal_chainStyle="packed"
+                    app:layout_constraintVertical_chainStyle="spread_inside"
+                    app:layout_constraintHorizontal_weight="1.5"
+                    app:layout_constraintVertical_weight="2"
+                    app:layout_goneMarginStart="8dp"
+                    app:layout_goneMarginTop="4dp" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "constraint_extended_params").root)
+        val generated = generator.generate(
+            analyzed,
+            "constraint_extended_params",
+            "R.layout.constraint_extended_params"
+        ).toString()
+
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).dimensionRatio = \"16:9\"")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).matchConstraintPercentWidth = 0.5f")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).matchConstraintPercentHeight = 0.25f")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).horizontalChainStyle = ConstraintLayout.LayoutParams.CHAIN_PACKED")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).verticalChainStyle = ConstraintLayout.LayoutParams.CHAIN_SPREAD_INSIDE")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).horizontalWeight = 1.5f")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).verticalWeight = 2.0f")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).goneStartMargin = (8f * density + 0.5f).toInt()")
+        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).goneTopMargin = (4f * density + 0.5f).toInt()")
+        assertThat(generated).doesNotContain("FallbackInflater")
+    }
+
+    @Test
     fun `constraint layout helper child triggers subtree fallback in codegen`() {
         val xml = """
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"

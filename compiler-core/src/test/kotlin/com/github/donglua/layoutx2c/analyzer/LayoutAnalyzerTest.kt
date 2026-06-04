@@ -794,7 +794,7 @@ class LayoutAnalyzerTest {
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:layout_constraintHorizontal_chainStyle="spread"
+                        app:layout_constraintCircle="@id/anchor"
                         app:layout_constraintStart_toStartOf="parent" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
                 <TextView
@@ -812,6 +812,41 @@ class LayoutAnalyzerTest {
         assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
         assertThat(result.children[1].supportLevel).isEqualTo(SupportLevel.FALLBACK)
         assertThat(result.children[2].supportLevel).isEqualTo(SupportLevel.FULL)
+    }
+
+    @Test
+    fun `constraint layout extended layout params return FULL`() {
+        val xml = """
+            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:id="@+id/title"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintDimensionRatio="16:9"
+                    app:layout_constraintWidth_percent="0.5"
+                    app:layout_constraintHeight_percent="0.25"
+                    app:layout_constraintHorizontal_chainStyle="packed"
+                    app:layout_constraintVertical_chainStyle="spread_inside"
+                    app:layout_constraintHorizontal_weight="1.5"
+                    app:layout_constraintVertical_weight="2"
+                    app:layout_goneMarginStart="8dp"
+                    app:layout_goneMarginTop="4dp" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "constraint_extended_params")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children).hasSize(1)
+        assertThat(result.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(result.children[0].unsupportedAttributes).isEmpty()
     }
 
     @Test
