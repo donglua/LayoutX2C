@@ -184,9 +184,13 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("is ConstraintLayout ->")
         assertThat(generated).contains("ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
         assertThat(generated).contains("val root_child0 = AppCompatTextView(context).apply {")
-        assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.feature_home_entry,")
-        assertThat(generated).contains("intArrayOf(1), root)")
-        assertThat(generated).contains("intArrayOf(2), root)")
+        assertThat(generated).contains(
+            "val root_fallbackChildren = FallbackInflater.inflateChildren(context, R.layout.feature_home_entry, " +
+                "arrayOf(intArrayOf(1), intArrayOf(2)), root)"
+        )
+        assertThat(generated).contains("val root_child1 = root_fallbackChildren[0]")
+        assertThat(generated).contains("val root_child2 = root_fallbackChildren[1]")
+        assertThat(generated).doesNotContain("FallbackInflater.inflateChild(context, R.layout.feature_home_entry,")
         assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.feature_home_entry, parent)")
     }
 

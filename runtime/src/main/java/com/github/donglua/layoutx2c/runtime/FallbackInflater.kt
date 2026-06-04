@@ -45,6 +45,32 @@ object FallbackInflater {
     }
 
     /**
+     * Inflate 原始 layout 一次，并批量摘取多个 fallback 子树。
+     *
+     * 所有目标节点会先按原始路径定位，再统一从原树 detach，避免前一个节点移除后导致后续
+     * sibling index 变化。
+     */
+    fun inflateChildren(
+        context: Context,
+        @LayoutRes layoutId: Int,
+        childPaths: Array<IntArray>,
+        parent: ViewGroup?
+    ): Array<View> {
+        if (childPaths.isEmpty()) return emptyArray()
+
+        val layoutName = context.resources.getResourceName(layoutId)
+        val inflater = LayoutInflater.from(context)
+        val fullTree = inflater.inflate(layoutId, parent, false)
+        val children = childPaths.map { childPath ->
+            findChildByPath(fullTree, childPath, layoutName)
+        }
+        children.forEach { child ->
+            (child.parent as? ViewGroup)?.removeView(child)
+        }
+        return children.toTypedArray()
+    }
+
+    /**
      * Inflate the full original layout and detach the requested child afterward.
      * Android's platform inflater expects framework XmlBlock parsers for styled attributes,
      * so partial inflation from a custom seeked parser is not compatible on all devices.

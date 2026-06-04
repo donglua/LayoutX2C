@@ -192,18 +192,46 @@ class LayoutCodeGenerator(
         }
 
         // 递归生成子节点
+        val fallbackChildren = node.children.withIndex()
+            .filter { (_, child) -> isEffectiveFallback(child) }
+        val fallbackBatchVarName = if (fallbackChildren.size > 1) "${varName}_fallbackChildren" else null
+        val fallbackBatchIndexes = if (fallbackBatchVarName != null) {
+            fallbackChildren.mapIndexed { batchIndex, indexedChild -> indexedChild.index to batchIndex }.toMap()
+        } else {
+            emptyMap()
+        }
+
+        if (fallbackBatchVarName != null) {
+            val fallbackInflater = ClassName("com.github.donglua.layoutx2c.runtime", "FallbackInflater")
+            val fallbackPaths = fallbackChildren.map { (_, child) -> childPath + child.indexInParent }
+            builder.addStatement(
+                "val %L = %T.inflateChildren(context, %L, %L, %L)",
+                fallbackBatchVarName,
+                fallbackInflater,
+                layoutResId,
+                childPathsToCode(fallbackPaths),
+                varName
+            )
+        }
+
         for ((index, child) in node.children.withIndex()) {
             val childVarName = "${varName}_child$index"
             builder.add("\n")
-            generateNodeCode(
-                builder,
-                child,
-                childVarName,
-                varName,
-                layoutResId,
-                isRoot = false,
-                childPath = childPath + child.indexInParent
-            )
+            val fallbackBatchIndex = fallbackBatchIndexes[index]
+            if (fallbackBatchVarName != null && fallbackBatchIndex != null) {
+                builder.addStatement("val %L = %L[%L]", childVarName, fallbackBatchVarName, fallbackBatchIndex)
+                layoutParamsEmitter.emit(builder, childVarName, child, varName)
+            } else {
+                generateNodeCode(
+                    builder,
+                    child,
+                    childVarName,
+                    varName,
+                    layoutResId,
+                    isRoot = false,
+                    childPath = childPath + child.indexInParent
+                )
+            }
             // merge 子节点是虚拟容器，自身不会声明 childVarName，
             // 其孙子节点已经在 merge 分支里被 addView 到当前 varName。
             if (!child.isMerge) {
@@ -214,6 +242,12 @@ class LayoutCodeGenerator(
 
     private fun childPathToCode(childPath: List<Int>): String {
         return childPath.joinToString(prefix = "intArrayOf(", postfix = ")")
+    }
+
+    private fun childPathsToCode(childPaths: List<List<Int>>): String {
+        return childPaths.joinToString(prefix = "arrayOf(", postfix = ")") { childPath ->
+            childPathToCode(childPath)
+        }
     }
 
     private fun usesDensity(node: AnalyzedNode, isRoot: Boolean): Boolean {
@@ -250,9 +284,11 @@ class LayoutCodeGenerator(
         if (hasEmittedAttributes(node)) {
             return false
         }
-        return node.children.count { child ->
-            child.supportLevel == SupportLevel.FALLBACK || shouldCollapseToFallback(child)
-        } > 1
+        return node.children.count(::isEffectiveFallback) > 1
+    }
+
+    private fun isEffectiveFallback(node: AnalyzedNode): Boolean {
+        return node.supportLevel == SupportLevel.FALLBACK || shouldCollapseToFallback(node)
     }
 
     private fun layoutNameToClassName(layoutName: String): String {

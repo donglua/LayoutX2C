@@ -47,11 +47,10 @@ class LayoutX2CGenerationFixtureTest {
                         android:layout_height="48dp"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toBottomOf="@id/title" />
-                    <androidx.constraintlayout.widget.Guideline
-                        android:id="@+id/guide"
+                    <androidx.constraintlayout.widget.Barrier
+                        android:id="@+id/barrier"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:layout_constraintGuide_percent="0.5" />
+                        android:layout_height="wrap_content" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </layout>
         """.trimIndent()
@@ -75,9 +74,11 @@ class LayoutX2CGenerationFixtureTest {
         assertThat(analyzed.unsupportedAttributes).doesNotContain("android:background")
         assertThat(generated).contains("val root = ConstraintLayout(context).apply {")
         assertThat(generated).contains("setBackgroundResource(R.drawable.home_header_bg)")
-        assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.feature_home_entry,")
-        assertThat(generated).contains("intArrayOf(1), root)")
-        assertThat(generated).contains("intArrayOf(2), root)")
+        assertThat(generated).contains(
+            "FallbackInflater.inflateChildren(context, R.layout.feature_home_entry, " +
+                "arrayOf(intArrayOf(1), intArrayOf(2)), root)"
+        )
+        assertThat(generated).doesNotContain("FallbackInflater.inflateChild(context, R.layout.feature_home_entry,")
         assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.feature_home_entry, parent)")
     }
 }
