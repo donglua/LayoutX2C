@@ -211,6 +211,42 @@ class DefaultViewRegistryTest {
         ).isEmpty()
     }
 
+    @Test
+    fun `custom view whitelist makes a custom view analyzable`() {
+        val customRegistry = ResourceAwareViewRegistry(
+            rPackageName = "com.example",
+            customViews = listOf(
+                CustomViewDescriptor(
+                    viewClassName = "com.example.widget.PriceView",
+                    attributes = listOf(
+                        CustomViewAttribute(
+                            name = "app:priceColor",
+                            kind = CustomViewAttributeKind.COLOR
+                        )
+                    )
+                )
+            )
+        )
+
+        val root = parser.parse(
+            """
+                <com.example.widget.PriceView xmlns:android="http://schemas.android.com/apk/res/android"
+                    xmlns:app="http://schemas.android.com/apk/res-auto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:priceColor="@color/red" />
+            """.trimIndent(),
+            "custom_price_view"
+        ).root
+
+        val analyzed = LayoutAnalyzer(customRegistry).analyze(root)
+
+        assertThat(customRegistry.viewHandlerFor("com.example.widget.PriceView")).isNotNull()
+        assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(analyzed.supportedAttributes).contains("app:priceColor")
+        assertThat(customRegistry.canEmitAttribute(analyzed, "app:priceColor")).isTrue()
+    }
+
     private fun flatten(node: AnalyzedNode): List<AnalyzedNode> {
         return listOf(node) + node.children.flatMap(::flatten)
     }

@@ -4,6 +4,10 @@ import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
 import com.github.donglua.layoutx2c.analyzer.SupportLevel
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
+import com.github.donglua.layoutx2c.registry.CustomViewAttribute
+import com.github.donglua.layoutx2c.registry.CustomViewAttributeKind
+import com.github.donglua.layoutx2c.registry.CustomViewDescriptor
+import com.github.donglua.layoutx2c.registry.ResourceAwareViewRegistry
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -80,5 +84,41 @@ class LayoutX2CGenerationFixtureTest {
         )
         assertThat(generated).doesNotContain("FallbackInflater.inflateChild(context, R.layout.feature_home_entry,")
         assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.feature_home_entry, parent)")
+    }
+
+    @Test
+    fun `custom view whitelist generates typed custom attribute`() {
+        val customRegistry = ResourceAwareViewRegistry(
+            rPackageName = "com.fixture.feature.home",
+            customViews = listOf(
+                CustomViewDescriptor(
+                    viewClassName = "com.fixture.widget.PriceView",
+                    attributes = listOf(
+                        CustomViewAttribute(
+                            name = "app:priceColor",
+                            kind = CustomViewAttributeKind.COLOR
+                        )
+                    )
+                )
+            )
+        )
+        val xml = """
+            <com.fixture.widget.PriceView xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:priceColor="@color/red" />
+        """.trimIndent()
+
+        val tree = XmlLayoutParser().parse(xml, "price_view")
+        val analyzed = LayoutAnalyzer(customRegistry).analyze(tree.root)
+        val generated = LayoutCodeGenerator(
+            packageName = "com.fixture.feature.home.generated",
+            rPackageName = "com.fixture.feature.home",
+            viewRegistry = customRegistry
+        ).generate(analyzed, "price_view", "R.layout.price_view").toString()
+
+        assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(generated).contains("setPriceColor(ContextCompat.getColor(context, R.color.red))")
     }
 }

@@ -72,7 +72,8 @@ private interface AttributeHandler {
 
 open class ResourceAwareViewRegistry(
     private val rPackageName: String = "",
-    private val resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver
+    private val resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver,
+    private val customViews: List<CustomViewDescriptor> = emptyList()
 ) : ViewAnalysisRegistry, ViewEmitRegistry {
     override val forceFallbackAttributes = setOf(
         "style",
@@ -202,8 +203,20 @@ open class ResourceAwareViewRegistry(
         )
     )
 
+    private val customViewHandlers = customViews.map { descriptor ->
+        ViewHandler(
+            tagNames = setOf(
+                descriptor.viewClassName,
+                descriptor.viewClassName.substringAfterLast('.')
+            ),
+            viewClass = ClassName.bestGuess(descriptor.viewClassName)
+        )
+    }
+
     private val tagToHandler: Map<String, ViewHandler> =
-        viewHandlers.flatMap { handler -> handler.tagNames.map { tagName -> tagName to handler } }.toMap()
+        (customViewHandlers + viewHandlers)
+            .flatMap { handler -> handler.tagNames.map { tagName -> tagName to handler } }
+            .toMap()
 
     private val attributeHandlers = listOf(
         IdAttributeHandler,
@@ -231,7 +244,11 @@ open class ResourceAwareViewRegistry(
         FillViewportAttributeHandler,
         RecyclerViewLayoutManagerAttributeHandler,
         ViewStubAttributeHandler()
-    )
+    ) + customViews.flatMap { descriptor ->
+        descriptor.attributes.map { attribute ->
+            CustomViewAttributeHandler(descriptor, attribute)
+        }
+    }
 
     private val attributeHandlersByName: Map<String, List<AttributeHandler>> =
         attributeHandlers
@@ -369,6 +386,146 @@ open class ResourceAwareViewRegistry(
 
     private fun resourceCode(type: String, name: String): String? {
         return resourceResolver.referenceCode(type, name, rPackageName)
+    }
+
+    private inner class CustomViewAttributeHandler(
+        private val descriptor: CustomViewDescriptor,
+        private val attribute: CustomViewAttribute
+    ) : AttributeHandler {
+        override val names = setOf(attribute.name)
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return attrName == attribute.name && node.matchesCustomView(descriptor)
+        }
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return customValueCode(attribute.kind, value) != null
+        }
+
+        override fun canEmit(node: AnalyzedNode, attrName: String): Boolean {
+            val value = node.node.attributes[attrName] ?: return false
+            return supports(node.node, node.parentTagName, attrName) && customValueCode(attribute.kind, value) != null
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            val value = node.node.attributes[attribute.name] ?: return
+            val code = customValueCode(attribute.kind, value) ?: return
+            builder.addStatement("%L(%L)", customSetterName(attribute.name), code)
+        }
+    }
+
+    private fun LayoutNode.matchesCustomView(descriptor: CustomViewDescriptor): Boolean {
+        return tagName == descriptor.viewClassName ||
+            tagName == descriptor.viewClassName.substringAfterLast('.')
+    }
+
+    private fun customValueCode(kind: CustomViewAttributeKind, value: String): CodeBlock? {
+        return when (kind) {
+            CustomViewAttributeKind.STRING -> customStringCode(value)
+            CustomViewAttributeKind.BOOLEAN -> value.takeIf(::isSupportedBoolean)?.let {
+                CodeBlock.of("%L", it == "true")
+            }
+            CustomViewAttributeKind.INT -> value.toIntOrNull()?.let {
+                CodeBlock.of("%L", it)
+            }
+            CustomViewAttributeKind.FLOAT -> value.toFloatOrNull()?.let {
+                CodeBlock.of("%Lf", it)
+            }
+            CustomViewAttributeKind.DIMENSION ->
+                value.takeIf { isSupportedDimension(it) && supportsResourceReference(it) }?.let {
+                    CodeBlock.of("%L", dimensionToCode(it, resourceResolver, rPackageName))
+                }
+            CustomViewAttributeKind.COLOR -> customColorCode(value)
+            CustomViewAttributeKind.COLOR_STATE_LIST -> customColorStateListCode(value)
+            CustomViewAttributeKind.DRAWABLE_REF -> customDrawableCode(value)
+            CustomViewAttributeKind.RESOURCE_REF -> customResourceRefCode(value)
+        }
+    }
+
+    private fun customStringCode(value: String): CodeBlock? {
+        return when {
+            value.startsWith("@string/") && supportsResourceReference(value) -> {
+                val resName = value.removePrefix("@string/")
+                resourceCode("string", resName)?.let { resCode ->
+                    CodeBlock.of("context.getString(%L)", resCode)
+                }
+            }
+            isSupportedLiteralOrStringReference(value) -> CodeBlock.of("%S", value)
+            else -> null
+        }
+    }
+
+    private fun customColorCode(value: String): CodeBlock? {
+        return when {
+            value.startsWith("@color/") && supportsResourceReference(value) -> {
+                val resName = value.removePrefix("@color/")
+                resourceCode("color", resName)?.let { resCode ->
+                    CodeBlock.of(
+                        "%T.getColor(context, %L)",
+                        ClassName("androidx.core.content", "ContextCompat"),
+                        resCode
+                    )
+                }
+            }
+            value.startsWith("#") -> {
+                CodeBlock.of("%T.parseColor(%S)", ClassName("android.graphics", "Color"), value)
+            }
+            else -> null
+        }
+    }
+
+    private fun customColorStateListCode(value: String): CodeBlock? {
+        return when {
+            value.startsWith("@color/") && supportsResourceReference(value) -> {
+                val resName = value.removePrefix("@color/")
+                resourceCode("color", resName)?.let { resCode ->
+                    CodeBlock.of(
+                        "%T.getColorStateList(context, %L)",
+                        ClassName("androidx.core.content", "ContextCompat"),
+                        resCode
+                    )
+                }
+            }
+            value.startsWith("#") -> {
+                CodeBlock.of(
+                    "%T.valueOf(%T.parseColor(%S))",
+                    ClassName("android.content.res", "ColorStateList"),
+                    ClassName("android.graphics", "Color"),
+                    value
+                )
+            }
+            else -> null
+        }
+    }
+
+    private fun customDrawableCode(value: String): CodeBlock? {
+        if (!value.startsWith("@drawable/") || !supportsResourceReference(value)) return null
+        val resName = value.removePrefix("@drawable/")
+        return resourceCode("drawable", resName)?.let { resCode ->
+            CodeBlock.of(
+                "%T.getDrawable(context, %L)",
+                ClassName("androidx.core.content", "ContextCompat"),
+                resCode
+            )
+        }
+    }
+
+    private fun customResourceRefCode(value: String): CodeBlock? {
+        val reference = parseResourceReference(value) ?: return null
+        return resourceCode(reference.type, reference.name)?.let { resCode ->
+            CodeBlock.of("%L", resCode)
+        }
+    }
+
+    private fun customSetterName(attrName: String): String {
+        val localName = attrName.substringAfter(':')
+        val setterSuffix = localName
+            .split('-', '_')
+            .filter { it.isNotBlank() }
+            .joinToString(separator = "") { part ->
+                part.replaceFirstChar { it.uppercaseChar() }
+            }
+        return "set$setterSuffix"
     }
 
     private fun hasUnsupportedRelativeLayoutRuleValue(

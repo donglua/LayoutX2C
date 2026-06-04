@@ -157,7 +157,8 @@ class LayoutX2CProcessor(
         )
         val viewRegistry = ResourceAwareViewRegistry(
             rPackageName = config.rPackageName,
-            resourceResolver = resourceResolver
+            resourceResolver = resourceResolver,
+            customViews = config.customViews
         )
         val analyzer = LayoutAnalyzerV2(viewRegistry)
 
