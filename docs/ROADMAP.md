@@ -26,6 +26,8 @@
 - AndroidX / Material：`RecyclerView` 和 `ViewPager2` 作为容器创建；`ConstraintLayout`
   已有扩展安全子集支持；`CardView`、`MaterialCardView`、`Toolbar`、`MaterialToolbar`
   已支持基础属性。
+- 自定义 View：用户可以通过 `@FastCustomViews` 在现有配置对象旁声明白名单 View 和 typed
+  属性；声明范围外的自定义 View 或属性继续保守 fallback。
 - 特殊标签：`include`、`merge`、`ViewStub` 已进入编译期支持路径。
 - DataBinding `<layout>` root 会透明解包到真实 View root，并生成继承 `ViewDataBinding` 的
   `{Name}X2CBinding`。
@@ -82,6 +84,7 @@
 **当前限制**
 
 - `fragment`、无法解析的 include、循环 include、超出递归深度限制的 include，以及无法等价生成的特殊语义仍会保守 fallback。
+- 自定义 View 只支持显式白名单和 typed 属性；未声明属性、无法转换的值和未声明 View 仍会 fallback。
 - 精确资源图只用于 digest/cache invalidation，不把 style / theme 语义编译成常量；`?attr/` 和动态 theme 仍保守 fallback。
 - 复杂 DataBinding 表达式、BindingAdapter、Observable / LiveData 自动订阅和 lifecycle 观察者语义仍交给原生 DataBinding。
 - connected Android generated vs inflated 等价性测试依赖设备或 CI 环境运行。
@@ -152,13 +155,6 @@
 - 内联 `styles.xml` 中可静态解析的已知 style 属性。
 - `?attr/` 默认继续 fallback。
 - `?attr/` 编译期替换只作为显式 opt-in，并要求用户提供 theme 映射。
-
-**自定义 View 白名单**
-
-- 用户声明哪些自定义 View 可以安全生成。
-- 白名单 View 必须有 `(Context)` 或 `(Context, AttributeSet)` 公开构造函数。
-- 用户通过 DSL 声明支持属性子集；未声明属性遇到即 PARTIAL / fallback。
-- 编译期静态检查构造函数签名，不满足则 warning 并拒绝生成。
 
 **ViewStub 延迟生成**
 

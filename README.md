@@ -71,6 +71,33 @@ import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutPattern
 interface LayoutX2CConfig
 ```
 
+如果项目里有确认安全的自定义 View，可以在同一个配置对象上声明白名单。只有声明过的
+View 和 typed 属性会进入生成路径，未声明或无法安全转换的属性仍会 fallback：
+
+```kotlin
+import com.github.donglua.layoutx2c.runtime.annotation.FastCustomView
+import com.github.donglua.layoutx2c.runtime.annotation.FastCustomViewAttr
+import com.github.donglua.layoutx2c.runtime.annotation.FastCustomViewAttrKind
+import com.github.donglua.layoutx2c.runtime.annotation.FastCustomViews
+import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig
+
+@FastLayoutConfig
+@FastCustomViews(
+    FastCustomView(
+        viewClass = PriceView::class,
+        attrs = [
+            FastCustomViewAttr(name = "app:priceColor", kind = FastCustomViewAttrKind.COLOR)
+        ]
+    )
+)
+object LayoutX2CConfig {
+    val layouts = intArrayOf(R.layout.item_price)
+}
+```
+
+例如 `app:priceColor="@color/red"` 会生成类似
+`setPriceColor(ContextCompat.getColor(context, R.color.red))` 的 setter 调用。
+
 只有在资源目录、`R` 包名或生成包名不符合默认推导时，才需要手动传：
 `layoutx2c.resDir`、`layoutx2c.rPackageName`、`layoutx2c.packageName`。
 
@@ -120,6 +147,7 @@ fallback 策略。
 - `androidx.viewpager2.widget.ViewPager2`（仅容器创建，不生成 adapter 运行时逻辑）
 - `ViewStub`
 - `View`
+- `@FastCustomViews` 白名单声明的自定义 View（仅生成显式声明的 typed 属性）
 
 高频属性支持：
 
