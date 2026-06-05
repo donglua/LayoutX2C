@@ -170,8 +170,8 @@ class LayoutCodeGenerator(
 
         if (node.includedLayoutRef != null) {
             val layoutName = node.includedLayoutRef.removePrefix("@layout/")
-            val factoryClassName = layoutNameToClassName(layoutName)
-            builder.addStatement("val %L = %N().create(context, %L)", varName, factoryClassName, parentVarName)
+            val facadeClassName = layoutNameToFacadeName(layoutName)
+            builder.addStatement("val %L = %N.inflate(context, %L)", varName, facadeClassName, parentVarName)
             
             if (isRoot) {
                 layoutParamsEmitter.emitRoot(builder, varName, node, parentVarName)

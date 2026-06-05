@@ -1374,7 +1374,7 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
-    fun `include node generates factory instantiation`() {
+    fun `include node uses facade factory singleton`() {
         val child = LayoutNode(
             tagName = "LinearLayout",
             attributes = emptyMap(),
@@ -1392,7 +1392,8 @@ class LayoutCodeGeneratorTest {
         val analyzed = analyzerV2.analyze(rootNode)
         val generated = generator.generate(analyzed, "include_test", "R.layout.include_test").toString()
         
-        assertThat(generated).contains("val root_child0 = Layout_TitleBar().create(context, root)")
+        assertThat(generated).contains("val root_child0 = TitleBarX2C.inflate(context, root)")
+        assertThat(generated).doesNotContain("Layout_TitleBar().create(context, root)")
         assertThat(generated).contains("root.addView(root_child0)")
     }
 
