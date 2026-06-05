@@ -8,7 +8,8 @@ data class BindingField(
     val idName: String,
     val propertyName: String,
     val viewClass: ClassName,
-    val isNestedBinding: Boolean = false
+    val isNestedBinding: Boolean = false,
+    val nestedBindingLayoutName: String? = null
 )
 
 sealed interface BindingFieldResult {
@@ -44,7 +45,8 @@ class BindingFieldCollector(
                 idName = idName,
                 propertyName = idName.toPropertyName(),
                 viewClass = bindingViewClass(node, isNestedBinding),
-                isNestedBinding = isNestedBinding
+                isNestedBinding = isNestedBinding,
+                nestedBindingLayoutName = includeNode?.layoutRef?.takeIf { isNestedBinding }
             )
         }
 

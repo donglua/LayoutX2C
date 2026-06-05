@@ -312,12 +312,11 @@ class BindingFacadeGeneratorV2(
                     )
                 }
                 builder.addStatement(
-                    "val %L = %T.bind<%T>(%L)\n⇥?: error(%S)⇤",
+                    "val %L: %T = %T.bind(%L)",
                     field.propertyName,
-                    ClassName("androidx.databinding", "DataBindingUtil"),
                     field.viewClass,
-                    rootVarName,
-                    "Missing required binding with ID: ${field.idName}"
+                    field.nestedBindingX2CClassName(),
+                    rootVarName
                 )
             } else if (refsVarName != null) {
                 builder.addStatement(
@@ -362,6 +361,12 @@ class BindingFacadeGeneratorV2(
 
     private fun layoutNameToNativeBindingClassName(layoutName: String): ClassName {
         return ClassName("$rPackageName.databinding", layoutName.toPascalCase() + "Binding")
+    }
+
+    private fun BindingField.nestedBindingX2CClassName(): ClassName {
+        val nestedLayoutName = nestedBindingLayoutName
+            ?: error("Nested binding field $idName is missing layout name")
+        return ClassName(packageName, nestedLayoutName.toPascalCase() + "X2CBinding")
     }
 
     /**
