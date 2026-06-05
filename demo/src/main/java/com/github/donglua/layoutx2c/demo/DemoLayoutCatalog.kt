@@ -14,6 +14,7 @@ import com.github.donglua.layoutx2c.demo.generated.DemoFallbackX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoFormX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoIncludeX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoNestedX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoPartialFallbackParserCrashX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoRecyclerX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoRelativeX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoScrollImageX2C
@@ -185,6 +186,17 @@ object DemoLayoutCatalog {
             status = Status.Generated
         ) { context, parent ->
             DemoCompatWidgetsX2C.inflate(context, parent)
+        },
+        Entry(
+            "Partial Fallback",
+            "demo_partial_fallback_parser_crash",
+            R.layout.demo_partial_fallback_parser_crash,
+            "Layout_DemoPartialFallbackParserCrash",
+            summary = "DataBinding ConstraintLayout with direct fallback children",
+            status = Status.Binding,
+            codeViewerClassName = "DemoPartialFallbackParserCrashX2CBinding"
+        ) { context, parent ->
+            DemoPartialFallbackParserCrashX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
         },
     )
 
