@@ -15,7 +15,7 @@ import com.squareup.kotlinpoet.TypeSpec
 class BindingFacadeGenerator(
     private val packageName: String,
     private val rPackageName: String,
-    private val fieldCollector: BindingFieldCollector = BindingFieldCollector(packageName)
+    private val fieldCollector: BindingFieldCollector = BindingFieldCollector("$rPackageName.databinding")
 ) {
     fun generate(
         analyzedRoot: AnalyzedNode,
@@ -142,7 +142,14 @@ class BindingFacadeGenerator(
                     field.idName,
                     "Missing required view with ID: ${field.idName}"
                 )
-                builder.addStatement("val %L = %T.bind(%L)", field.propertyName, field.viewClass, rootVarName)
+                builder.addStatement(
+                    "val %L = %T.bind<%T>(%L)\n⇥?: error(%S)⇤",
+                    field.propertyName,
+                    ClassName("androidx.databinding", "DataBindingUtil"),
+                    field.viewClass,
+                    rootVarName,
+                    "Missing required binding with ID: ${field.idName}"
+                )
             } else {
                 builder.addStatement(
                     "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",

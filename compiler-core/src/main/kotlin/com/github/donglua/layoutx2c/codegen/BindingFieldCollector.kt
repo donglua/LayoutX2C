@@ -75,7 +75,7 @@ class BindingFieldCollector(
     private fun bindingViewClass(node: LayoutNode, isNestedBinding: Boolean = false): ClassName {
         if (isNestedBinding) {
             val includeNode = node.nodeType as LayoutNodeType.Include
-            return ClassName(bindingPackageName, includeNode.layoutRef.toPascalCase() + "X2CBinding")
+            return ClassName(bindingPackageName, includeNode.layoutRef.toPascalCase() + "Binding")
         }
 
         val tagName = node.attributes["class"]?.takeIf { node.tagName == "view" && it.isNotBlank() } ?: node.tagName

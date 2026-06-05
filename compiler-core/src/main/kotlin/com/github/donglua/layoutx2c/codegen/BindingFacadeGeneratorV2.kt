@@ -28,7 +28,7 @@ class BindingFacadeGeneratorV2(
     private val rPackageName: String,
     fieldCollector: BindingFieldCollector? = null
 ) {
-    private val fieldCollector: BindingFieldCollector = fieldCollector ?: BindingFieldCollector(packageName)
+    private val fieldCollector: BindingFieldCollector = fieldCollector ?: BindingFieldCollector("$rPackageName.databinding")
 
     fun generate(
         analyzedRoot: AnalyzedNode,
@@ -322,7 +322,14 @@ class BindingFacadeGeneratorV2(
                         "Missing required view with ID: ${field.idName}"
                     )
                 }
-                builder.addStatement("val %L = %T.bind(%L)", field.propertyName, field.viewClass, rootVarName)
+                builder.addStatement(
+                    "val %L = %T.bind<%T>(%L)\n⇥?: error(%S)⇤",
+                    field.propertyName,
+                    ClassName("androidx.databinding", "DataBindingUtil"),
+                    field.viewClass,
+                    rootVarName,
+                    "Missing required binding with ID: ${field.idName}"
+                )
             } else if (refsVarName != null) {
                 builder.addStatement(
                     "val %L = %L.get(R.id.%L) as? %T\n⇥?: rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",

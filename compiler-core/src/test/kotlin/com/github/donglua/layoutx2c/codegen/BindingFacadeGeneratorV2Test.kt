@@ -78,10 +78,12 @@ class BindingFacadeGeneratorV2Test {
             dataBindingVariables = tree.rootMetadata.dataBindingVariables
         ).toString()
 
-        assertThat(generated).contains("public val layout1: MainTabViewX2CBinding")
-        assertThat(generated).contains("public val layout2: MainTabViewX2CBinding")
+        assertThat(generated).contains("import com.example.databinding.MainTabViewBinding")
+        assertThat(generated).contains("public val layout1: MainTabViewBinding")
+        assertThat(generated).contains("public val layout2: MainTabViewBinding")
         assertThat(generated).contains("val layout1Root = rootView.findViewById<View>(R.id.layout1)")
-        assertThat(generated).contains("val layout1 = MainTabViewX2CBinding.bind(layout1Root)")
+        assertThat(generated).contains("val layout1 = DataBindingUtil.bind<MainTabViewBinding>(layout1Root)")
+        assertThat(generated).contains("?: error(\"Missing required binding with ID: layout1\")")
         assertThat(generated).contains("val binding = MainTabLayoutX2CBinding(rootView, layout1, layout2)")
         assertThat(generated).doesNotContain("public val viewText: TextView")
     }
