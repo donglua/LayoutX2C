@@ -28,7 +28,8 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("context: Context")
         assertThat(generated).contains("parent: ViewGroup? = null")
         assertThat(generated).contains("attachToParent: Boolean = false")
-        assertThat(generated).contains("val view = Layout_DemoSimple().create(context, parent)")
+        assertThat(generated).contains("private val factory: Layout_DemoSimple = Layout_DemoSimple()")
+        assertThat(generated).contains("val view = factory.create(context, parent)")
         assertThat(generated).contains("if (attachToParent && parent != null) {")
         assertThat(generated).contains("parent.addView(view)")
         assertThat(generated).contains("return view")
@@ -371,7 +372,7 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("val root = HorizontalScrollView(context).apply {")
         assertThat(generated).doesNotContain("isFillViewport = false")
-        assertThat(generated).contains("root_child0.layoutParams = FrameLayout.LayoutParams((320f *")
+        assertThat(generated).contains("val root_child0LayoutParams = FrameLayout.LayoutParams((320f *")
     }
 
     @Test
@@ -387,12 +388,13 @@ class LayoutCodeGeneratorTest {
         val generated = generator.generate(analyzed, "root_layout_params", "R.layout.root_layout_params").toString()
 
         assertThat(generated).contains("parent?.let { parentView ->")
-        assertThat(generated).contains("root.layoutParams =")
+        assertThat(generated).contains("val rootLayoutParams =")
         assertThat(generated).contains("is LinearLayout -> LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
         assertThat(generated).contains("is FrameLayout -> FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
         assertThat(generated).contains("else -> ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
         assertThat(generated).contains("ViewGroup.LayoutParams.MATCH_PARENT)")
-        assertThat(generated).contains("(root.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin = (12f * density +")
+        assertThat(generated).contains("rootLayoutParams.bottomMargin = (12f * density +")
+        assertThat(generated).contains("root.layoutParams = rootLayoutParams")
     }
 
     @Test
@@ -413,7 +415,7 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("import android.view.ViewGroup")
         assertThat(generated).contains("import android.widget.LinearLayout")
-        assertThat(generated).contains("root_child0.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
+        assertThat(generated).contains("val root_child0LayoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
         assertThat(generated).contains("ViewGroup.LayoutParams.WRAP_CONTENT)")
         assertThat(generated).doesNotContain("android.widget.LinearLayout.LayoutParams")
         assertThat(generated).doesNotContain("android.view.ViewGroup.LayoutParams")
@@ -473,9 +475,9 @@ class LayoutCodeGeneratorTest {
         val analyzed = analyzer.analyze(parser.parse(xml, "frame_layout_gravity").root)
         val generated = generator.generate(analyzed, "frame_layout_gravity", "R.layout.frame_layout_gravity").toString()
 
-        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("val root_child0LayoutParams =")
         assertThat(generated).contains("FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,")
-        assertThat(generated).contains("(root_child0.layoutParams as FrameLayout.LayoutParams).gravity = android.view.Gravity.CENTER")
+        assertThat(generated).contains("root_child0LayoutParams.gravity = android.view.Gravity.CENTER")
     }
 
     @Test
@@ -494,9 +496,9 @@ class LayoutCodeGeneratorTest {
         val analyzed = analyzer.analyze(parser.parse(xml, "scroll_layout_gravity").root)
         val generated = generator.generate(analyzed, "scroll_layout_gravity", "R.layout.scroll_layout_gravity").toString()
 
-        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("val root_child0LayoutParams =")
         assertThat(generated).contains("FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,")
-        assertThat(generated).contains("(root_child0.layoutParams as FrameLayout.LayoutParams).gravity =")
+        assertThat(generated).contains("root_child0LayoutParams.gravity =")
         assertThat(generated).contains("android.view.Gravity.CENTER_HORIZONTAL")
     }
 
@@ -517,9 +519,9 @@ class LayoutCodeGeneratorTest {
         val analyzed = analyzer.analyze(parser.parse(xml, "linear_layout_gravity").root)
         val generated = generator.generate(analyzed, "linear_layout_gravity", "R.layout.linear_layout_gravity").toString()
 
-        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("val root_child0LayoutParams =")
         assertThat(generated).contains("LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,")
-        assertThat(generated).contains("(root_child0.layoutParams as LinearLayout.LayoutParams).gravity = android.view.Gravity.END or")
+        assertThat(generated).contains("root_child0LayoutParams.gravity = android.view.Gravity.END or")
         assertThat(generated).contains("android.view.Gravity.BOTTOM")
     }
 
@@ -541,10 +543,10 @@ class LayoutCodeGeneratorTest {
         val analyzed = analyzer.analyze(parser.parse(xml, "fallback_layout_params").root)
         val generated = generator.generate(analyzed, "fallback_layout_params", "R.layout.fallback_layout_params").toString()
 
-        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("val root_child0LayoutParams =")
         assertThat(generated).contains("LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,")
         assertThat(generated).contains("1.0f)")
-        assertThat(generated).contains("(root_child0.layoutParams as ViewGroup.MarginLayoutParams).topMargin = (8f * density +")
+        assertThat(generated).contains("root_child0LayoutParams.topMargin = (8f * density +")
     }
 
     @Test
@@ -573,11 +575,11 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("import androidx.recyclerview.widget.RecyclerView")
         assertThat(generated).contains("val root_child0 = RecyclerView(context).apply {")
         assertThat(generated).contains("id = R.id.list")
-        assertThat(generated).contains("root_child0.layoutParams = LinearLayout.LayoutParams(")
+        assertThat(generated).contains("val root_child0LayoutParams = LinearLayout.LayoutParams(")
         assertThat(generated).contains("ViewGroup.LayoutParams.MATCH_PARENT")
         assertThat(generated).contains("0")
         assertThat(generated).contains("1.0f)")
-        assertThat(generated).contains("(root_child0.layoutParams as ViewGroup.MarginLayoutParams).topMargin = (8f * density +")
+        assertThat(generated).contains("root_child0LayoutParams.topMargin = (8f * density +")
         assertThat(generated).doesNotContain("layoutManager")
         assertThat(generated).doesNotContain("listitem")
         assertThat(generated).doesNotContain("FallbackInflater.inflateChild")
@@ -1012,12 +1014,12 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("import android.widget.RelativeLayout")
         assertThat(generated).contains("val root = RelativeLayout(context)")
-        assertThat(generated).contains("root_child1.layoutParams = RelativeLayout.LayoutParams(")
-        assertThat(generated).contains("root_child2.layoutParams = RelativeLayout.LayoutParams(")
-        assertThat(generated).contains("root_child1.layoutParams as RelativeLayout.LayoutParams")
+        assertThat(generated).contains("val root_child1LayoutParams = RelativeLayout.LayoutParams(")
+        assertThat(generated).contains("val root_child2LayoutParams = RelativeLayout.LayoutParams(")
+        assertThat(generated).contains("root_child1LayoutParams.addRule(")
         assertThat(generated).contains("RelativeLayout.BELOW")
         assertThat(generated).contains("RelativeLayout.ALIGN_PARENT_END")
-        assertThat(generated).contains("root_child2.layoutParams as RelativeLayout.LayoutParams")
+        assertThat(generated).contains("root_child2LayoutParams.addRule(")
         assertThat(generated).contains("RelativeLayout.END_OF")
         assertThat(generated).contains("RelativeLayout.CENTER_VERTICAL")
         assertThat(generated).contains("R.id.title")
@@ -1136,20 +1138,22 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("import androidx.constraintlayout.widget.ConstraintLayout")
         assertThat(generated).contains("val root = ConstraintLayout(context)")
-        assertThat(generated).contains("root_child0.layoutParams =")
+        assertThat(generated).contains("val root_child0LayoutParams =")
         assertThat(generated).contains("ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_CONSTRAINT,")
         // 0dp under ConstraintLayout maps to MATCH_CONSTRAINT
         assertThat(generated).contains("ConstraintLayout.LayoutParams.MATCH_CONSTRAINT")
         // anchors to parent become PARENT_ID
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).startToStart =")
+        assertThat(generated).contains("root_child0LayoutParams.startToStart =")
         assertThat(generated).contains("ConstraintLayout.LayoutParams.PARENT_ID")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).endToEnd =")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).topToTop =")
+        assertThat(generated).contains("root_child0LayoutParams.endToEnd =")
+        assertThat(generated).contains("root_child0LayoutParams.topToTop =")
         // bias becomes a float assignment
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).horizontalBias = 0.25f")
+        assertThat(generated).contains("root_child0LayoutParams.horizontalBias = 0.25f")
         // anchors to id reference R.id
-        assertThat(generated).contains("(root_child1.layoutParams as ConstraintLayout.LayoutParams).topToBottom = R.id.title")
-        assertThat(generated).contains("(root_child1.layoutParams as ConstraintLayout.LayoutParams).startToStart = R.id.title")
+        assertThat(generated).contains("root_child1LayoutParams.topToBottom = R.id.title")
+        assertThat(generated).contains("root_child1LayoutParams.startToStart = R.id.title")
+        assertThat(generated).contains("root_child0.layoutParams = root_child0LayoutParams")
+        assertThat(generated).doesNotContain("root_child0.layoutParams as ConstraintLayout.LayoutParams")
     }
 
     @Test
@@ -1175,11 +1179,11 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_CONSTRAINT,")
         assertThat(generated).contains(
-            "(root_child0.layoutParams as ConstraintLayout.LayoutParams).leftToLeft = " +
+            "root_child0LayoutParams.leftToLeft = " +
                 "ConstraintLayout.LayoutParams.PARENT_ID"
         )
         assertThat(generated).contains(
-            "(root_child0.layoutParams as ConstraintLayout.LayoutParams).rightToRight = " +
+            "root_child0LayoutParams.rightToRight = " +
                 "ConstraintLayout.LayoutParams.PARENT_ID"
         )
     }
@@ -1217,15 +1221,15 @@ class LayoutCodeGeneratorTest {
             "R.layout.constraint_extended_params"
         ).toString()
 
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).dimensionRatio = \"16:9\"")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).matchConstraintPercentWidth = 0.5f")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).matchConstraintPercentHeight = 0.25f")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).horizontalChainStyle = ConstraintLayout.LayoutParams.CHAIN_PACKED")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).verticalChainStyle = ConstraintLayout.LayoutParams.CHAIN_SPREAD_INSIDE")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).horizontalWeight = 1.5f")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).verticalWeight = 2.0f")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).goneStartMargin = (8f * density + 0.5f).toInt()")
-        assertThat(generated).contains("(root_child0.layoutParams as ConstraintLayout.LayoutParams).goneTopMargin = (4f * density + 0.5f).toInt()")
+        assertThat(generated).contains("root_child0LayoutParams.dimensionRatio = \"16:9\"")
+        assertThat(generated).contains("root_child0LayoutParams.matchConstraintPercentWidth = 0.5f")
+        assertThat(generated).contains("root_child0LayoutParams.matchConstraintPercentHeight = 0.25f")
+        assertThat(generated).contains("root_child0LayoutParams.horizontalChainStyle = ConstraintLayout.LayoutParams.CHAIN_PACKED")
+        assertThat(generated).contains("root_child0LayoutParams.verticalChainStyle = ConstraintLayout.LayoutParams.CHAIN_SPREAD_INSIDE")
+        assertThat(generated).contains("root_child0LayoutParams.horizontalWeight = 1.5f")
+        assertThat(generated).contains("root_child0LayoutParams.verticalWeight = 2.0f")
+        assertThat(generated).contains("root_child0LayoutParams.goneStartMargin = (8f * density + 0.5f).toInt()")
+        assertThat(generated).contains("root_child0LayoutParams.goneTopMargin = (4f * density + 0.5f).toInt()")
         assertThat(generated).doesNotContain("FallbackInflater")
     }
 
@@ -1322,7 +1326,7 @@ class LayoutCodeGeneratorTest {
         // Helper-tagged subtree falls back via FallbackInflater
         assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.constraint_helper,")
         assertThat(generated).doesNotContain("root_child0.layoutParams = ConstraintLayout.LayoutParams")
-        assertThat(generated).contains("root_child0.layoutParams = LinearLayout.LayoutParams(")
+        assertThat(generated).contains("val root_child0LayoutParams = LinearLayout.LayoutParams(")
     }
 
     @Test

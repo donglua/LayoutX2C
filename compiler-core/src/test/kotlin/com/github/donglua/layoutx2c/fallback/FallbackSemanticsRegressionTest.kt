@@ -117,7 +117,8 @@ class FallbackSemanticsRegressionTest {
         assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
         assertThat(analyzed.children[0].supportLevel).isEqualTo(SupportLevel.FALLBACK)
         assertThat(generated).contains("val density = context.resources.displayMetrics.density")
-        assertThat(generated).contains("root_child0.layoutParams = ConstraintLayout.LayoutParams")
+        assertThat(generated).contains("val root_child0LayoutParams = ConstraintLayout.LayoutParams")
+        assertThat(generated).contains("root_child0.layoutParams = root_child0LayoutParams")
         assertThat(generated).contains("(51f * density + 0.5f).toInt()")
     }
 

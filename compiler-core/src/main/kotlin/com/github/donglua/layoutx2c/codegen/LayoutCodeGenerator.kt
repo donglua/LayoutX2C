@@ -67,7 +67,7 @@ class LayoutCodeGenerator(
                     .build()
             )
             .returns(ClassName("android.view", "View"))
-            .addStatement("val view = %N().create(context, parent)", factoryClassName)
+            .addStatement("val view = factory.create(context, parent)")
             .beginControlFlow("if (attachToParent && parent != null)")
             .addStatement("parent.addView(view)")
             .endControlFlow()
@@ -75,6 +75,11 @@ class LayoutCodeGenerator(
             .build()
 
         val typeSpec = TypeSpec.objectBuilder(facadeClassName)
+            .addProperty(
+                PropertySpec.builder("factory", ClassName(packageName, factoryClassName), KModifier.PRIVATE)
+                    .initializer("%N()", factoryClassName)
+                    .build()
+            )
             .addFunction(inflateFun)
             .build()
 

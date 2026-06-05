@@ -40,10 +40,11 @@ class DefaultLayoutParamsEmitter(
         node: AnalyzedNode,
         parentVarName: String
     ) {
-        emitLayoutParams(builder, varName, node, parentVarName)
-        emitLayoutGravity(builder, varName, node)
-        emitRelativeLayoutRules(builder, varName, node)
-        emitConstraintLayoutRules(builder, varName, node)
+        val layoutParamsVarName = emitLayoutParams(builder, varName, node, parentVarName)
+        emitLayoutGravity(builder, layoutParamsVarName, node)
+        emitRelativeLayoutRules(builder, layoutParamsVarName, node)
+        emitConstraintLayoutRules(builder, layoutParamsVarName, node)
+        builder.addStatement("%L.layoutParams = %L", varName, layoutParamsVarName)
     }
 
     override fun emitRoot(
@@ -60,13 +61,19 @@ class DefaultLayoutParamsEmitter(
         varName: String,
         node: AnalyzedNode,
         parentVarName: String
-    ) {
+    ): String {
         val attrs = node.node.attributes
         val width = layoutDimensionToCode(attrs["android:layout_width"] ?: "wrap_content", node)
         val height = layoutDimensionToCode(attrs["android:layout_height"] ?: "wrap_content", node)
+        val layoutParamsVarName = "${varName}LayoutParams"
 
-        builder.addStatement("%L.layoutParams = %L", varName, layoutParamsToCode(node, parentVarName, width, height))
-        emitMargins(builder, varName, attrs)
+        builder.addStatement(
+            "val %L = %L",
+            layoutParamsVarName,
+            layoutParamsToCode(node, parentVarName, width, height)
+        )
+        emitMargins(builder, layoutParamsVarName, attrs)
+        return layoutParamsVarName
     }
 
     private fun emitRootLayoutParams(
@@ -81,7 +88,7 @@ class DefaultLayoutParamsEmitter(
 
         builder.beginControlFlow("%L?.let { parentView ->", parentVarName)
         builder.addStatement(
-            "%L.layoutParams = when (parentView) {\n" +
+            "val %LLayoutParams = when (parentView) {\n" +
                 "  is %T -> %T(%L, %L)\n" +
                 "  is %T -> %T(%L, %L)\n" +
                 "  is %T -> %T(%L, %L)\n" +
@@ -109,11 +116,12 @@ class DefaultLayoutParamsEmitter(
             width,
             height
         )
-        emitMargins(builder, varName, attrs)
+        emitMargins(builder, "${varName}LayoutParams", attrs)
+        builder.addStatement("%L.layoutParams = %LLayoutParams", varName, varName)
         builder.endControlFlow()
     }
 
-    private fun emitMargins(builder: CodeBlock.Builder, varName: String, attrs: Map<String, String>) {
+    private fun emitMargins(builder: CodeBlock.Builder, layoutParamsVarName: String, attrs: Map<String, String>) {
         val marginAll = attrs["android:layout_margin"]
         val marginLeft = attrs["android:layout_marginLeft"] ?: attrs["android:layout_marginStart"]
         val marginTop = attrs["android:layout_marginTop"]
@@ -122,9 +130,8 @@ class DefaultLayoutParamsEmitter(
 
         if (marginAll != null) {
             builder.addStatement(
-                "(%L.layoutParams as %T).setMargins(%L, %L, %L, %L)",
-                varName,
-                ClassName("android.view", "ViewGroup", "MarginLayoutParams"),
+                "%L.setMargins(%L, %L, %L, %L)",
+                layoutParamsVarName,
                 dimensionValueToCode(marginLeft ?: marginAll),
                 dimensionValueToCode(marginTop ?: marginAll),
                 dimensionValueToCode(marginRight ?: marginAll),
@@ -133,35 +140,33 @@ class DefaultLayoutParamsEmitter(
             return
         }
 
-        marginLeft?.let { emitMarginAssignment(builder, varName, "leftMargin", it) }
-        marginTop?.let { emitMarginAssignment(builder, varName, "topMargin", it) }
-        marginRight?.let { emitMarginAssignment(builder, varName, "rightMargin", it) }
-        marginBottom?.let { emitMarginAssignment(builder, varName, "bottomMargin", it) }
+        marginLeft?.let { emitMarginAssignment(builder, layoutParamsVarName, "leftMargin", it) }
+        marginTop?.let { emitMarginAssignment(builder, layoutParamsVarName, "topMargin", it) }
+        marginRight?.let { emitMarginAssignment(builder, layoutParamsVarName, "rightMargin", it) }
+        marginBottom?.let { emitMarginAssignment(builder, layoutParamsVarName, "bottomMargin", it) }
     }
 
     private fun emitMarginAssignment(
         builder: CodeBlock.Builder,
-        varName: String,
+        layoutParamsVarName: String,
         propertyName: String,
         value: String
     ) {
         builder.addStatement(
-            "(%L.layoutParams as %T).%L = %L",
-            varName,
-            ClassName("android.view", "ViewGroup", "MarginLayoutParams"),
+            "%L.%L = %L",
+            layoutParamsVarName,
             propertyName,
             dimensionValueToCode(value)
         )
     }
 
-    private fun emitLayoutGravity(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode) {
+    private fun emitLayoutGravity(builder: CodeBlock.Builder, layoutParamsVarName: String, node: AnalyzedNode) {
         val attrs = node.node.attributes
         val layoutGravity = attrs["android:layout_gravity"] ?: return
-        val layoutParamsClass = layoutGravityParamsClass(node.parentTagName) ?: return
+        layoutGravityParamsClass(node.parentTagName) ?: return
         builder.addStatement(
-            "(%L.layoutParams as %T).gravity = %L",
-            varName,
-            layoutParamsClass,
+            "%L.gravity = %L",
+            layoutParamsVarName,
             gravityToCode(layoutGravity)
         )
     }
@@ -207,16 +212,15 @@ class DefaultLayoutParamsEmitter(
         }
     }
 
-    private fun emitRelativeLayoutRules(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode) {
+    private fun emitRelativeLayoutRules(builder: CodeBlock.Builder, layoutParamsVarName: String, node: AnalyzedNode) {
         if (!node.parentIs(LayoutNode::isRelativeLayout)) return
 
         for ((attrName, value) in node.node.attributes) {
             val rule = relativeLayoutIdRules[attrName]
             if (rule != null) {
                 builder.addStatement(
-                    "(%L.layoutParams as %T).addRule(%T.%L, R.id.%L)",
-                    varName,
-                    relativeLayoutParamsClass,
+                    "%L.addRule(%T.%L, R.id.%L)",
+                    layoutParamsVarName,
                     relativeLayoutClass,
                     rule,
                     idName(value)
@@ -227,9 +231,8 @@ class DefaultLayoutParamsEmitter(
             val booleanRule = relativeLayoutBooleanRules[attrName]
             if (booleanRule != null && value == "true") {
                 builder.addStatement(
-                    "(%L.layoutParams as %T).addRule(%T.%L)",
-                    varName,
-                    relativeLayoutParamsClass,
+                    "%L.addRule(%T.%L)",
+                    layoutParamsVarName,
                     relativeLayoutClass,
                     booleanRule
                 )
@@ -237,16 +240,15 @@ class DefaultLayoutParamsEmitter(
         }
     }
 
-    private fun emitConstraintLayoutRules(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode) {
+    private fun emitConstraintLayoutRules(builder: CodeBlock.Builder, layoutParamsVarName: String, node: AnalyzedNode) {
         if (!node.parentIs(LayoutNode::isConstraintLayout)) return
 
         for ((attrName, value) in node.node.attributes) {
             val anchorField = ConstraintLayoutRules.anchorFieldByAttribute[attrName]
             if (anchorField != null) {
                 builder.addStatement(
-                    "(%L.layoutParams as %T).%L = %L",
-                    varName,
-                    constraintLayoutParamsClass,
+                    "%L.%L = %L",
+                    layoutParamsVarName,
                     anchorField,
                     constraintAnchorReference(value)
                 )
@@ -256,18 +258,16 @@ class DefaultLayoutParamsEmitter(
             if (attrName == "app:layout_constraintHorizontal_bias") {
                 value.toFloatOrNull()?.let { bias ->
                     builder.addStatement(
-                        "(%L.layoutParams as %T).horizontalBias = %Lf",
-                        varName,
-                        constraintLayoutParamsClass,
+                        "%L.horizontalBias = %Lf",
+                        layoutParamsVarName,
                         bias
                     )
                 }
             } else if (attrName == "app:layout_constraintVertical_bias") {
                 value.toFloatOrNull()?.let { bias ->
                     builder.addStatement(
-                        "(%L.layoutParams as %T).verticalBias = %Lf",
-                        varName,
-                        constraintLayoutParamsClass,
+                        "%L.verticalBias = %Lf",
+                        layoutParamsVarName,
                         bias
                     )
                 }
@@ -275,9 +275,8 @@ class DefaultLayoutParamsEmitter(
 
             if (attrName == "app:layout_constraintDimensionRatio") {
                 builder.addStatement(
-                    "(%L.layoutParams as %T).dimensionRatio = %S",
-                    varName,
-                    constraintLayoutParamsClass,
+                    "%L.dimensionRatio = %S",
+                    layoutParamsVarName,
                     value
                 )
                 continue
@@ -287,9 +286,8 @@ class DefaultLayoutParamsEmitter(
             if (percentField != null) {
                 value.toFloatOrNull()?.let { percent ->
                     builder.addStatement(
-                        "(%L.layoutParams as %T).%L = %Lf",
-                        varName,
-                        constraintLayoutParamsClass,
+                        "%L.%L = %Lf",
+                        layoutParamsVarName,
                         percentField,
                         percent
                     )
@@ -301,9 +299,8 @@ class DefaultLayoutParamsEmitter(
             if (chainStyleField != null) {
                 constraintChainStyleConstants[value]?.let { chainStyle ->
                     builder.addStatement(
-                        "(%L.layoutParams as %T).%L = %T.%L",
-                        varName,
-                        constraintLayoutParamsClass,
+                        "%L.%L = %T.%L",
+                        layoutParamsVarName,
                         chainStyleField,
                         constraintLayoutParamsClass,
                         chainStyle
@@ -316,9 +313,8 @@ class DefaultLayoutParamsEmitter(
             if (weightField != null) {
                 value.toFloatOrNull()?.let { weight ->
                     builder.addStatement(
-                        "(%L.layoutParams as %T).%L = %Lf",
-                        varName,
-                        constraintLayoutParamsClass,
+                        "%L.%L = %Lf",
+                        layoutParamsVarName,
                         weightField,
                         weight
                     )
@@ -329,9 +325,8 @@ class DefaultLayoutParamsEmitter(
             val goneMarginField = constraintGoneMarginFields[attrName]
             if (goneMarginField != null) {
                 builder.addStatement(
-                    "(%L.layoutParams as %T).%L = %L",
-                    varName,
-                    constraintLayoutParamsClass,
+                    "%L.%L = %L",
+                    layoutParamsVarName,
                     goneMarginField,
                     dimensionValueToCode(value)
                 )
