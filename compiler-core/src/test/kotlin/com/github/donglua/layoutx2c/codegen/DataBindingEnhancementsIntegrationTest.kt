@@ -49,17 +49,17 @@ class DataBindingEnhancementsIntegrationTest {
             dataBindingVariables = tree.rootMetadata.dataBindingVariables
         ).toString()
 
-        // 类型化 nullable 变量
-        assertThat(generated).contains("public var title: String? = null")
-        assertThat(generated).contains("public var count: Int? = null")
-        assertThat(generated).contains("public var viewModel: ItemViewModel? = null")
+        // 类型化 setter 覆盖原生 DataBinding 基类
+        assertThat(generated).contains("override fun setTitle(title: String?)")
+        assertThat(generated).contains("override fun setCount(count: Int)")
+        assertThat(generated).contains("override fun setViewModel(viewModel: ItemViewModel?)")
 
-        // lifecycleOwner 使用 ViewDataBinding 父类实现，不再生成占位字段
-        assertThat(generated).contains(") : ViewDataBinding")
+        // lifecycleOwner 使用原生 DataBinding 基类实现，不再生成占位字段
+        assertThat(generated).contains(") : ItemTypedBinding(null, rootView, 0, titleText)")
         assertThat(generated).doesNotContain("public var lifecycleOwner")
 
-        // View 字段非空
-        assertThat(generated).contains("public val titleText: TextView")
+        // View 字段交给原生 DataBinding 基类持有，X2C 负责传入非空构造参数
+        assertThat(generated).contains("titleText: TextView,")
 
         // DataBinding 变量属性不退回 Any?
         assertThat(generated).doesNotContain("public var title: Any?")
@@ -124,7 +124,7 @@ class DataBindingEnhancementsIntegrationTest {
             dataBindingVariables = variables
         ).toString()
 
-        assertThat(generated).contains("public var items: List<String>? = null")
-        assertThat(generated).contains("public var map: Map<String, Int>? = null")
+        assertThat(generated).contains("override fun setItems(items: List<String>?)")
+        assertThat(generated).contains("override fun setMap(map: Map<String, Int>?)")
     }
 }

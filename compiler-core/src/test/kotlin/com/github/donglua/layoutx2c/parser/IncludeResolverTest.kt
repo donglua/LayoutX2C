@@ -295,6 +295,8 @@ class IncludeResolverTest {
 
         val includeNode = tree.root.children[0]
         assertThat(includeNode.tagName).isEqualTo("include")
-        assertThat(includeNode.nodeType).isEqualTo(LayoutNodeType.Include("some_layout"))
+        val nodeType = includeNode.nodeType as LayoutNodeType.Include
+        assertThat(nodeType.layoutRef).isEqualTo("some_layout")
+        assertThat(nodeType.includeAttributes["layout"]).isEqualTo("@layout/some_layout")
     }
 }

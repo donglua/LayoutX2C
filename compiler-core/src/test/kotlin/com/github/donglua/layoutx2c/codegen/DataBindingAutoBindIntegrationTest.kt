@@ -48,8 +48,8 @@ class DataBindingAutoBindIntegrationTest {
 
         // executePendingBindings 应该包含绑定代码
         assertThat(generated).contains("titleText.setText(title ?: \"\")")
-        // 变量仍然是类型化的
-        assertThat(generated).contains("public var title: String? = null")
+        // 变量 setter 仍然是类型化的，属性由原生 DataBinding 基类提供
+        assertThat(generated).contains("override fun setTitle(title: String?)")
     }
 
     @Test

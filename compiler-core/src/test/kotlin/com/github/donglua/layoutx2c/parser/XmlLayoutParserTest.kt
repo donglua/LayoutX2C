@@ -199,7 +199,9 @@ class XmlLayoutParserTest {
 
         val includeNode = tree.root.children[0]
         assertThat(includeNode.tagName).isEqualTo("include")
-        assertThat(includeNode.nodeType).isEqualTo(LayoutNodeType.Include("toolbar_common"))
+        val nodeType = includeNode.nodeType as LayoutNodeType.Include
+        assertThat(nodeType.layoutRef).isEqualTo("toolbar_common")
+        assertThat(nodeType.includeAttributes["layout"]).isEqualTo("@layout/toolbar_common")
         assertThat(includeNode.attributes["android:layout_width"]).isEqualTo("match_parent")
     }
 
