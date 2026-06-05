@@ -7,45 +7,39 @@ import org.junit.Test
 class FallbackInflaterTest {
 
     @Test
-    fun `child fallback uses parser based partial inflate for ordinary view subtree`() {
+    fun `child fallback avoids parser replay partial inflate`() {
         val source = fallbackInflaterSource()
 
-        assertWithMessage("Child fallback should avoid inflating the whole original layout for whitelisted ordinary view subtrees")
+        assertWithMessage("Fallback child inflate must keep platform XmlBlock.Parser semantics")
             .that(source)
-            .contains("ReplayCurrentStartTagXmlPullParser(parser)")
+            .doesNotContain("ReplayCurrentStartTagXmlPullParser")
         assertWithMessage("Child fallback should seek with the framework XmlResourceParser from Resources.getLayout")
             .that(source)
             .contains("context.resources.getLayout(layoutId)")
+        assertWithMessage("Single child fallback should use the known-correct full tree extraction path")
+            .that(source)
+            .contains("return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)")
     }
 
     @Test
-    fun `child fallback keeps full tree extraction for inflater semantic tags`() {
+    fun `child fallback keeps full tree extraction`() {
         val source = fallbackInflaterSource()
 
-        assertWithMessage("merge include and fragment depend on LayoutInflater host semantics")
-            .that(source)
-            .contains("requiresFullTreeExtraction")
         assertWithMessage("Unsupported partial roots should keep the known-correct full-tree path")
             .that(source)
             .contains("inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)")
     }
 
     @Test
-    fun `child fallback gates partial inflate behind a safe tag whitelist`() {
+    fun `child fallback does not keep a partial inflate whitelist`() {
         val source = fallbackInflaterSource()
 
-        assertWithMessage("Partial inflate should be limited to an explicit safe tag list")
+        assertWithMessage("Parser replay partial inflate cannot preserve XmlBlock.Parser identity")
             .that(source)
-            .contains("requiresFullTreeExtraction(targetTag, childPlan)")
-        assertWithMessage("Non-whitelisted ordinary tags should keep the full-tree fallback path")
+            .doesNotContain("SAFE_PARTIAL_INFLATE_TAGS")
+        assertWithMessage("Fallback child plans should not re-enable parser replay partial inflate")
             .that(source)
-            .contains("return requiresFullTreeExtraction(tagName) || !isSafeForPartialInflate(tagName)")
-        assertWithMessage("The first phase whitelist should cover common simple platform views")
-            .that(source)
-            .contains("\"TextView\"")
-        assertWithMessage("The first phase whitelist should keep ConstraintLayout out until runtime verification exists")
-            .that(source)
-            .doesNotContain("\"ConstraintLayout\"")
+            .doesNotContain("childPlan.partialInflateAllowed")
     }
 
     @Test
@@ -64,18 +58,15 @@ class FallbackInflaterTest {
     }
 
     @Test
-    fun `replay parser wrapper replays the current start tag before delegating`() {
+    fun `replay parser wrapper is not used`() {
         val source = fallbackInflaterSource()
 
-        assertWithMessage("Wrapper should exist so LayoutInflater does not skip the seeked target START_TAG")
+        assertWithMessage("Do not pass a replay wrapper to LayoutInflater.inflate(XmlPullParser, ...)")
             .that(source)
-            .contains("private class ReplayCurrentStartTagXmlPullParser")
-        assertWithMessage("Wrapper should return START_TAG for the first LayoutInflater next call")
+            .doesNotContain("ReplayCurrentStartTagXmlPullParser")
+        assertWithMessage("Do not delegate parser events through a wrapper for fallback children")
             .that(source)
-            .contains("XmlPullParser.START_TAG")
-        assertWithMessage("Wrapper should delegate subsequent next calls to the platform parser")
-            .that(source)
-            .contains("return delegate.next()")
+            .doesNotContain("return delegate.next()")
     }
 
     @Test

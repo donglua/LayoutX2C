@@ -28,6 +28,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.viewpager2.widget.ViewPager2
 import androidx.recyclerview.widget.RecyclerView
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
+import com.github.donglua.layoutx2c.demo.generated.DemoPartialFallbackParserCrashX2C
 import com.github.donglua.layoutx2c.runtime.LayoutX2CRegistry
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.appbar.MaterialToolbar
@@ -341,6 +342,21 @@ class GeneratedInflateEquivalenceTest {
                 throw AssertionError(differences.joinToString(separator = "\n"))
             }
             requireTrue("executePendingBindings should clear dirty state", !binding.hasPendingBindings())
+        }
+    }
+
+    @Test
+    fun generatedConstraintRootInflatesFallbackChildrenWithoutParserCastCrash() {
+        runOnMainThread {
+            val parent = ConstraintLayout(context)
+
+            val generated = DemoPartialFallbackParserCrashX2C.inflate(context, parent)
+
+            requireTrue("constraint root should inflate", generated is ConstraintLayout)
+            requireTrue(
+                "constraint root should preserve direct children",
+                (generated as ConstraintLayout).childCount == 4
+            )
         }
     }
 

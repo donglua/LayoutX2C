@@ -231,19 +231,93 @@ class LayoutCodeGeneratorTest {
             </layout>
         """.trimIndent()
 
-        val analyzed = analyzer.analyze(parser.parse(xml, "activity_main_like").root)
-        val generated = generator.generate(analyzed, "activity_main_like", "R.layout.activity_main_like").toString()
+        val analyzed = analyzer.analyze(parser.parse(xml, "constraint_root_like").root)
+        val generated = generator.generate(analyzed, "constraint_root_like", "R.layout.constraint_root_like").toString()
 
         assertThat(generated).contains("val root = ConstraintLayout(context)")
         assertThat(generated).contains(
-            "val root_fallbackChildren = FallbackInflater.inflateChildren(context, R.layout.activity_main_like, " +
+            "val root_fallbackChildren = FallbackInflater.inflateChildren(context, R.layout.constraint_root_like, " +
                 "arrayOf(FallbackChildPlan(intArrayOf(1), \"com.example.widget.HomeTabLayout\", false), " +
                 "FallbackChildPlan(intArrayOf(2), \"com.example.widget.HomePager\", false)), root)"
         )
         assertThat(generated).contains("val root_child0 = AppCompatTextView(context).apply {")
         assertThat(generated).contains("val root_child1 = root_fallbackChildren[0]")
         assertThat(generated).contains("val root_child2 = root_fallbackChildren[1]")
-        assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.activity_main_like, parent)")
+        assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.constraint_root_like, parent)")
+    }
+
+    @Test
+    fun `safe tag fallback with theme attrs forbids partial child inflate`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <View
+                        android:id="@+id/divider"
+                        android:layout_width="match_parent"
+                        android:layout_height="1px"
+                        android:theme="@style/DemoTheme"
+                        app:layout_constraintTop_toTopOf="parent" />
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        style="@style/DemoText"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </layout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "themed_safe_tag_fallback").root)
+        val generated = generator.generate(
+            analyzed,
+            "themed_safe_tag_fallback",
+            "R.layout.themed_safe_tag_fallback"
+        ).toString()
+
+        assertThat(generated).contains(
+            "arrayOf(FallbackChildPlan(intArrayOf(0), \"View\", false), " +
+                "FallbackChildPlan(intArrayOf(1), \"TextView\", false))"
+        )
+    }
+
+    @Test
+    fun `safe tag fallback with unsupported value forbids partial child inflate`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:textStyle="blod"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </layout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "unsupported_value_safe_tag_fallback").root)
+        val generated = generator.generate(
+            analyzed,
+            "unsupported_value_safe_tag_fallback",
+            "R.layout.unsupported_value_safe_tag_fallback"
+        ).toString()
+
+        assertThat(generated).contains(
+            "FallbackChildPlan(intArrayOf(0), \"TextView\", false)"
+        )
+        assertThat(generated).doesNotContain(
+            "FallbackChildPlan(intArrayOf(0), \"TextView\", true)"
+        )
     }
 
     @Test

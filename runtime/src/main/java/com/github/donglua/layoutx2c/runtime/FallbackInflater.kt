@@ -11,7 +11,7 @@ import org.xmlpull.v1.XmlPullParser
 /**
  * Fallback：对不支持的布局或子树，使用原始 LayoutInflater inflate 原始 layout。
  *
- * 子树 fallback 优先 seek 到原始 XML 中的目标节点做局部 inflate。
+ * 子树 fallback 通过完整 inflate 原始 XML 后摘取目标节点。
  */
 @PublicApi
 class FallbackChildPlan(
@@ -48,7 +48,7 @@ object FallbackInflater {
         childPath: IntArray,
         parent: ViewGroup?
     ): View {
-        return inflateChildWithPlan(context, layoutId, childPath, childPlan = null, parent)
+        return inflateChildWithPath(context, layoutId, childPath, parent)
     }
 
     fun inflateChild(
@@ -57,28 +57,20 @@ object FallbackInflater {
         childPlan: FallbackChildPlan,
         parent: ViewGroup?
     ): View {
-        return inflateChildWithPlan(context, layoutId, childPlan.childPath, childPlan, parent)
+        return inflateChildWithPath(context, layoutId, childPlan.childPath, parent)
     }
 
-    private fun inflateChildWithPlan(
+    private fun inflateChildWithPath(
         context: Context,
         @LayoutRes layoutId: Int,
         childPath: IntArray,
-        childPlan: FallbackChildPlan?,
         parent: ViewGroup?
     ): View {
         val layoutName = context.resources.getResourceName(layoutId)
         val parser = context.resources.getLayout(layoutId)
         try {
-            val targetTag = seekToChildStartTag(parser, childPath, layoutName)
-            if (requiresFullTreeExtraction(targetTag, childPlan)) {
-                return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
-            }
-            return LayoutInflater.from(context).inflate(
-                ReplayCurrentStartTagXmlPullParser(parser),
-                parent,
-                false
-            )
+            seekToChildStartTag(parser, childPath, layoutName)
+            return inflateChildFromFullTree(context, layoutId, childPath, parent, layoutName)
         } finally {
             parser.close()
         }
@@ -103,7 +95,7 @@ object FallbackInflater {
 
         val layoutName = context.resources.getResourceName(layoutId)
         val targets = childPaths.mapIndexed { index, childPath ->
-            ChildInflateTarget(index, childPath, childPlan = null)
+            ChildInflateTarget(index, childPath)
         }.sortedWith { first, second ->
             compareChildPaths(first.childPath, second.childPath)
         }
@@ -128,7 +120,7 @@ object FallbackInflater {
 
         val layoutName = context.resources.getResourceName(layoutId)
         val targets = childPlans.mapIndexed { index, childPlan ->
-            ChildInflateTarget(index, childPlan.childPath, childPlan)
+            ChildInflateTarget(index, childPlan.childPath)
         }.sortedWith { first, second ->
             compareChildPaths(first.childPath, second.childPath)
         }
@@ -165,13 +157,10 @@ object FallbackInflater {
                 moveToDataBindingViewRoot(parser, layoutName)
             }
             inflateTargetSubtree(
-                context = context,
                 parser = parser,
                 currentPath = emptyList(),
                 targetsByPath = targetsByPath,
-                inflatedChildren = inflatedChildren,
-                fullTreeTargets = fullTreeTargets,
-                parent = parent
+                fullTreeTargets = fullTreeTargets
             )
         } finally {
             parser.close()
@@ -198,27 +187,15 @@ object FallbackInflater {
     }
 
     private fun inflateTargetSubtree(
-        context: Context,
         parser: XmlPullParser,
         currentPath: List<Int>,
         targetsByPath: Map<List<Int>, ChildInflateTarget>,
-        inflatedChildren: Array<View?>,
-        fullTreeTargets: MutableList<ChildInflateTarget>,
-        parent: ViewGroup?
+        fullTreeTargets: MutableList<ChildInflateTarget>
     ) {
         val target = targetsByPath[currentPath]
         if (target != null) {
-            val targetTag = parser.name
-            if (requiresFullTreeExtraction(targetTag, target.childPlan)) {
-                fullTreeTargets += target
-                skipCurrentSubtree(parser)
-            } else {
-                inflatedChildren[target.outputIndex] = LayoutInflater.from(context).inflate(
-                    ReplayCurrentStartTagXmlPullParser(parser),
-                    parent,
-                    false
-                )
-            }
+            fullTreeTargets += target
+            skipCurrentSubtree(parser)
             return
         }
 
@@ -229,13 +206,10 @@ object FallbackInflater {
                 XmlPullParser.START_TAG -> {
                     if (parser.depth == parentDepth + 1) {
                         inflateTargetSubtree(
-                            context = context,
                             parser = parser,
                             currentPath = currentPath + childIndex,
                             targetsByPath = targetsByPath,
-                            inflatedChildren = inflatedChildren,
-                            fullTreeTargets = fullTreeTargets,
-                            parent = parent
+                            fullTreeTargets = fullTreeTargets
                         )
                         childIndex++
                     }
@@ -393,39 +367,6 @@ object FallbackInflater {
         }
     }
 
-    private fun requiresFullTreeExtraction(tagName: String): Boolean {
-        return tagName == "merge" || tagName == "include" || tagName == "fragment"
-    }
-
-    private fun requiresFullTreeExtraction(tagName: String, childPlan: FallbackChildPlan?): Boolean {
-        if (childPlan != null && childPlan.targetTag == tagName) {
-            return !childPlan.partialInflateAllowed
-        }
-        return requiresFullTreeExtraction(tagName) || !isSafeForPartialInflate(tagName)
-    }
-
-    private fun isSafeForPartialInflate(tagName: String): Boolean {
-        return tagName in SAFE_PARTIAL_INFLATE_TAGS
-    }
-
-    private val SAFE_PARTIAL_INFLATE_TAGS = setOf(
-        "View",
-        "TextView",
-        "ImageView",
-        "Button",
-        "EditText",
-        "LinearLayout",
-        "FrameLayout",
-        "RelativeLayout",
-        "ImageButton",
-        "CheckBox",
-        "RadioButton",
-        "ProgressBar",
-        "SeekBar",
-        "Switch",
-        "Space"
-    )
-
     /**
      * Inflate the full original layout and detach the requested child afterward.
      * Used for inflater semantic tags that cannot be safely inflated as standalone roots.
@@ -480,8 +421,7 @@ object FallbackInflater {
 
     private class ChildInflateTarget(
         val outputIndex: Int,
-        val childPath: IntArray,
-        val childPlan: FallbackChildPlan?
+        val childPath: IntArray
     )
 
     private class AndroidFallbackChildNode(
@@ -501,23 +441,4 @@ object FallbackInflater {
         }
     }
 
-    private class ReplayCurrentStartTagXmlPullParser(
-        private val delegate: XmlPullParser
-    ) : XmlPullParser by delegate {
-        private var shouldReplayCurrentStartTag = true
-
-        init {
-            require(delegate.eventType == XmlPullParser.START_TAG) {
-                "ReplayCurrentStartTagXmlPullParser requires parser at START_TAG"
-            }
-        }
-
-        override fun next(): Int {
-            if (shouldReplayCurrentStartTag) {
-                shouldReplayCurrentStartTag = false
-                return XmlPullParser.START_TAG
-            }
-            return delegate.next()
-        }
-    }
 }

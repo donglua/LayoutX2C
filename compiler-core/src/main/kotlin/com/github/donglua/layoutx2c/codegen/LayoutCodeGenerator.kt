@@ -251,7 +251,7 @@ class LayoutCodeGenerator(
             fallbackChildPlan,
             childPathToCode(childPath),
             node.node.tagName,
-            isSafeForFallbackPartialInflate(node.node.tagName)
+            false
         )
     }
 
@@ -269,30 +269,8 @@ class LayoutCodeGenerator(
         return builder.build()
     }
 
-    private fun isSafeForFallbackPartialInflate(tagName: String): Boolean {
-        return tagName in safePartialInflateTags
-    }
-
     private companion object {
         val fallbackChildPlan = ClassName("com.github.donglua.layoutx2c.runtime", "FallbackChildPlan")
-
-        val safePartialInflateTags = setOf(
-            "View",
-            "TextView",
-            "ImageView",
-            "Button",
-            "EditText",
-            "LinearLayout",
-            "FrameLayout",
-            "RelativeLayout",
-            "ImageButton",
-            "CheckBox",
-            "RadioButton",
-            "ProgressBar",
-            "SeekBar",
-            "Switch",
-            "Space"
-        )
 
         val fallbackChildLayoutParamAttributes = setOf(
             "android:layout_width",
