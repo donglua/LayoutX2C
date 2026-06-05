@@ -6,6 +6,7 @@ import com.github.donglua.layoutx2c.parser.isButton
 import com.github.donglua.layoutx2c.registry.DefaultViewRegistry
 import com.github.donglua.layoutx2c.registry.ViewEmitRegistry
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 
 /**
  * 根据分析结果生成 Kotlin 代码。
@@ -24,23 +25,41 @@ class LayoutCodeGenerator(
 
     fun generate(analyzedRoot: AnalyzedNode, layoutName: String, layoutResId: String): FileSpec {
         val className = layoutNameToClassName(layoutName)
+        val contextClass = ClassName("android.content", "Context")
+        val viewClass = ClassName("android.view", "View")
+        val viewGroupClass = ClassName("android.view", "ViewGroup")
+        val sparseArrayClass = ClassName("android.util", "SparseArray").parameterizedBy(viewClass)
 
         val createFun = FunSpec.builder("create")
             .addModifiers(KModifier.OVERRIDE)
-            .addParameter("context", ClassName("android.content", "Context"))
+            .addParameter("context", contextClass)
             .addParameter(
                 ParameterSpec.builder(
                     "parent",
-                    ClassName("android.view", "ViewGroup").copy(nullable = true)
+                    viewGroupClass.copy(nullable = true)
                 ).build()
             )
-            .returns(ClassName("android.view", "View"))
+            .returns(viewClass)
+            .addStatement("return create(context, parent, null)")
+            .build()
+
+        val createWithRefsFun = FunSpec.builder("create")
+            .addParameter("context", contextClass)
+            .addParameter(
+                ParameterSpec.builder(
+                    "parent",
+                    viewGroupClass.copy(nullable = true)
+                ).build()
+            )
+            .addParameter("refs", sparseArrayClass.copy(nullable = true))
+            .returns(viewClass)
             .addCode(generateCreateBody(analyzedRoot, layoutResId))
             .build()
 
         val typeSpec = TypeSpec.classBuilder(className)
             .addSuperinterface(ClassName("com.github.donglua.layoutx2c.runtime", "LayoutFactory"))
             .addFunction(createFun)
+            .addFunction(createWithRefsFun)
             .build()
 
         return FileSpec.builder(packageName, className)
@@ -52,6 +71,8 @@ class LayoutCodeGenerator(
     fun generateFacade(layoutName: String): FileSpec {
         val factoryClassName = layoutNameToClassName(layoutName)
         val facadeClassName = layoutNameToFacadeName(layoutName)
+        val viewClass = ClassName("android.view", "View")
+        val sparseArrayClass = ClassName("android.util", "SparseArray").parameterizedBy(viewClass)
 
         val inflateFun = FunSpec.builder("inflate")
             .addParameter("context", ClassName("android.content", "Context"))
@@ -74,6 +95,29 @@ class LayoutCodeGenerator(
             .addStatement("return view")
             .build()
 
+        val inflateWithRefsFun = FunSpec.builder("inflateWithRefs")
+            .addModifiers(KModifier.INTERNAL)
+            .addParameter("context", ClassName("android.content", "Context"))
+            .addParameter(
+                ParameterSpec.builder(
+                    "parent",
+                    ClassName("android.view", "ViewGroup").copy(nullable = true)
+                ).defaultValue("null").build()
+            )
+            .addParameter(
+                ParameterSpec.builder("attachToParent", Boolean::class)
+                    .defaultValue("false")
+                    .build()
+            )
+            .returns(Pair::class.asClassName().parameterizedBy(viewClass, sparseArrayClass))
+            .addStatement("val refs = %T()", sparseArrayClass)
+            .addStatement("val view = factory.create(context, parent, refs)")
+            .beginControlFlow("if (attachToParent && parent != null)")
+            .addStatement("parent.addView(view)")
+            .endControlFlow()
+            .addStatement("return view to refs")
+            .build()
+
         val typeSpec = TypeSpec.objectBuilder(facadeClassName)
             .addProperty(
                 PropertySpec.builder("factory", ClassName(packageName, factoryClassName), KModifier.PRIVATE)
@@ -81,6 +125,7 @@ class LayoutCodeGenerator(
                     .build()
             )
             .addFunction(inflateFun)
+            .addFunction(inflateWithRefsFun)
             .build()
 
         return FileSpec.builder(packageName, facadeClassName)
@@ -132,6 +177,7 @@ class LayoutCodeGenerator(
                     layoutResId,
                     parentVarName
                 )
+                emitRefCapture(builder, varName, node)
             } else {
                 builder.addStatement(
                     "val %L = %T.inflateChild(context, %L, %L, %L)",
@@ -141,6 +187,7 @@ class LayoutCodeGenerator(
                     childPlanToCode(childPath, node),
                     parentVarName
                 )
+                emitRefCapture(builder, varName, node)
                 layoutParamsEmitter.emit(builder, varName, node, parentVarName)
             }
             return
@@ -172,6 +219,8 @@ class LayoutCodeGenerator(
             val layoutName = node.includedLayoutRef.removePrefix("@layout/")
             val facadeClassName = layoutNameToFacadeName(layoutName)
             builder.addStatement("val %L = %N.inflate(context, %L)", varName, facadeClassName, parentVarName)
+            emitIdAssignment(builder, varName, node)
+            emitRefCapture(builder, varName, node)
             
             if (isRoot) {
                 layoutParamsEmitter.emitRoot(builder, varName, node, parentVarName)
@@ -189,6 +238,7 @@ class LayoutCodeGenerator(
             builder.unindent()
             builder.addStatement("}")
         }
+        emitRefCapture(builder, varName, node)
 
         // 生成 LayoutParams
         if (isRoot) {
@@ -331,6 +381,24 @@ class LayoutCodeGenerator(
 
     private fun isEffectiveFallback(node: AnalyzedNode): Boolean {
         return node.supportLevel == SupportLevel.FALLBACK || shouldCollapseToFallback(node)
+    }
+
+    private fun emitRefCapture(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode) {
+        val idName = node.idName() ?: return
+        if (idName.isBlank()) return
+        builder.addStatement("refs?.put(R.id.%L, %L)", idName, varName)
+    }
+
+    private fun emitIdAssignment(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode) {
+        val idName = node.idName() ?: return
+        if (idName.isBlank()) return
+        builder.addStatement("%L.id = R.id.%L", varName, idName)
+    }
+
+    private fun AnalyzedNode.idName(): String? {
+        return node.attributes["android:id"]
+            ?.removePrefix("@+id/")
+            ?.removePrefix("@id/")
     }
 
     private fun layoutNameToClassName(layoutName: String): String {

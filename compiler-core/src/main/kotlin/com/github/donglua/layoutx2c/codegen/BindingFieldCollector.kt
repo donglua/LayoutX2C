@@ -1,12 +1,14 @@
 package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.parser.LayoutNode
+import com.github.donglua.layoutx2c.parser.LayoutNodeType
 import com.squareup.kotlinpoet.ClassName
 
 data class BindingField(
     val idName: String,
     val propertyName: String,
-    val viewClass: ClassName
+    val viewClass: ClassName,
+    val isNestedBinding: Boolean = false
 )
 
 sealed interface BindingFieldResult {
@@ -14,7 +16,9 @@ sealed interface BindingFieldResult {
     data class DuplicateIds(val ids: Set<String>) : BindingFieldResult
 }
 
-class BindingFieldCollector {
+class BindingFieldCollector(
+    private val bindingPackageName: String = ""
+) {
     fun collect(root: LayoutNode): BindingFieldResult {
         val fields = mutableListOf<BindingField>()
         collectFields(root, fields)
@@ -37,8 +41,13 @@ class BindingFieldCollector {
             fields += BindingField(
                 idName = idName,
                 propertyName = idName.toPropertyName(),
-                viewClass = bindingViewClass(node)
+                viewClass = bindingViewClass(node),
+                isNestedBinding = node.nodeType is LayoutNodeType.Include && node.tagName != "merge"
             )
+        }
+
+        if (node.nodeType is LayoutNodeType.Include && node.tagName != "merge") {
+            return
         }
 
         node.children.forEach { child -> collectFields(child, fields) }
@@ -62,6 +71,11 @@ class BindingFieldCollector {
     }
 
     private fun bindingViewClass(node: LayoutNode): ClassName {
+        val nodeType = node.nodeType
+        if (nodeType is LayoutNodeType.Include && node.tagName != "merge") {
+            return ClassName(bindingPackageName, nodeType.layoutRef.toPascalCase() + "X2CBinding")
+        }
+
         val tagName = node.attributes["class"]?.takeIf { node.tagName == "view" && it.isNotBlank() } ?: node.tagName
 
         return when (tagName) {
@@ -116,5 +130,11 @@ class BindingFieldCollector {
         if (isEmpty()) return false
         if (!first().isLetter() && first() != '_') return false
         return drop(1).all { it.isLetterOrDigit() || it == '_' }
+    }
+
+    private fun String.toPascalCase(): String {
+        return split("_").joinToString("") {
+            it.replaceFirstChar { char -> char.uppercaseChar() }
+        }
     }
 }

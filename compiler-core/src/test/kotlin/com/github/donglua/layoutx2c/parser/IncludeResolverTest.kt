@@ -84,9 +84,9 @@ class IncludeResolverTest {
         // layout_b's include of layout_a should NOT be resolved (circular) — stays as include tag
         val circularInclude = layoutB.children[0]
         assertThat(circularInclude.tagName).isEqualTo("include")
-        assertThat(circularInclude.nodeType).isEqualTo(
-            LayoutNodeType.Include("layout_a", "CIRCULAR_INCLUDE")
-        )
+        val circularIncludeType = circularInclude.nodeType as LayoutNodeType.Include
+        assertThat(circularIncludeType.layoutRef).isEqualTo("layout_a")
+        assertThat(circularIncludeType.resolutionError).isEqualTo("CIRCULAR_INCLUDE")
     }
 
     @Test
@@ -126,9 +126,9 @@ class IncludeResolverTest {
         // depth_2 -> includes depth_3 (depth=3 >= maxDepth=3, not resolved)
         val child3 = child2.children[0]
         assertThat(child3.tagName).isEqualTo("include") // NOT resolved
-        assertThat(child3.nodeType).isEqualTo(
-            LayoutNodeType.Include("depth_3", "INCLUDE_DEPTH_EXCEEDED")
-        )
+        val child3Type = child3.nodeType as LayoutNodeType.Include
+        assertThat(child3Type.layoutRef).isEqualTo("depth_3")
+        assertThat(child3Type.resolutionError).isEqualTo("INCLUDE_DEPTH_EXCEEDED")
     }
 
     @Test
@@ -170,7 +170,9 @@ class IncludeResolverTest {
         val includedNode = result.root.children[0]
         // The included root (TextView) should have its layout params overridden
         assertThat(includedNode.tagName).isEqualTo("TextView")
-        assertThat(includedNode.nodeType).isEqualTo(LayoutNodeType.Include("child_view"))
+        val includedNodeType = includedNode.nodeType as LayoutNodeType.Include
+        assertThat(includedNodeType.layoutRef).isEqualTo("child_view")
+        assertThat(includedNodeType.resolutionError).isNull()
         assertThat(includedNode.attributes["android:layout_width"]).isEqualTo("match_parent")
         assertThat(includedNode.attributes["android:layout_height"]).isEqualTo("100dp")
         assertThat(includedNode.attributes["android:layout_margin"]).isEqualTo("16dp")
@@ -228,9 +230,9 @@ class IncludeResolverTest {
         // The self-referencing include should not be resolved
         val child = tree.root.children[0]
         assertThat(child.tagName).isEqualTo("include")
-        assertThat(child.nodeType).isEqualTo(
-            LayoutNodeType.Include("self_ref", "CIRCULAR_INCLUDE")
-        )
+        val childType = child.nodeType as LayoutNodeType.Include
+        assertThat(childType.layoutRef).isEqualTo("self_ref")
+        assertThat(childType.resolutionError).isEqualTo("CIRCULAR_INCLUDE")
     }
 
     @Test
@@ -265,12 +267,16 @@ class IncludeResolverTest {
         // top -> middle (resolved)
         val middleNode = result.root.children[0]
         assertThat(middleNode.tagName).isEqualTo("LinearLayout")
-        assertThat(middleNode.nodeType).isEqualTo(LayoutNodeType.Include("middle"))
+        val middleNodeType = middleNode.nodeType as LayoutNodeType.Include
+        assertThat(middleNodeType.layoutRef).isEqualTo("middle")
+        assertThat(middleNodeType.resolutionError).isNull()
 
         // middle -> leaf (resolved)
         val leafNode = middleNode.children[0]
         assertThat(leafNode.tagName).isEqualTo("TextView")
-        assertThat(leafNode.nodeType).isEqualTo(LayoutNodeType.Include("leaf"))
+        val leafNodeType = leafNode.nodeType as LayoutNodeType.Include
+        assertThat(leafNodeType.layoutRef).isEqualTo("leaf")
+        assertThat(leafNodeType.resolutionError).isNull()
         assertThat(leafNode.attributes["android:text"]).isEqualTo("Leaf")
     }
 

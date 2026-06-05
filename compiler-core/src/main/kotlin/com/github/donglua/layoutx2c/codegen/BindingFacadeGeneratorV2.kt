@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asTypeName
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 
 /**
  * 增强版 BindingFacadeGenerator，支持：
@@ -25,8 +26,10 @@ import com.squareup.kotlinpoet.asTypeName
 class BindingFacadeGeneratorV2(
     private val packageName: String,
     private val rPackageName: String,
-    private val fieldCollector: BindingFieldCollector = BindingFieldCollector()
+    fieldCollector: BindingFieldCollector? = null
 ) {
+    private val fieldCollector: BindingFieldCollector = fieldCollector ?: BindingFieldCollector(packageName)
+
     fun generate(
         analyzedRoot: AnalyzedNode,
         layoutName: String,
@@ -212,6 +215,7 @@ class BindingFacadeGeneratorV2(
         val inflaterClass = ClassName("android.view", "LayoutInflater")
         val viewGroupClass = ClassName("android.view", "ViewGroup")
         val viewClass = ClassName("android.view", "View")
+        val sparseArrayClass = ClassName("android.util", "SparseArray").parameterizedBy(viewClass)
 
         val inflateFun = FunSpec.builder("inflate")
             .addParameter("inflater", inflaterClass)
@@ -229,20 +233,29 @@ class BindingFacadeGeneratorV2(
             .apply {
                 if (useFastPath) {
                     addStatement(
-                        "val root = %N.inflate(inflater.context, parent, attachToParent)",
+                        "val result = %N.inflateWithRefs(inflater.context, parent, attachToParent)",
                         layoutNameToFacadeName(layoutName)
                     )
+                    addStatement("return bindFast(result.first, result.second)")
                 } else {
                     addStatement("val root = inflater.inflate(%L, parent, attachToParent)", layoutResId)
+                    addStatement("return bind(root)")
                 }
-                addStatement("return bind(root)")
             }
             .build()
 
         val bindFun = FunSpec.builder("bind")
             .addParameter("rootView", viewClass)
             .returns(ClassName(packageName, bindingClassName))
-            .addCode(bindBody(bindingClassName, fields))
+            .addCode(bindBody(bindingClassName, fields, refsVarName = null))
+            .build()
+
+        val bindFastFun = FunSpec.builder("bindFast")
+            .addModifiers(KModifier.PRIVATE)
+            .addParameter("rootView", viewClass)
+            .addParameter("refs", sparseArrayClass)
+            .returns(ClassName(packageName, bindingClassName))
+            .addCode(bindBody(bindingClassName, fields, refsVarName = "refs"))
             .build()
 
         return TypeSpec.companionObjectBuilder()
@@ -261,6 +274,11 @@ class BindingFacadeGeneratorV2(
             }
             .addFunction(inflateFun)
             .addFunction(bindFun)
+            .apply {
+                if (useFastPath) {
+                    addFunction(bindFastFun)
+                }
+            }
             .build()
     }
 
@@ -278,16 +296,53 @@ class BindingFacadeGeneratorV2(
             .build()
     }
 
-    private fun bindBody(bindingClassName: String, fields: List<BindingField>): CodeBlock {
+    private fun bindBody(
+        bindingClassName: String,
+        fields: List<BindingField>,
+        refsVarName: String?
+    ): CodeBlock {
         val builder = CodeBlock.builder()
         fields.forEach { field ->
-            builder.addStatement(
-                "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
-                field.propertyName,
-                field.viewClass,
-                field.idName,
-                "Missing required view with ID: ${field.idName}"
-            )
+            if (field.isNestedBinding) {
+                val rootVarName = "${field.propertyName}Root"
+                if (refsVarName != null) {
+                    builder.addStatement(
+                        "val %L = %L.get(R.id.%L)\n⇥?: rootView.findViewById<View>(R.id.%L)\n⇥?: error(%S)⇤",
+                        rootVarName,
+                        refsVarName,
+                        field.idName,
+                        field.idName,
+                        "Missing required view with ID: ${field.idName}"
+                    )
+                } else {
+                    builder.addStatement(
+                        "val %L = rootView.findViewById<View>(R.id.%L)\n⇥?: error(%S)⇤",
+                        rootVarName,
+                        field.idName,
+                        "Missing required view with ID: ${field.idName}"
+                    )
+                }
+                builder.addStatement("val %L = %T.bind(%L)", field.propertyName, field.viewClass, rootVarName)
+            } else if (refsVarName != null) {
+                builder.addStatement(
+                    "val %L = %L.get(R.id.%L) as? %T\n⇥?: rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
+                    field.propertyName,
+                    refsVarName,
+                    field.idName,
+                    field.viewClass,
+                    field.viewClass,
+                    field.idName,
+                    "Missing required view with ID: ${field.idName}"
+                )
+            } else {
+                builder.addStatement(
+                    "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
+                    field.propertyName,
+                    field.viewClass,
+                    field.idName,
+                    "Missing required view with ID: ${field.idName}"
+                )
+            }
         }
         builder.addStatement(
             "val binding = %N(%L)",

@@ -182,12 +182,17 @@ class BindingFacadeGeneratorV2Test {
     }
 
     @Test
-    fun `fast path inflate uses X2C facade`() {
+    fun `fast path inflate uses X2C facade refs`() {
         val xml = """
             <layout xmlns:android="http://schemas.android.com/apk/res/android">
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="match_parent">
+                    <TextView
+                        android:id="@+id/title_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
             </layout>
         """.trimIndent()
         val tree = parser.parse(xml, "item_fast")
@@ -201,7 +206,11 @@ class BindingFacadeGeneratorV2Test {
             dataBindingVariables = emptyList()
         ).toString()
 
-        assertThat(generated).contains("val root = ItemFastX2C.inflate(inflater.context, parent, attachToParent)")
+        assertThat(generated).contains("val result = ItemFastX2C.inflateWithRefs(inflater.context, parent, attachToParent)")
+        assertThat(generated).contains("return bindFast(result.first, result.second)")
+        assertThat(generated).contains("private fun bindFast(")
+        assertThat(generated).contains("val titleText = refs.get(R.id.title_text) as? TextView")
+        assertThat(generated).doesNotContain("val root = ItemFastX2C.inflate(inflater.context, parent, attachToParent)")
     }
 
     @Test

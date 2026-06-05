@@ -30,10 +30,37 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("attachToParent: Boolean = false")
         assertThat(generated).contains("private val factory: Layout_DemoSimple = Layout_DemoSimple()")
         assertThat(generated).contains("val view = factory.create(context, parent)")
+        assertThat(generated).contains("internal fun inflateWithRefs(")
+        assertThat(generated).contains("val refs = SparseArray<View>()")
+        assertThat(generated).contains("val view = factory.create(context, parent, refs)")
         assertThat(generated).contains("if (attachToParent && parent != null) {")
         assertThat(generated).contains("parent.addView(view)")
         assertThat(generated).contains("return view")
         assertThat(generated).doesNotContain("LayoutX2CRegistry")
+    }
+
+    @Test
+    fun `layout factory captures id views into optional refs`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/root_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:id="@+id/title_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "refs_capture").root)
+        val generated = generator.generate(analyzed, "refs_capture", "R.layout.refs_capture").toString()
+
+        assertThat(generated).contains("override fun create(context: Context, parent: ViewGroup?): View =")
+        assertThat(generated).contains("public fun create(")
+        assertThat(generated).contains("refs: SparseArray<View>?")
+        assertThat(generated).contains("refs?.put(R.id.root_container, root)")
+        assertThat(generated).contains("refs?.put(R.id.title_text, root_child0)")
     }
 
     @Test
