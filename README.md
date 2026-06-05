@@ -101,6 +101,11 @@ object LayoutX2CConfig {
 只有在资源目录、`R` 包名或生成包名不符合默认推导时，才需要手动传：
 `layoutx2c.resDir`、`layoutx2c.rPackageName`、`layoutx2c.packageName`。
 
+LayoutX2C 会自动合并当前模块 `src/**/res` 和 AGP 生成的 resource symbol list
+（例如 `build/intermediates/runtime_symbol_list/**/R.txt`）来校验 `@color`、`@dimen`
+等资源引用。如果构建目录不符合 AGP 默认结构，可以用 `layoutx2c.symbolFiles` 显式传入
+`R.txt` / `package-aware-r.txt` 路径，多个文件用系统 path separator 或逗号分隔。
+
 ## 编译报告
 
 Gradle 插件会注册 `layoutX2CReport` 任务，汇总 KSP 生成的 per-layout JSON：

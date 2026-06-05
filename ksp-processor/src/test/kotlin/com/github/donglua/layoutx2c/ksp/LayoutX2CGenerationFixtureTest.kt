@@ -1,17 +1,26 @@
 package com.github.donglua.layoutx2c.ksp
 
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
+import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
 import com.github.donglua.layoutx2c.analyzer.SupportLevel
+import com.github.donglua.layoutx2c.codegen.DefaultLayoutParamsEmitter
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.registry.CustomViewAttribute
 import com.github.donglua.layoutx2c.registry.CustomViewAttributeKind
 import com.github.donglua.layoutx2c.registry.CustomViewDescriptor
 import com.github.donglua.layoutx2c.registry.ResourceAwareViewRegistry
+import com.github.donglua.layoutx2c.resources.ResourceSymbolTable
+import com.github.donglua.layoutx2c.resources.StaticResourceReferenceResolver
 import com.google.common.truth.Truth.assertThat
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class LayoutX2CGenerationFixtureTest {
+
+    @get:Rule
+    val tempDir = TemporaryFolder()
 
     @Test
     fun `bare ksp config generates data binding constraint root instead of root fallback`() {
@@ -121,5 +130,60 @@ class LayoutX2CGenerationFixtureTest {
 
         assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
         assertThat(generated).contains("setPriceColor(ContextCompat.getColor(context, R.color.red))")
+    }
+
+    @Test
+    fun `custom view background from AGP symbol file avoids fallback`() {
+        val symbolFile = tempDir.newFile("R.txt").apply {
+            writeText("int color dependency_panel 0x7f060001")
+        }
+        val resolver = StaticResourceReferenceResolver.currentModule(
+            currentPackageName = "com.fixture.feature.home",
+            symbols = ResourceSymbolTable.fromSymbolFile(symbolFile)
+        )
+        val customRegistry = ResourceAwareViewRegistry(
+            rPackageName = "com.fixture.feature.home",
+            resourceResolver = resolver,
+            customViews = listOf(
+                CustomViewDescriptor(
+                    viewClassName = "com.fixture.widget.MainTabLayout",
+                    attributes = emptyList()
+                )
+            )
+        )
+        val xml = """
+            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <com.fixture.widget.MainTabLayout
+                    android:id="@+id/tabLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="49dp"
+                    android:background="@color/dependency_panel"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        """.trimIndent()
+
+        val tree = XmlLayoutParser().parse(xml, "activity_main")
+        val analyzed = LayoutAnalyzerV2(customRegistry).analyze(tree.root)
+        val generated = LayoutCodeGenerator(
+            packageName = "com.fixture.feature.home.generated",
+            rPackageName = "com.fixture.feature.home",
+            layoutParamsEmitter = DefaultLayoutParamsEmitter(
+                rPackageName = "com.fixture.feature.home",
+                resourceResolver = resolver
+            ),
+            viewRegistry = customRegistry
+        ).generate(analyzed, "activity_main", "R.layout.activity_main").toString()
+
+        assertThat(analyzed.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(generated).contains("val root_child0 = MainTabLayout(context).apply")
+        assertThat(generated).contains("setBackgroundColor(ContextCompat.getColor(context, R.color.dependency_panel))")
+        assertThat(generated).doesNotContain(
+            "FallbackChildPlan(intArrayOf(0), \"com.fixture.widget.MainTabLayout\", false)"
+        )
     }
 }

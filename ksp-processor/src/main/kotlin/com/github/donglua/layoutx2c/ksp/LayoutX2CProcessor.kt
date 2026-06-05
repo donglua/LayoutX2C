@@ -11,7 +11,6 @@ import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.registry.CustomViewDescriptor
 import com.github.donglua.layoutx2c.registry.ResourceAwareViewRegistry
 import com.github.donglua.layoutx2c.report.SupportReportGenerator
-import com.github.donglua.layoutx2c.resources.ResourceSymbolTable
 import com.github.donglua.layoutx2c.resources.StaticResourceReferenceResolver
 import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.processing.*
@@ -37,6 +36,7 @@ class LayoutX2CProcessor(
         const val OPTION_PACKAGE = "layoutx2c.packageName"
         const val OPTION_R_PACKAGE = "layoutx2c.rPackageName"
         const val OPTION_CACHE_DIR = "layoutx2c.cacheDir"
+        const val OPTION_SYMBOL_FILES = "layoutx2c.symbolFiles"
 
         const val ANNOTATION_FAST_LAYOUT_CONFIG = "com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig"
         const val ANNOTATION_FAST_LAYOUTS = "com.github.donglua.layoutx2c.runtime.annotation.FastLayouts"
@@ -153,7 +153,10 @@ class LayoutX2CProcessor(
 
         val resourceResolver = StaticResourceReferenceResolver.currentModule(
             currentPackageName = config.rPackageName,
-            symbols = ResourceSymbolTable.fromResDir(config.resDir)
+            symbols = LayoutX2CResourceSymbols.resolve(
+                resDir = config.resDir,
+                explicitSymbolFiles = config.symbolFiles
+            )
         )
         val viewRegistry = ResourceAwareViewRegistry(
             rPackageName = config.rPackageName,
@@ -348,12 +351,18 @@ class LayoutX2CProcessor(
             ?: File("src/main/res")
         val manifestFile = options[OPTION_CACHE_DIR]?.let(::File)
             ?.resolve("layoutx2c-digests.properties")
+        val symbolFiles = options[OPTION_SYMBOL_FILES]
+            ?.split(File.pathSeparator, ",")
+            ?.mapNotNull { path -> path.trim().takeIf { it.isNotEmpty() } }
+            ?.map(::File)
+            ?: emptyList()
 
         return LayoutX2CProcessorConfig(
             resDir = resDir,
             packageName = packageName,
             rPackageName = rPackageName,
             manifestFile = manifestFile,
+            symbolFiles = symbolFiles,
             customViews = configSources.flatMap { it.customViews }
         )
     }
@@ -496,6 +505,7 @@ private data class LayoutX2CProcessorConfig(
     val packageName: String,
     val rPackageName: String,
     val manifestFile: File?,
+    val symbolFiles: List<File>,
     val customViews: List<CustomViewDescriptor>
 )
 

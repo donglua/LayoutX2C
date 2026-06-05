@@ -7,9 +7,14 @@ import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.registry.ResourceAwareViewRegistry
 import com.google.common.truth.Truth.assertThat
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class ResourceReferenceCodegenTest {
+
+    @get:Rule
+    val tempDir = TemporaryFolder()
 
     private val parser = XmlLayoutParser()
 
@@ -94,6 +99,41 @@ class ResourceReferenceCodegenTest {
 
         val analyzed = analyzer.analyze(parser.parse(xml, "owned_color").root)
         val generated = generator.generate(analyzed, "owned_color", "R.layout.owned_color").toString()
+
+        assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
+        assertThat(generated).contains("ContextCompat.getColor(context, com.example.base.R.color.base_divider)")
+        assertThat(generated).doesNotContain("ContextCompat.getColor(context, R.color.base_divider)")
+    }
+
+    @Test
+    fun `package aware symbol file preserves owner package in generated R symbol`() {
+        val symbolFile = tempDir.newFile("package-aware-r.txt").apply {
+            writeText(
+                """
+                com.example.base
+                color base_divider
+                """.trimIndent()
+            )
+        }
+        val resolver = StaticResourceReferenceResolver.currentModule(
+            currentPackageName = "com.example",
+            symbols = ResourceSymbolTable.fromSymbolFile(symbolFile)
+        )
+        val registry = ResourceAwareViewRegistry(
+            rPackageName = "com.example",
+            resourceResolver = resolver
+        )
+        val analyzer = LayoutAnalyzer(registry)
+        val generator = generator(registry, resolver)
+        val xml = """
+            <View xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/base_divider" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "package_aware_color").root)
+        val generated = generator.generate(analyzed, "package_aware_color", "R.layout.package_aware_color").toString()
 
         assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
         assertThat(generated).contains("ContextCompat.getColor(context, com.example.base.R.color.base_divider)")
