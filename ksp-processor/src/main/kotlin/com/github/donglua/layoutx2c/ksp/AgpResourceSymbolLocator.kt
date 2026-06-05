@@ -16,6 +16,10 @@ internal object AgpResourceSymbolLocator {
         "R-def.txt",
         "package-aware-r.txt"
     )
+    private val knownRClassJarIntermediates = setOf(
+        "compile_r_class_jar",
+        "compile_and_runtime_r_class_jar"
+    )
 
     fun inferProjectDir(resDir: File): File? {
         var current: File? = resDir.absoluteFile
@@ -41,6 +45,51 @@ internal object AgpResourceSymbolLocator {
                     .toList()
                     .sortedBy { it.invariantSeparatorsPath }
             }
+    }
+
+    fun findRClassJars(projectDir: File): List<File> {
+        val searchRoots = listOfNotNull(projectDir, findGradleRoot(projectDir))
+            .distinctBy { it.absolutePath }
+
+        return searchRoots
+            .flatMap { root ->
+                root.walkTopDown()
+                    .onEnter { dir -> dir.shouldEnterForRClassSearch() }
+                    .filter { file ->
+                        file.isFile &&
+                            file.name == "R.jar" &&
+                            file.invariantSeparatorsPath.contains("/build/intermediates/") &&
+                            knownRClassJarIntermediates.any { intermediate ->
+                                file.invariantSeparatorsPath.contains("/$intermediate/")
+                            }
+                    }
+                    .toList()
+            }
+            .distinctBy { it.absolutePath }
+            .sortedBy { it.invariantSeparatorsPath }
+    }
+
+    private fun findGradleRoot(projectDir: File): File? {
+        var current: File? = projectDir.absoluteFile
+        while (current != null) {
+            if (current.resolve("settings.gradle").isFile ||
+                current.resolve("settings.gradle.kts").isFile
+            ) {
+                return current
+            }
+            current = current.parentFile
+        }
+        return null
+    }
+
+    private fun File.shouldEnterForRClassSearch(): Boolean {
+        return name !in setOf(
+            ".git",
+            ".gradle",
+            ".idea",
+            "build-cache",
+            "build-cache-3"
+        )
     }
 }
 

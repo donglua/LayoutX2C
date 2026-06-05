@@ -1,6 +1,8 @@
 package com.github.donglua.layoutx2c.resources
 
+import java.io.DataInputStream
 import java.io.File
+import java.util.jar.JarFile
 import javax.xml.parsers.DocumentBuilderFactory
 
 data class ResourceReference(
@@ -92,6 +94,14 @@ class ResourceSymbolTable(
         )
     }
 
+    fun stableKey(): String {
+        return (references + owners.keys)
+            .sortedWith(compareBy<ResourceReference> { it.type }.thenBy { it.name })
+            .joinToString(separator = "\n") { reference ->
+                "${reference.type}/${reference.name}=${owners[reference].orEmpty()}"
+            }
+    }
+
     companion object {
         private val valueResourceTypes = setOf(
             "color",
@@ -162,6 +172,44 @@ class ResourceSymbolTable(
             }
         }
 
+        fun fromRClassJar(jarFile: File): ResourceSymbolTable {
+            if (!jarFile.isFile) return ResourceSymbolTable(emptySet())
+
+            val symbols = linkedSetOf<ResourceReference>()
+            val owners = linkedMapOf<ResourceReference, String>()
+
+            runCatching {
+                JarFile(jarFile).use { jar ->
+                    jar.entries().asSequence()
+                        .filter { !it.isDirectory && it.name.endsWith(".class") }
+                        .forEach { entry ->
+                            val rClass = parseRClassEntry(entry.name) ?: return@forEach
+                            if (rClass.type == "styleable") return@forEach
+                            val fieldNames = jar.getInputStream(entry).use { input ->
+                                readClassFieldNames(DataInputStream(input))
+                            }
+                            fieldNames.forEach { fieldName ->
+                                addSymbol(
+                                    symbols = symbols,
+                                    owners = owners,
+                                    type = rClass.type,
+                                    name = fieldName,
+                                    owner = rClass.packageName
+                                )
+                            }
+                        }
+                }
+            }
+
+            return ResourceSymbolTable(symbols, owners)
+        }
+
+        fun fromRClassJars(jarFiles: Iterable<File>): ResourceSymbolTable {
+            return jarFiles.fold(ResourceSymbolTable(emptySet())) { acc, file ->
+                acc + fromRClassJar(file)
+            }
+        }
+
         private fun scanValueResources(resDir: File, symbols: MutableSet<ResourceReference>) {
             resDir.listFiles()
                 ?.filter { it.isDirectory && it.name.startsWith("values") }
@@ -226,5 +274,78 @@ class ResourceSymbolTable(
                 owners[reference] = owner
             }
         }
+
+        private fun parseRClassEntry(entryName: String): RClassEntry? {
+            if (!entryName.endsWith(".class")) return null
+            val className = entryName.removeSuffix(".class")
+            val marker = "/R$"
+            val markerIndex = className.lastIndexOf(marker)
+            if (markerIndex <= 0) return null
+            val packageName = className.substring(0, markerIndex).replace('/', '.')
+            val type = className.substring(markerIndex + marker.length)
+            if (type.isBlank() || "$" in type) return null
+            return RClassEntry(packageName = packageName, type = type)
+        }
+
+        private fun readClassFieldNames(input: DataInputStream): List<String> {
+            if (input.readInt() != 0xCAFEBABE.toInt()) return emptyList()
+            input.readUnsignedShort() // minor
+            input.readUnsignedShort() // major
+
+            val constantPool = arrayOfNulls<String>(input.readUnsignedShort())
+            var index = 1
+            while (index < constantPool.size) {
+                when (input.readUnsignedByte()) {
+                    1 -> constantPool[index] = input.readUTF()
+                    3, 4 -> input.skipFully(4)
+                    5, 6 -> {
+                        input.skipFully(8)
+                        index++
+                    }
+                    7, 8, 16, 19, 20 -> input.skipFully(2)
+                    9, 10, 11, 12, 17, 18 -> input.skipFully(4)
+                    15 -> input.skipFully(3)
+                    else -> return emptyList()
+                }
+                index++
+            }
+
+            input.skipFully(6) // access_flags, this_class, super_class
+            repeat(input.readUnsignedShort()) {
+                input.skipFully(2)
+            }
+
+            val fieldNames = mutableListOf<String>()
+            repeat(input.readUnsignedShort()) {
+                input.readUnsignedShort() // access_flags
+                val name = constantPool[input.readUnsignedShort()]
+                input.readUnsignedShort() // descriptor_index
+                repeat(input.readUnsignedShort()) {
+                    input.skipFully(2) // attribute_name_index
+                    val length = input.readInt()
+                    input.skipFully(length)
+                }
+                if (name != null) {
+                    fieldNames += name
+                }
+            }
+            return fieldNames
+        }
+
+        private fun DataInputStream.skipFully(byteCount: Int) {
+            var remaining = byteCount
+            while (remaining > 0) {
+                val skipped = skipBytes(remaining)
+                if (skipped <= 0) {
+                    throw java.io.EOFException("Unable to skip $byteCount bytes")
+                }
+                remaining -= skipped
+            }
+        }
     }
 }
+
+private data class RClassEntry(
+    val packageName: String,
+    val type: String
+)

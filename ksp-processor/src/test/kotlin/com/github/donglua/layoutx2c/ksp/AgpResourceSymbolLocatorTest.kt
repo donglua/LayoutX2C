@@ -47,4 +47,27 @@ class AgpResourceSymbolLocatorTest {
         assertThat(files).containsExactly(runtimeSymbols, packageAwareSymbols)
             .inOrder()
     }
+
+    @Test
+    fun `finds R class jars from Gradle root when starting at app module`() {
+        val rootDir = tempDir.newFolder("root")
+        rootDir.resolve("settings.gradle").writeText("include ':app', ':base'")
+        val appDir = rootDir.resolve("app").apply { mkdirs() }
+        val baseRJar = rootDir
+            .resolve("base/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar")
+            .apply {
+                parentFile.mkdirs()
+                writeText("jar")
+            }
+        val appRuntimeRJar = rootDir
+            .resolve("app/build/intermediates/compile_and_runtime_r_class_jar/debug/processDebugResources/R.jar")
+            .apply {
+                parentFile.mkdirs()
+                writeText("jar")
+            }
+
+        val files = AgpResourceSymbolLocator.findRClassJars(appDir)
+
+        assertThat(files).containsAtLeast(baseRJar, appRuntimeRJar)
+    }
 }

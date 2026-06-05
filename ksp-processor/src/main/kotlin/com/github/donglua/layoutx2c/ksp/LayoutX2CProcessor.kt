@@ -150,14 +150,16 @@ class LayoutX2CProcessor(
             }
         }
         layoutNames.addAll(patternLayoutNames.sorted())
+        layoutNames.addAll(expandLayoutNamesWithDependencies(layoutNames, config.resDir))
 
 
+        val resourceSymbols = LayoutX2CResourceSymbols.resolve(
+            resDir = config.resDir,
+            explicitSymbolFiles = config.symbolFiles
+        )
         val resourceResolver = StaticResourceReferenceResolver.currentModule(
             currentPackageName = config.rPackageName,
-            symbols = LayoutX2CResourceSymbols.resolve(
-                resDir = config.resDir,
-                explicitSymbolFiles = config.symbolFiles
-            )
+            symbols = resourceSymbols
         )
         val viewRegistry = ResourceAwareViewRegistry(
             rPackageName = config.rPackageName,
@@ -201,7 +203,8 @@ class LayoutX2CProcessor(
                     layoutFile = xmlFile,
                     resDir = config.resDir,
                     packageName = config.packageName,
-                    rPackageName = config.rPackageName
+                    rPackageName = config.rPackageName,
+                    resourceSymbolsKey = resourceSymbols.stableKey()
                 )
                 val factoryClassName = LayoutX2CNames.factoryClassName(layoutName)
                 val facadeClassName = LayoutX2CNames.facadeClassName(layoutName)
@@ -512,6 +515,26 @@ private data class LayoutX2CProcessorConfig(
     val symbolFiles: List<File>,
     val customViews: List<CustomViewDescriptor>
 )
+
+internal fun expandLayoutNamesWithDependencies(layoutNames: Set<String>, resDir: File): Set<String> {
+    val expanded = layoutNames.toMutableSet()
+    val pending = ArrayDeque(layoutNames.sorted())
+    while (pending.isNotEmpty()) {
+        val layoutName = pending.removeFirst()
+        val layoutFile = resDir.resolve("layout/$layoutName.xml")
+        if (!layoutFile.isFile) continue
+
+        LayoutDependencyScanner.scanDependencies(layoutFile, resDir)
+            .map { it.nameWithoutExtension }
+            .sorted()
+            .forEach { dependencyName ->
+                if (expanded.add(dependencyName)) {
+                    pending.addLast(dependencyName)
+                }
+            }
+    }
+    return expanded
+}
 
 private data class LayoutX2CSource(
     val file: File,

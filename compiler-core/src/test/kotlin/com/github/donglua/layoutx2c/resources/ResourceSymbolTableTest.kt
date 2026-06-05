@@ -1,6 +1,9 @@
 package com.github.donglua.layoutx2c.resources
 
 import com.google.common.truth.Truth.assertThat
+import java.util.jar.JarEntry
+import java.util.jar.JarOutputStream
+import javax.tools.ToolProvider
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -93,4 +96,79 @@ class ResourceSymbolTableTest {
         assertThat(table.owners[ResourceReference("string", "feature_title")])
             .isEqualTo("com.example.feature")
     }
+
+    @Test
+    fun `scans resource owners from compiled R class jar`() {
+        val jarFile = compileRJar(
+            packageName = "com.example.base",
+            rBody = """
+                public static final class color {
+                    public static int base_divider = 0;
+                }
+                public static final class dimen {
+                    public static int base_gap = 0;
+                }
+            """.trimIndent()
+        )
+
+        val table = ResourceSymbolTable.fromRClassJar(jarFile)
+
+        assertThat(table.references).containsAtLeast(
+            ResourceReference("color", "base_divider"),
+            ResourceReference("dimen", "base_gap")
+        )
+        assertThat(table.owners[ResourceReference("color", "base_divider")])
+            .isEqualTo("com.example.base")
+    }
+
+    @Test
+    fun `stable key includes owner package names`() {
+        val reference = ResourceReference("color", "base_divider")
+        val appOwned = ResourceSymbolTable(
+            references = setOf(reference),
+            owners = mapOf(reference to "com.example.app")
+        )
+        val baseOwned = ResourceSymbolTable(
+            references = setOf(reference),
+            owners = mapOf(reference to "com.example.base")
+        )
+
+        assertThat(baseOwned.stableKey()).isNotEqualTo(appOwned.stableKey())
+    }
+
+    private fun compileRJar(packageName: String, rBody: String): java.io.File {
+        val srcDir = tempDir.newFolder("r-src")
+        val classesDir = tempDir.newFolder("r-classes")
+        val packageDir = srcDir.resolve(packageName.replace('.', '/')).apply { mkdirs() }
+        val sourceFile = packageDir.resolve("R.java")
+        sourceFile.writeText(
+            """
+            package $packageName;
+            public final class R {
+                $rBody
+            }
+            """.trimIndent()
+        )
+
+        val compiler = ToolProvider.getSystemJavaCompiler()
+            ?: error("JDK compiler is required for this test")
+        val result = compiler.run(null, null, null, "-d", classesDir.path, sourceFile.path)
+        assertThat(result).isEqualTo(0)
+
+        val jarFile = tempDir.newFile("r.jar")
+        JarOutputStream(jarFile.outputStream()).use { jar ->
+            classesDir.walkTopDown()
+                .filter { it.isFile && it.extension == "class" }
+                .forEach { file ->
+                    val entryName = file.relativeTo(classesDir).invariantSeparatorsPath
+                    jar.putNextEntry(JarEntry(entryName))
+                    file.inputStream().use { it.copyTo(jar) }
+                    jar.closeEntry()
+                }
+        }
+        return jarFile
+    }
 }
+
+private val java.io.File.invariantSeparatorsPath: String
+    get() = path.replace(java.io.File.separatorChar, '/')

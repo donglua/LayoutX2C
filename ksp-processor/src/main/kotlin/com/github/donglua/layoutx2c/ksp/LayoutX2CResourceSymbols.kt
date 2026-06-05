@@ -14,9 +14,15 @@ internal object LayoutX2CResourceSymbols {
         val inferredSymbolFiles = projectDir
             ?.let(AgpResourceSymbolLocator::findSymbolFiles)
             ?: emptyList()
+        val inferredRClassJars = projectDir
+            ?.let(AgpResourceSymbolLocator::findRClassJars)
+            ?: emptyList()
 
-        return sourceSymbols + ResourceSymbolTable.fromSymbolFiles(
+        val textSymbols = ResourceSymbolTable.fromSymbolFiles(
             explicitSymbolFiles + inferredSymbolFiles
         )
+        val rClassSymbols = ResourceSymbolTable.fromRClassJars(inferredRClassJars)
+
+        return sourceSymbols + textSymbols + rClassSymbols
     }
 }

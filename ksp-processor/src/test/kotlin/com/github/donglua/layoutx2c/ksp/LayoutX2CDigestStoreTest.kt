@@ -1,5 +1,7 @@
 package com.github.donglua.layoutx2c.ksp
 
+import com.github.donglua.layoutx2c.resources.ResourceReference
+import com.github.donglua.layoutx2c.resources.ResourceSymbolTable
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -90,6 +92,40 @@ class LayoutX2CDigestStoreTest {
             resDir = resDir,
             packageName = "com.example.generated",
             rPackageName = "com.example"
+        )
+
+        assertThat(second).isNotEqualTo(first)
+    }
+
+    @Test
+    fun `layout digest changes when resource owner changes`() {
+        val projectDir = tempDir.newFolder("layoutx2c-owner-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutFile = resDir.resolve("layout/demo.xml")
+        layoutFile.parentFile.mkdirs()
+        layoutFile.writeText("<TextView android:textColor=\"@color/base_divider\" />")
+        val reference = ResourceReference("color", "base_divider")
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example",
+            resourceSymbolsKey = ResourceSymbolTable(
+                references = setOf(reference),
+                owners = mapOf(reference to "com.example")
+            ).stableKey()
+        )
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example",
+            resourceSymbolsKey = ResourceSymbolTable(
+                references = setOf(reference),
+                owners = mapOf(reference to "com.example.base")
+            ).stableKey()
         )
 
         assertThat(second).isNotEqualTo(first)
@@ -384,7 +420,7 @@ class LayoutX2CDigestStoreTest {
     @Test
     fun `cache compatibility key is bumped for file resource hash semantics`() {
         assertThat(LayoutX2CDigestCalculator.cacheCompatibilityKey("test"))
-            .isEqualTo("schema=v8|processor=test")
+            .isEqualTo("schema=v9|processor=test")
     }
 
     @Test
