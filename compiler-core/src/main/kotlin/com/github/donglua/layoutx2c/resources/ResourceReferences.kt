@@ -43,7 +43,7 @@ class StaticResourceReferenceResolver(
             symbols: ResourceSymbolTable
         ): StaticResourceReferenceResolver {
             return StaticResourceReferenceResolver(
-                owners = symbols.references.associateWith { currentPackageName },
+                owners = symbols.references.associateWith { symbols.owners[it] ?: currentPackageName },
                 currentPackageName = currentPackageName
             )
         }
@@ -76,10 +76,20 @@ fun parseResourceReference(value: String): ResourceReference? {
     )
 }
 
-class ResourceSymbolTable(val references: Set<ResourceReference>) {
+class ResourceSymbolTable(
+    val references: Set<ResourceReference>,
+    val owners: Map<ResourceReference, String> = emptyMap()
+) {
 
     fun contains(type: String, name: String): Boolean {
         return ResourceReference(type, name) in references
+    }
+
+    operator fun plus(other: ResourceSymbolTable): ResourceSymbolTable {
+        return ResourceSymbolTable(
+            references = references + other.references,
+            owners = owners + other.owners
+        )
     }
 
     companion object {
@@ -96,6 +106,7 @@ class ResourceSymbolTable(val references: Set<ResourceReference>) {
             "layout",
             "mipmap"
         )
+        private val rTextPattern = Regex("""^(?:int|int\[\])\s+([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\b""")
 
         fun fromResDir(resDir: File): ResourceSymbolTable {
             if (!resDir.isDirectory) return ResourceSymbolTable(emptySet())
@@ -104,6 +115,51 @@ class ResourceSymbolTable(val references: Set<ResourceReference>) {
             scanValueResources(resDir, symbols)
             scanFileResources(resDir, symbols)
             return ResourceSymbolTable(symbols)
+        }
+
+        fun fromSymbolFile(symbolFile: File): ResourceSymbolTable {
+            if (!symbolFile.isFile) return ResourceSymbolTable(emptySet())
+
+            val symbols = linkedSetOf<ResourceReference>()
+            val owners = linkedMapOf<ResourceReference, String>()
+            var currentPackageName: String? = null
+
+            symbolFile.forEachLine { rawLine ->
+                val line = rawLine.trim()
+                if (line.isEmpty()) return@forEachLine
+
+                val rTextMatch = rTextPattern.find(line)
+                if (rTextMatch != null) {
+                    addSymbol(
+                        symbols = symbols,
+                        owners = owners,
+                        type = rTextMatch.groupValues[1],
+                        name = rTextMatch.groupValues[2],
+                        owner = currentPackageName
+                    )
+                    return@forEachLine
+                }
+
+                val parts = line.split(Regex("""\s+"""))
+                when {
+                    parts.size == 1 && "." in parts[0] -> currentPackageName = parts[0]
+                    parts.size >= 2 -> addSymbol(
+                        symbols = symbols,
+                        owners = owners,
+                        type = parts[0],
+                        name = parts[1],
+                        owner = currentPackageName
+                    )
+                }
+            }
+
+            return ResourceSymbolTable(symbols, owners)
+        }
+
+        fun fromSymbolFiles(symbolFiles: Iterable<File>): ResourceSymbolTable {
+            return symbolFiles.fold(ResourceSymbolTable(emptySet())) { acc, file ->
+                acc + fromSymbolFile(file)
+            }
         }
 
         private fun scanValueResources(resDir: File, symbols: MutableSet<ResourceReference>) {
@@ -154,6 +210,21 @@ class ResourceSymbolTable(val references: Set<ResourceReference>) {
                             symbols += ResourceReference(type = type, name = file.nameWithoutExtension)
                         }
                 }
+        }
+
+        private fun addSymbol(
+            symbols: MutableSet<ResourceReference>,
+            owners: MutableMap<ResourceReference, String>,
+            type: String,
+            name: String,
+            owner: String?
+        ) {
+            if (type == "styleable") return
+            val reference = ResourceReference(type = type, name = name)
+            symbols += reference
+            if (owner != null) {
+                owners[reference] = owner
+            }
         }
     }
 }
