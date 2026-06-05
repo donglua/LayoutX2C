@@ -26,6 +26,8 @@
     <string name="code_viewer_fallback">Fallback</string>
     <string name="code_viewer_binding">Binding</string>
     <string name="code_viewer_binding_enhanced">Binding+</string>
+    <string name="code_viewer_binding_include_child">Binding Child</string>
+    <string name="code_viewer_binding_include_parent">Binding Include</string>
     <string name="code_viewer_scroll_image">Scroll+Image</string>
     <string name="code_viewer_two_way_binding">Two-Way</string>
     <string name="code_viewer_compat_widgets">Compat</string>

@@ -2,6 +2,7 @@ package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.parser.DataBindingVariable
+import com.github.donglua.layoutx2c.parser.LayoutNodeType
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -44,6 +45,7 @@ class BindingFacadeGeneratorV2(
             is BindingFieldResult.DuplicateIds -> emptyList()
         }
         val dataBindingProperties = dataBindingVariables.toCompatibilityProperties(fields)
+        val nestedBindingFields = fields.filter { it.isNestedBinding }
 
         // 构造函数只包含 root + view 字段（与 V1 一致）
         val constructor = FunSpec.constructorBuilder()
@@ -90,11 +92,17 @@ class BindingFacadeGeneratorV2(
                     .build()
             )
             .addFunction(buildSetVariable(dataBindingProperties, brIdProperties))
-            .addFunction(buildInvalidateAll(invalidateDirtyFlag))
-            .addFunction(buildHasPendingBindings())
+            .addFunction(buildInvalidateAll(invalidateDirtyFlag, nestedBindingFields))
+            .addFunction(buildHasPendingBindings(nestedBindingFields))
             .addFunction(buildOnFieldChange())
-            .addFunction(buildExecuteBindings(analyzedRoot, fields))
+            .addFunction(buildExecuteBindings(analyzedRoot, fields, nestedBindingFields))
             .addFunction(buildSetupTwoWayBindings(analyzedRoot, fields))
+            .apply {
+                if (nestedBindingFields.isNotEmpty()) {
+                    addFunction(buildSetupContainedBindings(nestedBindingFields))
+                    addFunction(buildSetLifecycleOwner(nestedBindingFields))
+                }
+            }
             .addType(companionObject(layoutName, layoutResId, bindingClassName, fields, useFastPath, brIdProperties))
             .build()
 
@@ -162,24 +170,67 @@ class BindingFacadeGeneratorV2(
         return builder.build()
     }
 
-    private fun buildInvalidateAll(invalidateDirtyFlag: Long): FunSpec {
-        return FunSpec.builder("invalidateAll")
+    private fun buildInvalidateAll(
+        invalidateDirtyFlag: Long,
+        nestedBindingFields: List<BindingField>
+    ): FunSpec {
+        val builder = FunSpec.builder("invalidateAll")
             .addModifiers(KModifier.OVERRIDE)
             .beginControlFlow("synchronized(this)")
             .addStatement("mDirtyFlags = mDirtyFlags or %LL", invalidateDirtyFlag)
             .endControlFlow()
+
+        nestedBindingFields.forEach { field ->
+            builder.addStatement("%L.invalidateAll()", field.propertyName)
+        }
+
+        return builder
             .addStatement("requestRebind()")
             .build()
     }
 
-    private fun buildHasPendingBindings(): FunSpec {
-        return FunSpec.builder("hasPendingBindings")
+    private fun buildHasPendingBindings(nestedBindingFields: List<BindingField>): FunSpec {
+        val builder = FunSpec.builder("hasPendingBindings")
             .addModifiers(KModifier.OVERRIDE)
             .returns(Boolean::class)
             .beginControlFlow("synchronized(this)")
-            .addStatement("return mDirtyFlags != 0L")
+            .beginControlFlow("if (mDirtyFlags != 0L)")
+            .addStatement("return true")
             .endControlFlow()
-            .build()
+            .endControlFlow()
+
+        nestedBindingFields.forEach { field ->
+            builder.beginControlFlow("if (%L.hasPendingBindings())", field.propertyName)
+            builder.addStatement("return true")
+            builder.endControlFlow()
+        }
+
+        return builder.addStatement("return false").build()
+    }
+
+    private fun buildSetupContainedBindings(nestedBindingFields: List<BindingField>): FunSpec {
+        val builder = FunSpec.builder("setupContainedBindings")
+            .addModifiers(KModifier.PRIVATE)
+
+        nestedBindingFields.forEach { field ->
+            builder.addStatement("setContainedBinding(%L)", field.propertyName)
+        }
+
+        return builder.build()
+    }
+
+    private fun buildSetLifecycleOwner(nestedBindingFields: List<BindingField>): FunSpec {
+        val lifecycleOwnerClass = ClassName("androidx.lifecycle", "LifecycleOwner")
+        val builder = FunSpec.builder("setLifecycleOwner")
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter("lifecycleOwner", lifecycleOwnerClass.copy(nullable = true))
+            .addStatement("super.setLifecycleOwner(lifecycleOwner)")
+
+        nestedBindingFields.forEach { field ->
+            builder.addStatement("%L.lifecycleOwner = lifecycleOwner", field.propertyName)
+        }
+
+        return builder.build()
     }
 
     private fun buildOnFieldChange(): FunSpec {
@@ -344,6 +395,9 @@ class BindingFacadeGeneratorV2(
             bindingClassName,
             (listOf("rootView") + fields.map { it.propertyName }).joinToString(", ")
         )
+        if (fields.any { it.isNestedBinding }) {
+            builder.addStatement("binding.setupContainedBindings()")
+        }
         builder.addStatement("binding.setRootTag(rootView)")
         builder.addStatement("binding.setupTwoWayBindings()")
         builder.addStatement("binding.invalidateAll()")
@@ -374,7 +428,8 @@ class BindingFacadeGeneratorV2(
      */
     private fun buildExecuteBindings(
         analyzedRoot: AnalyzedNode,
-        fields: List<BindingField>
+        fields: List<BindingField>,
+        nestedBindingFields: List<BindingField>
     ): FunSpec {
         val builder = FunSpec.builder("executeBindings")
             .addModifiers(KModifier.PROTECTED, KModifier.OVERRIDE)
@@ -383,14 +438,20 @@ class BindingFacadeGeneratorV2(
             .addStatement("dirtyFlags = mDirtyFlags")
             .addStatement("mDirtyFlags = 0L")
             .endControlFlow()
-            .beginControlFlow("if (dirtyFlags == 0L)")
-            .addStatement("return")
-            .endControlFlow()
 
         // 收集所有有 @{} 表达式的属性绑定
         val bindings = collectDataBindingExpressions(analyzedRoot, fields)
+        val includeBindings = collectIncludeVariableBindings(analyzedRoot, fields)
 
         // 为每个绑定生成代码
+        if (bindings.isNotEmpty() || includeBindings.isNotEmpty()) {
+            builder.beginControlFlow("if (dirtyFlags != 0L)")
+        } else if (nestedBindingFields.isEmpty()) {
+            builder.beginControlFlow("if (dirtyFlags == 0L)")
+            builder.addStatement("return")
+            builder.endControlFlow()
+        }
+
         bindings.forEach { binding ->
             val code = DataBindingAttributeMapper.generateBindingCode(
                 viewFieldName = binding.viewFieldName,
@@ -401,6 +462,23 @@ class BindingFacadeGeneratorV2(
             if (code != null) {
                 builder.addStatement(code)
             }
+        }
+
+        includeBindings.forEach { binding ->
+            builder.addStatement(
+                "%L.%L = %L",
+                binding.bindingFieldName,
+                binding.variableName,
+                binding.expressionCode
+            )
+        }
+
+        if (bindings.isNotEmpty() || includeBindings.isNotEmpty()) {
+            builder.endControlFlow()
+        }
+
+        nestedBindingFields.forEach { field ->
+            builder.addStatement("executeBindingsOn(%L)", field.propertyName)
         }
 
         return builder.build()
@@ -480,6 +558,38 @@ class BindingFacadeGeneratorV2(
         return bindings
     }
 
+    private fun collectIncludeVariableBindings(
+        node: AnalyzedNode,
+        fields: List<BindingField>
+    ): List<IncludeVariableBinding> {
+        val bindings = mutableListOf<IncludeVariableBinding>()
+
+        fun traverse(analyzed: AnalyzedNode) {
+            val includeNode = analyzed.node.nodeType as? LayoutNodeType.Include
+            if (includeNode?.isDataBindingLayout == true) {
+                val rawId = analyzed.node.attributes["android:id"]
+                val idName = rawId?.removePrefix("@+id/")?.removePrefix("@id/")
+                val field = fields.find { it.idName == idName }
+                if (field != null) {
+                    includeNode.includeAttributes.forEach { (attrName, attrValue) ->
+                        val variableName = attrName.toIncludeVariableName() ?: return@forEach
+                        val expressionCode = dataBindingExpressionToCode(attrValue) ?: return@forEach
+                        bindings += IncludeVariableBinding(
+                            bindingFieldName = field.propertyName,
+                            variableName = variableName,
+                            expressionCode = expressionCode
+                        )
+                    }
+                }
+            }
+
+            analyzed.children.forEach { traverse(it) }
+        }
+
+        traverse(node)
+        return bindings
+    }
+
     /**
      * 解析 @{variable} / @{variable.property} / @={variable} / @={variable.property} 表达式。
      * 返回 Pair(variableName, propertyPath) 或 null 如果格式不正确。
@@ -513,6 +623,12 @@ class BindingFacadeGeneratorV2(
         val propertyPath: String?,
         val isTwoWay: Boolean = false,
         val viewTagName: String = ""
+    )
+
+    private data class IncludeVariableBinding(
+        val bindingFieldName: String,
+        val variableName: String,
+        val expressionCode: CodeBlock
     )
 
     private data class BrIdProperty(
@@ -561,6 +677,29 @@ class BindingFacadeGeneratorV2(
 
     private fun String.toNativeBackingFieldName(): String {
         return "m" + replaceFirstChar { it.uppercaseChar() }
+    }
+
+    private fun String.toIncludeVariableName(): String? {
+        if (startsWith("android:") || startsWith("xmlns:") || startsWith("tools:")) return null
+        val localName = substringAfter(':', this)
+        if (localName == this || localName == "layout") return null
+        return localName.takeIf { it.isKotlinIdentifier() }
+    }
+
+    private fun dataBindingExpressionToCode(attrValue: String): CodeBlock? {
+        val expression = when {
+            attrValue.startsWith("@{") && attrValue.endsWith("}") ->
+                attrValue.substring(2, attrValue.length - 1).trim()
+            attrValue.startsWith("@={") && attrValue.endsWith("}") ->
+                attrValue.substring(3, attrValue.length - 1).trim()
+            else -> return null
+        }
+
+        if (expression.length >= 2 && expression.first() == '`' && expression.last() == '`') {
+            return CodeBlock.of("%S", expression.substring(1, expression.length - 1))
+        }
+
+        return CodeBlock.of("%L", expression)
     }
 
     private fun DataBindingVariable.toNativeSetterTypeName() =

@@ -33,6 +33,9 @@ class BindingFacadeGeneratorV2Test {
                         <variable
                             name="text"
                             type="java.lang.String" />
+                        <variable
+                            name="icon"
+                            type="int" />
                     </data>
                     <FrameLayout
                         android:layout_width="match_parent"
@@ -49,7 +52,13 @@ class BindingFacadeGeneratorV2Test {
         val includeParser = XmlLayoutParser(includeResolver = IncludeResolver(tempFolder.root))
         val tree = includeParser.parse(
             """
-                <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                    xmlns:app="http://schemas.android.com/apk/res-auto">
+                    <data>
+                        <variable
+                            name="text"
+                            type="java.lang.String" />
+                    </data>
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent">
@@ -57,12 +66,15 @@ class BindingFacadeGeneratorV2Test {
                             android:id="@+id/layout1"
                             layout="@layout/main_tab_view"
                             android:layout_width="0dp"
-                            android:layout_height="match_parent" />
+                            android:layout_height="match_parent"
+                            app:icon="@{R.drawable.selector_home}"
+                            app:text="@{`首页`}" />
                         <include
                             android:id="@+id/layout2"
                             layout="@layout/main_tab_view"
                             android:layout_width="0dp"
-                            android:layout_height="match_parent" />
+                            android:layout_height="match_parent"
+                            app:text="@{text}" />
                     </LinearLayout>
                 </layout>
             """.trimIndent(),
@@ -84,6 +96,16 @@ class BindingFacadeGeneratorV2Test {
         assertThat(generated).contains("val layout1: MainTabViewBinding = MainTabViewX2CBinding.bind(layout1Root)")
         assertThat(generated).doesNotContain("DataBindingUtil.bind<MainTabViewBinding>(layout1Root)")
         assertThat(generated).contains("val binding = MainTabLayoutX2CBinding(rootView, layout1, layout2)")
+        assertThat(generated).contains("binding.setupContainedBindings()")
+        assertThat(generated).contains("setContainedBinding(layout1)")
+        assertThat(generated).contains("override fun setLifecycleOwner(lifecycleOwner: LifecycleOwner?)")
+        assertThat(generated).contains("layout1.lifecycleOwner = lifecycleOwner")
+        assertThat(generated).contains("layout1.invalidateAll()")
+        assertThat(generated).contains("if (layout1.hasPendingBindings())")
+        assertThat(generated).contains("layout1.icon = R.drawable.selector_home")
+        assertThat(generated).contains("layout1.text = \"首页\"")
+        assertThat(generated).contains("layout2.text = text")
+        assertThat(generated).contains("executeBindingsOn(layout1)")
         assertThat(generated).doesNotContain("public val viewText: TextView")
     }
 

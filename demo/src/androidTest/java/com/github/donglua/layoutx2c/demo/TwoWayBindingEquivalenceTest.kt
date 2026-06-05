@@ -170,11 +170,11 @@ class TwoWayBindingEquivalenceTest {
                 false
             )
 
-            // 设置为 null
+            // String variables accept null; primitive boolean variables follow native Binding setters.
             binding.userName = null
             binding.userEmail = null
-            binding.isAccepted = null
-            binding.isEnabled = null
+            binding.isAccepted = false
+            binding.isEnabled = false
 
             binding.executePendingBindings()
 

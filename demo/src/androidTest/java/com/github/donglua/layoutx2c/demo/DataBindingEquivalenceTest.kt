@@ -9,6 +9,8 @@ import android.widget.FrameLayout
 import androidx.databinding.DataBindingUtil
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingIncludeChildX2CBinding
+import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingIncludeParentX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
 import org.junit.Test
@@ -318,6 +320,43 @@ class DataBindingEquivalenceTest {
             // View 字段存在
             requireEquals("titleText ID", R.id.title_text, binding.titleText.id)
             requireEquals("rootContainer ID", R.id.root_container, binding.root.id)
+        }
+    }
+
+    @Test
+    fun dataBindingIncludesUseX2CSubclassInstancesAndReceiveVariables() {
+        runOnMainThread {
+            val binding = DemoDataBindingIncludeParentX2CBinding.inflate(
+                LayoutInflater.from(context),
+                FrameLayout(context),
+                false
+            )
+
+            requireTrue(
+                "static child should be generated X2C binding subclass",
+                binding.staticChild is DemoDataBindingIncludeChildX2CBinding
+            )
+            requireTrue(
+                "dynamic child should be generated X2C binding subclass",
+                binding.dynamicChild is DemoDataBindingIncludeChildX2CBinding
+            )
+
+            binding.dynamicText = "动态"
+            binding.executePendingBindings()
+
+            requireEquals(
+                "static include text should receive literal variable",
+                "首页",
+                binding.staticChild.includeChildText.text.toString()
+            )
+            requireEquals(
+                "dynamic include text should receive parent variable",
+                "动态",
+                binding.dynamicChild.includeChildText.text.toString()
+            )
+            require(!binding.hasPendingBindings()) {
+                "parent and contained child bindings should be clean after executePendingBindings"
+            }
         }
     }
 

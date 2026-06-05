@@ -189,7 +189,11 @@ class XmlLayoutParser(
         return when (tagName) {
             "include" -> {
                 val layoutRef = extractLayoutRef(attributes["layout"])
-                if (layoutRef != null) LayoutNodeType.Include(layoutRef) else LayoutNodeType.Regular
+                if (layoutRef != null) {
+                    LayoutNodeType.Include(layoutRef, includeAttributes = attributes.toMap())
+                } else {
+                    LayoutNodeType.Regular
+                }
             }
             "merge" -> LayoutNodeType.Merge
             "ViewStub" -> {

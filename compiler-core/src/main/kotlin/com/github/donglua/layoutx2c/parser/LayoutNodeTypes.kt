@@ -9,7 +9,8 @@ sealed class LayoutNodeType {
     data class Include(
         val layoutRef: String,
         val resolutionError: String? = null,
-        val isDataBindingLayout: Boolean = false
+        val isDataBindingLayout: Boolean = false,
+        val includeAttributes: Map<String, String> = emptyMap()
     ) : LayoutNodeType()
     object Merge : LayoutNodeType()
     data class ViewStub(val layoutRef: String, val resolutionError: String? = null) : LayoutNodeType()

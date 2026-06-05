@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+        <import type="com.github.donglua.layoutx2c.demo.R" />
+
+        <variable
+            name="dynamicText"
+            type="java.lang.String" />
+    </data>
+
+    <LinearLayout
+        android:id="@+id/include_parent_root"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <include
+            android:id="@+id/static_child"
+            layout="@layout/demo_data_binding_include_child"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:icon="@{R.drawable.ic_layoutx2c_demo}"
+            app:text="@{`首页`}" />
+
+        <include
+            android:id="@+id/dynamic_child"
+            layout="@layout/demo_data_binding_include_child"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:icon="@{R.drawable.ic_demo_scroll_image}"
+            app:text="@{dynamicText}" />
+    </LinearLayout>
+</layout>

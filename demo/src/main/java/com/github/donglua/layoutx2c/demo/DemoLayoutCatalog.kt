@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import com.github.donglua.layoutx2c.demo.generated.DemoConstraintX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoCompatWidgetsX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingIncludeChildX2CBinding
+import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingIncludeParentX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoTwoWayBindingX2CBinding
@@ -155,6 +157,36 @@ object DemoLayoutCatalog {
             }
         ) { context, parent ->
             DemoDataBindingEnhancedX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
+        },
+        Entry(
+            "Binding Include Child",
+            "demo_data_binding_include_child",
+            R.layout.demo_data_binding_include_child,
+            "Layout_DemoDataBindingIncludeChild",
+            summary = "DataBinding include child with typed variables",
+            status = Status.Binding,
+            codeViewerClassName = "DemoDataBindingIncludeChildX2CBinding"
+        ) { context, parent ->
+            val binding = DemoDataBindingIncludeChildX2CBinding.inflate(LayoutInflater.from(context), parent, false)
+            binding.text = "首页"
+            binding.icon = R.drawable.ic_layoutx2c_demo
+            binding.executePendingBindings()
+            binding.root
+        },
+        Entry(
+            "Binding Include Parent",
+            "demo_data_binding_include_parent",
+            R.layout.demo_data_binding_include_parent,
+            "Layout_DemoDataBindingIncludeParent",
+            summary = "DataBinding include variables propagated into X2C child binding subclasses",
+            status = Status.Binding,
+            codeViewerClassName = "DemoDataBindingIncludeParentX2CBinding",
+            previewMode = PreviewMode.Interactive
+        ) { context, parent ->
+            val binding = DemoDataBindingIncludeParentX2CBinding.inflate(LayoutInflater.from(context), parent, false)
+            binding.dynamicText = "动态"
+            binding.executePendingBindings()
+            binding.root
         },
         Entry(
             "Scroll + Image",
