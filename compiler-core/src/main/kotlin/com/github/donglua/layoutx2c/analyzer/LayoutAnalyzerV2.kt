@@ -4,6 +4,9 @@ import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.LayoutNodeType
 import com.github.donglua.layoutx2c.registry.DefaultViewRegistry
 import com.github.donglua.layoutx2c.registry.ViewAnalysisRegistry
+import com.github.donglua.layoutx2c.resources.NoStyleResolver
+import com.github.donglua.layoutx2c.resources.StyleExpansion
+import com.github.donglua.layoutx2c.resources.StyleResolver
 
 /**
  * 改进的 LayoutAnalyzer，支持：
@@ -12,7 +15,8 @@ import com.github.donglua.layoutx2c.registry.ViewAnalysisRegistry
  * - 更详细的支持度报告
  */
 class LayoutAnalyzerV2(
-    private val viewRegistry: ViewAnalysisRegistry = DefaultViewRegistry
+    private val viewRegistry: ViewAnalysisRegistry = DefaultViewRegistry,
+    private val styleResolver: StyleResolver = NoStyleResolver
 ) {
 
     companion object {
@@ -84,16 +88,25 @@ class LayoutAnalyzerV2(
             return markAsFallback(node, parentTagName, includedLayoutRef = includedLayoutRef)
         }
 
-        // 2. 检查是否需要强制 fallback
-        if (shouldForceFallback(node, parentTagName)) {
+        val styleExpansion = expandStyle(node)
+        if (styleExpansion == null) {
             return markAsFallback(node, parentTagName, includedLayoutRef = includedLayoutRef)
+        }
+        val (effectiveNode, styleOnlyAttributes) = styleExpansion
+
+        // 2. 检查是否需要强制 fallback
+        if (shouldForceFallback(effectiveNode, parentTagName)) {
+            return markAsFallback(effectiveNode, parentTagName, includedLayoutRef = includedLayoutRef)
         }
 
         // 3. 分类属性（含 DataBinding 表达式识别）
-        val classification = classifyAttributes(node, parentTagName)
+        val classification = classifyAttributes(effectiveNode, parentTagName)
+        if (classification.unsupported.any { it in styleOnlyAttributes }) {
+            return markAsFallback(effectiveNode, parentTagName, includedLayoutRef = includedLayoutRef)
+        }
 
         // 4. 递归分析子节点
-        val analyzedChildren = node.children.map { analyzeNode(it, parentTagName = node.tagName) }
+        val analyzedChildren = effectiveNode.children.map { analyzeNode(it, parentTagName = effectiveNode.tagName) }
 
         // 5. 确定支持度：自身 PARTIAL 或子节点非 FULL 则 cap 到 PARTIAL
         val ownLevel = if (classification.unsupported.isEmpty()) SupportLevel.FULL else SupportLevel.PARTIAL
@@ -105,17 +118,31 @@ class LayoutAnalyzerV2(
         }
 
         return AnalyzedNode(
-            node = node,
+            node = effectiveNode,
             supportLevel = supportLevel,
             supportedAttributes = classification.supported,
             unsupportedAttributes = classification.unsupported,
             children = analyzedChildren,
-            indexInParent = node.indexInParent,
+            indexInParent = effectiveNode.indexInParent,
             parentTagName = parentTagName,
             dataBindingAttributes = classification.dataBinding,
             twoWayBindingAttributes = classification.twoWayBinding,
             includedLayoutRef = includedLayoutRef
         )
+    }
+
+    private fun expandStyle(node: LayoutNode): Pair<LayoutNode, Set<String>>? {
+        val styleRef = node.attributes["style"]
+        return when (val expansion = styleResolver.expand(styleRef)) {
+            StyleExpansion.None -> node to emptySet()
+            is StyleExpansion.Unsupported -> null
+            is StyleExpansion.Expanded -> {
+                val explicitAttributes = node.attributes - "style"
+                val effectiveAttributes = expansion.attributes + explicitAttributes
+                val styleOnlyAttributes = expansion.attributes.keys - explicitAttributes.keys
+                node.copy(attributes = effectiveAttributes) to styleOnlyAttributes
+            }
+        }
     }
 
     /**

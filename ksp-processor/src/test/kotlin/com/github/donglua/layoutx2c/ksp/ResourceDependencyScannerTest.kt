@@ -84,6 +84,38 @@ class ResourceDependencyScannerTest {
     }
 
     @Test
+    fun `scan follows style parent dependencies`() {
+        val resDir = tempDir.newFolder("style-parent-res")
+        resDir.resolve("layout").mkdirs()
+        resDir.resolve("values").mkdirs()
+        resDir.resolve("layout/demo.xml").writeText(
+            """<TextView style="@style/TitleText" />"""
+        )
+        resDir.resolve("values/styles.xml").writeText(
+            """
+            <resources>
+                <style name="BaseText">
+                    <item name="android:textColor">#112233</item>
+                </style>
+                <style name="TitleText" parent="BaseText">
+                    <item name="android:textSize">16sp</item>
+                </style>
+            </resources>
+            """.trimIndent()
+        )
+
+        val dependencies = ResourceDependencyScanner.scan(
+            layoutFile = resDir.resolve("layout/demo.xml"),
+            resDir = resDir
+        )
+
+        assertThat(dependencies.map { it.key }).containsAtLeast(
+            "style/TitleText",
+            "style/BaseText"
+        )
+    }
+
+    @Test
     fun `scan includes drawable file content dependencies`() {
         val resDir = tempDir.newFolder("drawable-res")
         resDir.resolve("layout").mkdirs()

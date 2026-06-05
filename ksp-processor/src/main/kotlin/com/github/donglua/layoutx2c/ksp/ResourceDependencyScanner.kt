@@ -75,6 +75,9 @@ internal object ResourceDependencyScanner {
                 extractResourceRefs(definition.content).forEach { nested ->
                     resolve(nested, resDir, values, dependencies, seenRefs)
                 }
+                extractStyleParentRefs(definition.content).forEach { parent ->
+                    resolve(parent, resDir, values, dependencies, seenRefs)
+                }
             }
             return
         }
@@ -236,6 +239,25 @@ internal object ResourceDependencyScanner {
             .toSet()
     }
 
+    private fun extractStyleParentRefs(value: String): Set<ResourceRef> {
+        return styleParentRegex.findAll(value)
+            .mapNotNull { match -> styleParentRef(match.groupValues[1]) }
+            .toSet()
+    }
+
+    private fun styleParentRef(rawValue: String): ResourceRef? {
+        val value = rawValue.trim()
+        val name = when {
+            value.startsWith("@style/") -> value.removePrefix("@style/")
+            value.startsWith("@android:") -> return null
+            value.startsWith("@") -> return null
+            value.startsWith("?") -> return null
+            value.isBlank() -> return null
+            else -> value
+        }
+        return ResourceRef(type = "style", name = name)
+    }
+
     private fun fileResources(ref: ResourceRef, resDir: File): List<File> {
         if (ref.type !in fileResourceTypes) return emptyList()
         return resDir.listFiles()
@@ -276,5 +298,6 @@ internal object ResourceDependencyScanner {
     }
 
     private val resourceRefRegex = Regex("""@(?!(?:\+?id|android):?)([A-Za-z0-9_]+)/([A-Za-z0-9_.]+)""")
+    private val styleParentRegex = Regex("""<style\b[^>]*\bparent="([^"]+)"""")
     private val fileResourceTypes = setOf("color", "drawable", "mipmap")
 }

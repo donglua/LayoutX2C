@@ -12,6 +12,7 @@ import com.github.donglua.layoutx2c.registry.CustomViewDescriptor
 import com.github.donglua.layoutx2c.registry.ResourceAwareViewRegistry
 import com.github.donglua.layoutx2c.report.SupportReportGenerator
 import com.github.donglua.layoutx2c.resources.StaticResourceReferenceResolver
+import com.github.donglua.layoutx2c.resources.StyleResourceRepository
 import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
@@ -163,7 +164,10 @@ class LayoutX2CProcessor(
             resourceResolver = resourceResolver,
             customViews = config.customViews
         )
-        val analyzer = LayoutAnalyzerV2(viewRegistry)
+        val analyzer = LayoutAnalyzerV2(
+            viewRegistry = viewRegistry,
+            styleResolver = StyleResourceRepository.fromResDir(config.resDir)
+        )
 
         // 创建带 include 解析能力的 parser，layoutDir 用于查找被 include 的 XML
         val includeResolver = IncludeResolver(layoutDir)
