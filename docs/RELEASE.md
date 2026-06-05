@@ -9,8 +9,9 @@ Maven Central publishing requires:
 
 - `MAVEN_CENTRAL_USERNAME`
 - `MAVEN_CENTRAL_PASSWORD`
-- `SIGNING_IN_MEMORY_KEY`
-- `SIGNING_IN_MEMORY_KEY_PASSWORD`
+- `GPG_PRIVATE_KEY`
+- `GPG_PASSPHRASE`
+- `GPG_KEY_ID`
 
 Central Portal namespace must be verified for `io.github.donglua`. Published
 coordinates use `io.github.donglua.layoutx2c`.
@@ -56,6 +57,19 @@ Upload `build/central-portal/layoutx2c-1.0.0-rc.1-central-bundle.zip` in Central
 Portal's `Publish Component` page. The bundle is a Maven Repository Layout zip
 and does not require `MAVEN_CENTRAL_USERNAME` or `MAVEN_CENTRAL_PASSWORD` until
 it is uploaded through Central Portal or published by CI.
+
+GitHub Actions imports `GPG_PRIVATE_KEY` and publishes with Gradle's GPG command
+signing path:
+
+```bash
+./gradlew publishAndReleaseToMavenCentral \
+  -Playoutx2c.enablePublishing=true \
+  -Playoutx2c.useGpgSigning=true \
+  -Psigning.gnupg.keyName="$GPG_KEY_ID" \
+  -Psigning.gnupg.passphrase="$GPG_PASSPHRASE" \
+  -PmavenCentralDeploymentValidation=PUBLISHED \
+  --no-configuration-cache
+```
 
 When a device or emulator is available, run connected Android equivalence tests:
 
