@@ -79,8 +79,7 @@ class BindingFacadeGeneratorV2Test {
         ).toString()
 
         assertThat(generated).contains("import com.example.databinding.MainTabViewBinding")
-        assertThat(generated).contains("public val layout1: MainTabViewBinding")
-        assertThat(generated).contains("public val layout2: MainTabViewBinding")
+        assertThat(generated).contains(") : MainTabLayoutBinding(null, rootView, 0, layout1, layout2)")
         assertThat(generated).contains("val layout1Root = rootView.findViewById<View>(R.id.layout1)")
         assertThat(generated).contains("val layout1 = DataBindingUtil.bind<MainTabViewBinding>(layout1Root)")
         assertThat(generated).contains("?: error(\"Missing required binding with ID: layout1\")")
@@ -89,7 +88,7 @@ class BindingFacadeGeneratorV2Test {
     }
 
     @Test
-    fun `generated binding extends ViewDataBinding and implements supported contract`() {
+    fun `generated binding extends native data binding base and implements supported contract`() {
         val xml = """
             <layout xmlns:android="http://schemas.android.com/apk/res/android">
                 <data>
@@ -119,14 +118,15 @@ class BindingFacadeGeneratorV2Test {
             dataBindingVariables = tree.rootMetadata.dataBindingVariables
         ).toString()
 
-        assertThat(generated).contains("import androidx.databinding.Bindable")
-        assertThat(generated).contains("import androidx.databinding.ViewDataBinding")
+        assertThat(generated).contains("import com.example.databinding.ItemContractBinding")
+        assertThat(generated).doesNotContain("import androidx.databinding.Bindable")
+        assertThat(generated).doesNotContain("import androidx.databinding.ViewDataBinding")
         assertThat(generated).doesNotContain("import com.example.BR")
         assertThat(generated).contains("private val TITLE_0: Int = resolveBrId(\"title\", 1)")
         assertThat(generated).contains("Class.forName(\"com.example.BR\").getField(name).getInt(null)")
-        assertThat(generated).contains(") : ViewDataBinding(null, rootView, 0)")
-        assertThat(generated).contains("@get:Bindable")
-        assertThat(generated).contains("public var title: String? = null")
+        assertThat(generated).contains(") : ItemContractBinding(null, rootView, 0, titleText)")
+        assertThat(generated).contains("override fun setTitle(title: String?)")
+        assertThat(generated).contains("mTitle = title")
         assertThat(generated).contains("notifyPropertyChanged(TITLE_0)")
         assertThat(generated).contains("requestRebind()")
         assertThat(generated).contains("override fun setVariable(variableId: Int, variable: Any?): Boolean")
@@ -165,9 +165,9 @@ class BindingFacadeGeneratorV2Test {
             dataBindingVariables = tree.rootMetadata.dataBindingVariables
         ).toString()
 
-        // 变量是 nullable 实际类型
-        assertThat(generated).contains("public var title: String? = null")
-        assertThat(generated).contains("public var vm: ItemViewModel? = null")
+        // 变量 setter 覆盖原生 DataBinding 基类，属性由原生基类提供
+        assertThat(generated).contains("override fun setTitle(title: String?)")
+        assertThat(generated).contains("override fun setVm(vm: ItemViewModel?)")
         // 不再是 Any?
         assertThat(generated).doesNotContain("public var title: Any?")
         assertThat(generated).doesNotContain("public var vm: Any?")
@@ -202,10 +202,13 @@ class BindingFacadeGeneratorV2Test {
             dataBindingVariables = variables
         ).toString()
 
-        // 基本类型也是 nullable（因为初始值为 null）
-        assertThat(generated).contains("public var count: Int? = null")
-        assertThat(generated).contains("public var isVisible: Boolean? = null")
-        assertThat(generated).contains("public var ratio: Float? = null")
+        // 基本类型与原生 DataBinding setter 一致，为非 nullable
+        assertThat(generated).contains("override fun setCount(count: Int)")
+        assertThat(generated).contains("override fun setIsVisible(isVisible: Boolean)")
+        assertThat(generated).contains("override fun setRatio(ratio: Float)")
+        assertThat(generated).contains("count = variable as Int")
+        assertThat(generated).contains("isVisible = variable as Boolean")
+        assertThat(generated).contains("ratio = variable as Float")
     }
 
     @Test
@@ -246,9 +249,47 @@ class BindingFacadeGeneratorV2Test {
         // 构造函数不包含变量参数
         assertThat(generated).contains("public class ItemBindX2CBinding private constructor(")
         assertThat(generated).contains("rootView: View,")
-        assertThat(generated).contains("public val titleText: TextView,")
-        assertThat(generated).contains(") : ViewDataBinding(null, rootView, 0)")
+        assertThat(generated).contains("titleText: TextView,")
+        assertThat(generated).contains(") : ItemBindBinding(null, rootView, 0, titleText)")
         assertThat(generated).doesNotContain("private constructor(\n    rootView: View,\n    titleText: TextView,\n    title:")
+    }
+
+    @Test
+    fun `native binding superclass constructor uses field name order`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <TextView
+                        android:id="@+id/title_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                    <Button
+                        android:id="@+id/action_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+        val tree = parser.parse(xml, "item_order")
+        val analyzed = analyzer.analyze(tree.root)
+
+        val generated = generator.generate(
+            analyzedRoot = analyzed,
+            layoutName = "item_order",
+            layoutResId = "R.layout.item_order",
+            useFastPath = true,
+            dataBindingVariables = emptyList()
+        ).toString()
+
+        assertThat(generated).contains(
+            "public class ItemOrderX2CBinding private constructor(\n" +
+                "  rootView: View,\n" +
+                "  actionButton: Button,\n" +
+                "  titleText: TextView,\n" +
+                ") : ItemOrderBinding(null, rootView, 0, actionButton, titleText)"
+        )
     }
 
     @Test
@@ -336,10 +377,10 @@ class BindingFacadeGeneratorV2Test {
         ).toString()
 
         // title 和 root 冲突，被跳过
-        assertThat(generated).contains("public val title: TextView")
+        assertThat(generated).contains(") : ItemConflictBinding(null, rootView, 0, title)")
         assertThat(generated).doesNotContain("public var title: String?")
         assertThat(generated).doesNotContain("public var root: String?")
         // validVar 不冲突，正常生成
-        assertThat(generated).contains("public var validVar: Int? = null")
+        assertThat(generated).contains("override fun setValidVar(validVar: Int)")
     }
 }

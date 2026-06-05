@@ -38,8 +38,9 @@ class BindingFacadeGeneratorV2(
         dataBindingVariables: List<DataBindingVariable> = emptyList()
     ): FileSpec {
         val bindingClassName = layoutNameToBindingClassName(layoutName)
+        val nativeBindingClassName = layoutNameToNativeBindingClassName(layoutName)
         val fields = when (val result = fieldCollector.collect(analyzedRoot.node)) {
-            is BindingFieldResult.Success -> result.fields
+            is BindingFieldResult.Success -> result.fields.sortedBy { it.propertyName }
             is BindingFieldResult.DuplicateIds -> emptyList()
         }
         val dataBindingProperties = dataBindingVariables.toCompatibilityProperties(fields)
@@ -64,43 +65,18 @@ class BindingFacadeGeneratorV2(
 
         val typeSpec = TypeSpec.classBuilder(bindingClassName)
             .primaryConstructor(constructor)
-            .superclass(ClassName("androidx.databinding", "ViewDataBinding"))
-            .addSuperclassConstructorParameter("null, rootView, 0")
+            .superclass(nativeBindingClassName)
+            .addSuperclassConstructorParameter(
+                (listOf("null", "rootView", "0") + fields.map { it.propertyName }).joinToString(", ")
+            )
             .apply {
-                // View 字段（非空，来自构造函数）
-                fields.forEach { field ->
-                    addProperty(
-                        PropertySpec.builder(field.propertyName, field.viewClass)
-                            .initializer(field.propertyName)
-                            .build()
-                    )
-                }
-                // DataBinding 变量（nullable 实际类型，mutable，初始 null）
                 dataBindingProperties.forEach { variable ->
-                    val resolvedType = DataBindingTypeResolver.resolve(variable.type)
-                    val propertyType = resolvedType.copy(nullable = true)
-                    addProperty(
-                        PropertySpec.builder(variable.name, propertyType)
-                            .mutable(true)
-                            .addAnnotation(
-                                AnnotationSpec.builder(ClassName("androidx.databinding", "Bindable"))
-                                    .useSiteTarget(AnnotationSpec.UseSiteTarget.GET)
-                                    .build()
-                            )
-                            .initializer("null")
-                            .setter(
-                                FunSpec.setterBuilder()
-                                    .addParameter("value", propertyType)
-                                    .addCode(
-                                        variableSetterBody(
-                                            variable.name,
-                                            dirtyFlagBits.getValue(variable.name),
-                                            brIdProperties.getValue(variable.name).propertyName
-                                        )
-                                    )
-                                    .build()
-                            )
-                            .build()
+                    addFunction(
+                        buildVariableSetter(
+                            variable,
+                            dirtyFlagBits.getValue(variable.name),
+                            brIdProperties.getValue(variable.name).propertyName
+                        )
                     )
                 }
             }
@@ -128,10 +104,23 @@ class BindingFacadeGeneratorV2(
             .build()
     }
 
+    private fun buildVariableSetter(
+        variable: DataBindingVariable,
+        dirtyFlag: Long,
+        brIdPropertyName: String
+    ): FunSpec {
+        return FunSpec.builder(variable.name.toNativeSetterName())
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter(variable.name, variable.toNativeSetterTypeName())
+            .addCode(variableSetterBody(variable.name, dirtyFlag, brIdPropertyName))
+            .build()
+    }
+
     private fun variableSetterBody(variableName: String, dirtyFlag: Long, brIdPropertyName: String): CodeBlock {
+        val backingFieldName = variableName.toNativeBackingFieldName()
         return CodeBlock.builder()
-            .beginControlFlow("if (field != value)")
-            .addStatement("field = value")
+            .beginControlFlow("if (%L != %L)", backingFieldName, variableName)
+            .addStatement("%L = %L", backingFieldName, variableName)
             .beginControlFlow("synchronized(this)")
             .addStatement("mDirtyFlags = mDirtyFlags or %LL", dirtyFlag)
             .endControlFlow()
@@ -162,7 +151,7 @@ class BindingFacadeGeneratorV2(
 
         builder.beginControlFlow("return when (variableId)")
         dataBindingProperties.forEach { variable ->
-            val resolvedType = DataBindingTypeResolver.resolve(variable.type).copy(nullable = true)
+            val resolvedType = variable.toNativeSetterTypeName()
             builder.beginControlFlow("%L ->", brIdProperties.getValue(variable.name).propertyName)
             builder.addStatement("%L = variable as %T", variable.name, resolvedType)
             builder.addStatement("true")
@@ -371,6 +360,10 @@ class BindingFacadeGeneratorV2(
         return layoutName.toPascalCase() + "X2CBinding"
     }
 
+    private fun layoutNameToNativeBindingClassName(layoutName: String): ClassName {
+        return ClassName("$rPackageName.databinding", layoutName.toPascalCase() + "Binding")
+    }
+
     /**
      * 构建 executeBindings() 方法，生成 @{} 表达式的绑定代码。
      */
@@ -557,7 +550,33 @@ class BindingFacadeGeneratorV2(
         return "${upper}_$index"
     }
 
+    private fun String.toNativeSetterName(): String {
+        return "set" + replaceFirstChar { it.uppercaseChar() }
+    }
+
+    private fun String.toNativeBackingFieldName(): String {
+        return "m" + replaceFirstChar { it.uppercaseChar() }
+    }
+
+    private fun DataBindingVariable.toNativeSetterTypeName() =
+        DataBindingTypeResolver.resolve(type).copy(nullable = !type.isPrimitiveDataBindingType())
+
+    private fun String.isPrimitiveDataBindingType(): Boolean {
+        return trim() in primitiveDataBindingTypes
+    }
+
     private companion object {
+        private val primitiveDataBindingTypes = setOf(
+            "int",
+            "long",
+            "float",
+            "double",
+            "boolean",
+            "byte",
+            "short",
+            "char"
+        )
+
         private val KOTLIN_KEYWORDS = setOf(
             "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if",
             "in", "interface", "is", "null", "object", "package", "return", "super", "this",
