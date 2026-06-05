@@ -208,9 +208,12 @@ binding.root
 binding.titleText
 ```
 
-`{Name}X2CBinding` 继承 `androidx.databinding.ViewDataBinding`，提供
+`{Name}X2CBinding` 继承原生 DataBinding AP 生成的 `{Name}Binding`，提供
 `inflate()`、`bind()`、`root`、按 `android:id` 生成的字段，以及类型化的 `<data>`
-变量属性。普通非 `<layout>` XML 不生成该类。
+变量属性。普通非 `<layout>` XML 不生成该类。DataBinding include 字段保持原生 binding
+类型；当被 include 的 layout 也能生成 `{Child}X2CBinding` 时，实际实例会使用 X2C 子类，
+并传播 include 变量、contained binding、`lifecycleOwner`、dirty flag 和
+`hasPendingBindings()` 状态。
 
 当前 binding 子类支持简单 `@{variable}` / `@{variable.property}` 表达式通过
 `executePendingBindings()` 正向写回到白名单属性；`@={}` 仅对 `EditText.text`

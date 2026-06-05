@@ -50,14 +50,16 @@
 
 **DataBinding 子集**
 
-- `{Name}X2CBinding` 继承 `androidx.databinding.ViewDataBinding`，并提供 `inflate()`、`bind()`、
-  `root` 和按 `android:id` 生成的字段。
+- `{Name}X2CBinding` 继承原生 DataBinding AP 生成的 `{Name}Binding`，并提供 `inflate()`、
+  `bind()`、`root` 和按 `android:id` 生成的字段。
 - `<data>` 变量会生成类型化 `@Bindable` 属性，setter 会维护 dirty flag、触发
   `notifyPropertyChanged()` 和 `requestRebind()`。
 - `setVariable(variableId, value)`、`invalidateAll()`、`hasPendingBindings()`、`onFieldChange()` 和
   `executeBindings()` 已按 LayoutX2C 支持子集生成。
 - 简单 `@{variable}` / `@{variable.property}` 表达式通过 `executePendingBindings()` 写回 View；
   白名单 `@={}` 绑定生成反向监听器。
+- DataBinding include 字段保持原生 binding 类型；可生成的子 layout 会以 X2C binding 子类实例
+  绑定，并传播 include 变量、contained binding、`lifecycleOwner` 和 pending binding 状态。
 - 生成代码不直接依赖 DataBinding AP 阶段输出的 `BR` 类；运行时会解析宿主 `BR` ID，并保留本地
   fallback ID 以保证 KSP Kotlin 编译顺序稳定。
 

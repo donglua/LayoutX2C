@@ -420,7 +420,7 @@ class LayoutX2CDigestStoreTest {
     @Test
     fun `cache compatibility key is bumped for file resource hash semantics`() {
         assertThat(LayoutX2CDigestCalculator.cacheCompatibilityKey("test"))
-            .isEqualTo("schema=v9|processor=test")
+            .isEqualTo("schema=v10|processor=test")
     }
 
     @Test
