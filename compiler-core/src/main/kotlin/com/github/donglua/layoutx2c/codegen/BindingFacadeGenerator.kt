@@ -15,7 +15,7 @@ import com.squareup.kotlinpoet.TypeSpec
 class BindingFacadeGenerator(
     private val packageName: String,
     private val rPackageName: String,
-    private val fieldCollector: BindingFieldCollector = BindingFieldCollector()
+    private val fieldCollector: BindingFieldCollector = BindingFieldCollector(packageName)
 ) {
     fun generate(
         analyzedRoot: AnalyzedNode,
@@ -133,13 +133,25 @@ class BindingFacadeGenerator(
     private fun bindBody(bindingClassName: String, fields: List<BindingField>): CodeBlock {
         val builder = CodeBlock.builder()
         fields.forEach { field ->
-            builder.addStatement(
-                "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
-                field.propertyName,
-                field.viewClass,
-                field.idName,
-                "Missing required view with ID: ${field.idName}"
-            )
+            if (field.isNestedBinding) {
+                val rootVarName = "${field.propertyName}Root"
+                builder.addStatement(
+                    "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
+                    rootVarName,
+                    ClassName("android.view", "View"),
+                    field.idName,
+                    "Missing required view with ID: ${field.idName}"
+                )
+                builder.addStatement("val %L = %T.bind(%L)", field.propertyName, field.viewClass, rootVarName)
+            } else {
+                builder.addStatement(
+                    "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
+                    field.propertyName,
+                    field.viewClass,
+                    field.idName,
+                    "Missing required view with ID: ${field.idName}"
+                )
+            }
         }
         builder.addStatement(
             "return %N(%L)",

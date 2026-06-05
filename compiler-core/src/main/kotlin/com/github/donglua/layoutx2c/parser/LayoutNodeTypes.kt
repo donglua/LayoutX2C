@@ -6,7 +6,11 @@ package com.github.donglua.layoutx2c.parser
  */
 sealed class LayoutNodeType {
     object Regular : LayoutNodeType()
-    data class Include(val layoutRef: String, val resolutionError: String? = null) : LayoutNodeType()
+    data class Include(
+        val layoutRef: String,
+        val resolutionError: String? = null,
+        val isDataBindingLayout: Boolean = false
+    ) : LayoutNodeType()
     object Merge : LayoutNodeType()
     data class ViewStub(val layoutRef: String, val resolutionError: String? = null) : LayoutNodeType()
 }

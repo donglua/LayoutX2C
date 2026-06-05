@@ -3,14 +3,20 @@ package com.github.donglua.layoutx2c.codegen
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
 
+import com.github.donglua.layoutx2c.parser.IncludeResolver
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.LayoutNodeType
 
 import com.google.common.truth.Truth.assertThat
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class LayoutCodeGeneratorTest {
+
+    @get:Rule
+    val tempFolder = TemporaryFolder()
 
     private val parser = XmlLayoutParser()
     private val analyzer = LayoutAnalyzer()
@@ -61,6 +67,38 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("refs: SparseArray<View>?")
         assertThat(generated).contains("refs?.put(R.id.root_container, root)")
         assertThat(generated).contains("refs?.put(R.id.title_text, root_child0)")
+    }
+
+    @Test
+    fun `include with id assigns id to inflated root`() {
+        tempFolder.newFile("included_panel.xml").writeText(
+            """
+                <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            """.trimIndent()
+        )
+        val includeParser = XmlLayoutParser(includeResolver = IncludeResolver(tempFolder.root))
+        val tree = includeParser.parse(
+            """
+                <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <include
+                        android:id="@+id/layout1"
+                        layout="@layout/included_panel"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent" />
+                </LinearLayout>
+            """.trimIndent(),
+            "host_layout"
+        )
+        val analyzed = LayoutAnalyzerV2().analyze(tree.root)
+
+        val generated = generator.generate(analyzed, "host_layout", "R.layout.host_layout").toString()
+
+        assertThat(generated).contains("val root_child0 = IncludedPanelX2C.inflate(context, root)")
+        assertThat(generated).contains("root_child0.id = R.id.layout1")
     }
 
     @Test

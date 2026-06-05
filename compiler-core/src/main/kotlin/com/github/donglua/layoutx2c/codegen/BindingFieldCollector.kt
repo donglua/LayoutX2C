@@ -37,16 +37,18 @@ class BindingFieldCollector(
     }
 
     private fun collectFields(node: LayoutNode, fields: MutableList<BindingField>) {
+        val includeNode = node.nodeType as? LayoutNodeType.Include
         node.attributes["android:id"]?.toIdName()?.let { idName ->
+            val isNestedBinding = includeNode?.isDataBindingLayout == true && node.tagName != "merge"
             fields += BindingField(
                 idName = idName,
                 propertyName = idName.toPropertyName(),
-                viewClass = bindingViewClass(node),
-                isNestedBinding = node.nodeType is LayoutNodeType.Include && node.tagName != "merge"
+                viewClass = bindingViewClass(node, isNestedBinding),
+                isNestedBinding = isNestedBinding
             )
         }
 
-        if (node.nodeType is LayoutNodeType.Include && node.tagName != "merge") {
+        if (includeNode != null) {
             return
         }
 
@@ -70,10 +72,10 @@ class BindingFieldCollector(
             .joinToString("")
     }
 
-    private fun bindingViewClass(node: LayoutNode): ClassName {
-        val nodeType = node.nodeType
-        if (nodeType is LayoutNodeType.Include && node.tagName != "merge") {
-            return ClassName(bindingPackageName, nodeType.layoutRef.toPascalCase() + "X2CBinding")
+    private fun bindingViewClass(node: LayoutNode, isNestedBinding: Boolean = false): ClassName {
+        if (isNestedBinding) {
+            val includeNode = node.nodeType as LayoutNodeType.Include
+            return ClassName(bindingPackageName, includeNode.layoutRef.toPascalCase() + "X2CBinding")
         }
 
         val tagName = node.attributes["class"]?.takeIf { node.tagName == "view" && it.isNotBlank() } ?: node.tagName

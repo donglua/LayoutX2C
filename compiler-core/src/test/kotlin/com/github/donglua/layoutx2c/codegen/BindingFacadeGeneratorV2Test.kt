@@ -2,14 +2,20 @@ package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
 import com.github.donglua.layoutx2c.parser.DataBindingVariable
+import com.github.donglua.layoutx2c.parser.IncludeResolver
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.google.common.truth.Truth.assertThat
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 /**
  * V2 BindingFacadeGenerator 测试：验证类型化变量输出
  */
 class BindingFacadeGeneratorV2Test {
+
+    @get:Rule
+    val tempFolder = TemporaryFolder()
 
     private val parser = XmlLayoutParser()
     private val analyzer = LayoutAnalyzerV2()
@@ -17,6 +23,68 @@ class BindingFacadeGeneratorV2Test {
         packageName = "com.example.generated",
         rPackageName = "com.example"
     )
+
+    @Test
+    fun `generates binding fields for data binding includes without collecting child ids`() {
+        tempFolder.newFile("main_tab_view.xml").writeText(
+            """
+                <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                    <data>
+                        <variable
+                            name="text"
+                            type="java.lang.String" />
+                    </data>
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+                        <TextView
+                            android:id="@+id/view_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@{text}" />
+                    </FrameLayout>
+                </layout>
+            """.trimIndent()
+        )
+        val includeParser = XmlLayoutParser(includeResolver = IncludeResolver(tempFolder.root))
+        val tree = includeParser.parse(
+            """
+                <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+                        <include
+                            android:id="@+id/layout1"
+                            layout="@layout/main_tab_view"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent" />
+                        <include
+                            android:id="@+id/layout2"
+                            layout="@layout/main_tab_view"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent" />
+                    </LinearLayout>
+                </layout>
+            """.trimIndent(),
+            "main_tab_layout"
+        )
+        val analyzed = analyzer.analyze(tree.root)
+
+        val generated = generator.generate(
+            analyzedRoot = analyzed,
+            layoutName = "main_tab_layout",
+            layoutResId = "R.layout.main_tab_layout",
+            useFastPath = true,
+            dataBindingVariables = tree.rootMetadata.dataBindingVariables
+        ).toString()
+
+        assertThat(generated).contains("public val layout1: MainTabViewX2CBinding")
+        assertThat(generated).contains("public val layout2: MainTabViewX2CBinding")
+        assertThat(generated).contains("val layout1Root = rootView.findViewById<View>(R.id.layout1)")
+        assertThat(generated).contains("val layout1 = MainTabViewX2CBinding.bind(layout1Root)")
+        assertThat(generated).contains("val binding = MainTabLayoutX2CBinding(rootView, layout1, layout2)")
+        assertThat(generated).doesNotContain("public val viewText: TextView")
+    }
 
     @Test
     fun `generated binding extends ViewDataBinding and implements supported contract`() {
