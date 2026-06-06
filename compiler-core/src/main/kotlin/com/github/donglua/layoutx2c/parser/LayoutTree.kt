@@ -13,12 +13,18 @@ data class LayoutRootMetadata(
     val originalRootTagName: String,
     val isDataBindingLayout: Boolean = originalRootTagName == "layout",
     val isMalformedDataBindingLayout: Boolean = false,
-    val dataBindingVariables: List<DataBindingVariable> = emptyList()
+    val dataBindingVariables: List<DataBindingVariable> = emptyList(),
+    val dataBindingImports: List<DataBindingImport> = emptyList()
 )
 
 data class DataBindingVariable(
     val name: String,
     val type: String
+)
+
+data class DataBindingImport(
+    val type: String,
+    val alias: String?
 )
 
 data class LayoutNode(

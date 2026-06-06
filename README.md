@@ -98,6 +98,34 @@ object LayoutX2CConfig {
 例如 `app:priceColor="@color/red"` 会生成类似
 `setPriceColor(ContextCompat.getColor(context, R.color.red))` 的 setter 调用。
 
+如果项目里有确认安全的 DataBinding `BindingAdapter`，也可以显式声明白名单。LayoutX2C
+不会自动扫描或猜测 BindingAdapter；只有声明过的属性组合会在生成的 binding facade
+中调用指定方法，未声明或表达式无法静态转换的场景会继续 fallback，避免静默丢语义：
+
+```kotlin
+import com.github.donglua.layoutx2c.runtime.annotation.FastBindingAdapter
+import com.github.donglua.layoutx2c.runtime.annotation.FastBindingAdapters
+import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig
+
+@FastLayoutConfig
+@FastBindingAdapters(
+    FastBindingAdapter(
+        attrs = [
+            "app:stateColorRes",
+            "app:stateSizeDp"
+        ],
+        methodClass = SampleBindingAdapters::class,
+        methodName = "setViewState"
+    )
+)
+object LayoutX2CConfig {
+    val layouts = intArrayOf(R.layout.item_sample_binding_adapter)
+}
+```
+
+例如 `app:stateColorRes="@{R.color.sample_state}"` 和 `app:stateSizeDp="@{3F}"`
+会生成类似 `SampleBindingAdapters.setViewState(view, R.color.sample_state, 3f)`。
+
 只有在资源目录、`R` 包名或生成包名不符合默认推导时，才需要手动传：
 `layoutx2c.resDir`、`layoutx2c.rPackageName`、`layoutx2c.packageName`。
 
@@ -153,6 +181,7 @@ fallback 策略。
 - `ViewStub`
 - `View`
 - `@FastCustomViews` 白名单声明的自定义 View（仅生成显式声明的 typed 属性）
+- `@FastBindingAdapters` 白名单声明的 DataBinding BindingAdapter（仅生成显式声明的属性组合）
 
 高频属性支持：
 

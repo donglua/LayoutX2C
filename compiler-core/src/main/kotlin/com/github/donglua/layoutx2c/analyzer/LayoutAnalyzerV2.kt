@@ -1,5 +1,7 @@
 package com.github.donglua.layoutx2c.analyzer
 
+import com.github.donglua.layoutx2c.codegen.BindingAdapterDescriptor
+import com.github.donglua.layoutx2c.codegen.DataBindingExpressionParser
 import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.LayoutNodeType
 import com.github.donglua.layoutx2c.registry.DefaultViewRegistry
@@ -16,7 +18,8 @@ import com.github.donglua.layoutx2c.resources.StyleResolver
  */
 class LayoutAnalyzerV2(
     private val viewRegistry: ViewAnalysisRegistry = DefaultViewRegistry,
-    private val styleResolver: StyleResolver = NoStyleResolver
+    private val styleResolver: StyleResolver = NoStyleResolver,
+    private val bindingAdapters: List<BindingAdapterDescriptor> = emptyList()
 ) {
 
     companion object {
@@ -169,15 +172,22 @@ class LayoutAnalyzerV2(
         val twoWayBinding = mutableSetOf<String>()
 
         for (attrName in node.attributes.keys) {
+            val attrValue = node.attributes[attrName] ?: ""
+            val isTwoWay = attrValue.startsWith("@={") && attrValue.endsWith("}")
+            val isOneWay = !isTwoWay && attrValue.startsWith("@{") && attrValue.endsWith("}")
             when {
                 isXmlnsAttribute(attrName) -> { /* 忽略 */ }
                 isToolsAttribute(attrName) -> supported.add(attrName)
+                (isOneWay || isTwoWay) && isDeclaredBindingAdapterAttribute(attrName) -> {
+                    if (isSupportedBindingAdapterExpression(attrValue)) {
+                        dataBinding.add(attrName)
+                        if (isTwoWay) twoWayBinding.add(attrName)
+                    } else {
+                        unsupported.add(attrName)
+                    }
+                }
                 viewRegistry.isSupportedAttribute(node, parentTagName, attrName) -> {
                     // 检查属性值中的表达式
-                    val attrValue = node.attributes[attrName] ?: ""
-                    val isTwoWay = attrValue.startsWith("@={") && attrValue.endsWith("}")
-                    val isOneWay = !isTwoWay && attrValue.startsWith("@{") && attrValue.endsWith("}")
-
                     when {
                         isTwoWay || isOneWay -> {
                             if (hasComplexDataBindingExpression(attrValue)) {
@@ -197,6 +207,15 @@ class LayoutAnalyzerV2(
         }
 
         return AttributeClassification(supported, unsupported, dataBinding, twoWayBinding)
+    }
+
+    private fun isDeclaredBindingAdapterAttribute(attrName: String): Boolean {
+        return bindingAdapters.any { descriptor -> attrName in descriptor.attrs }
+    }
+
+    private fun isSupportedBindingAdapterExpression(attrValue: String): Boolean {
+        val expression = DataBindingExpressionParser.extractExpression(attrValue)?.trim() ?: return false
+        return DataBindingExpressionParser.expressionToCode(expression) != null
     }
 
     private data class AttributeClassification(

@@ -1,6 +1,7 @@
 package com.github.donglua.layoutx2c.ksp
 
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
+import com.github.donglua.layoutx2c.codegen.BindingAdapterDescriptor
 import com.github.donglua.layoutx2c.codegen.BindingFacadeEligibility
 import com.github.donglua.layoutx2c.codegen.BindingFacadeStatus
 import com.github.donglua.layoutx2c.codegen.BindingFacadeGeneratorV2
@@ -76,6 +77,7 @@ class LayoutX2CProcessor(
                 packageName = annotated.packageName(),
                 rPackageName = LayoutX2CConfigParser.extractRPackageName(sourceText),
                 customViews = CustomViewConfigParser.extractCustomViews(sourceText),
+                bindingAdapters = BindingAdapterConfigParser.extractBindingAdapters(sourceText),
                 ksFile = sourceFile
             )
             layoutNames.addAll(LayoutX2CConfigParser.extractLayoutNames(sourceText))
@@ -96,11 +98,13 @@ class LayoutX2CProcessor(
                 }
             }
             annotated.containingFile?.let { sourceFile ->
+                val sourceText = File(sourceFile.filePath).readText()
                 configSources += LayoutX2CSource(
                     file = File(sourceFile.filePath),
                     packageName = annotated.packageName(),
                     rPackageName = sourceFile.rPackageName(),
-                    customViews = CustomViewConfigParser.extractCustomViews(File(sourceFile.filePath).readText()),
+                    customViews = CustomViewConfigParser.extractCustomViews(sourceText),
+                    bindingAdapters = BindingAdapterConfigParser.extractBindingAdapters(sourceText),
                     ksFile = sourceFile
                 )
             }
@@ -110,11 +114,13 @@ class LayoutX2CProcessor(
         val patternAnnotated = resolver.getSymbolsWithAnnotation(ANNOTATION_FAST_LAYOUT_PATTERN).toList()
         for (annotated in patternAnnotated) {
             annotated.containingFile?.let { sourceFile ->
+                val sourceText = File(sourceFile.filePath).readText()
                 configSources += LayoutX2CSource(
                     file = File(sourceFile.filePath),
                     packageName = annotated.packageName(),
                     rPackageName = sourceFile.rPackageName(),
-                    customViews = CustomViewConfigParser.extractCustomViews(File(sourceFile.filePath).readText()),
+                    customViews = CustomViewConfigParser.extractCustomViews(sourceText),
+                    bindingAdapters = BindingAdapterConfigParser.extractBindingAdapters(sourceText),
                     ksFile = sourceFile
                 )
             }
@@ -168,7 +174,8 @@ class LayoutX2CProcessor(
         )
         val analyzer = LayoutAnalyzerV2(
             viewRegistry = viewRegistry,
-            styleResolver = StyleResourceRepository.fromResDir(config.resDir)
+            styleResolver = StyleResourceRepository.fromResDir(config.resDir),
+            bindingAdapters = config.bindingAdapters
         )
 
         // 创建带 include 解析能力的 parser，layoutDir 用于查找被 include 的 XML
@@ -185,7 +192,11 @@ class LayoutX2CProcessor(
             ),
             viewRegistry = viewRegistry
         )
-        val bindingFacadeGen = BindingFacadeGeneratorV2(config.packageName, config.rPackageName)
+        val bindingFacadeGen = BindingFacadeGeneratorV2(
+            packageName = config.packageName,
+            rPackageName = config.rPackageName,
+            bindingAdapters = config.bindingAdapters
+        )
         val generatedLayouts = mutableListOf<Pair<String, String>>()
         val sourceFiles = configSources.map { it.ksFile }.distinctBy { it.filePath }
         val layoutDependencies = LayoutX2CDependencyFactory.layout(sourceFiles)
@@ -290,7 +301,8 @@ class LayoutX2CProcessor(
                         layoutName = layoutName,
                         layoutResId = layoutResId,
                         useFastPath = bindingFacadeEligibility.useFastPath,
-                        dataBindingVariables = tree.rootMetadata.dataBindingVariables
+                        dataBindingVariables = tree.rootMetadata.dataBindingVariables,
+                        dataBindingImports = tree.rootMetadata.dataBindingImports
                     )
                     val bindingFacadeFile = codeGenerator.createNewFile(
                         layoutDependencies,
@@ -370,7 +382,8 @@ class LayoutX2CProcessor(
             rPackageName = rPackageName,
             manifestFile = manifestFile,
             symbolFiles = symbolFiles,
-            customViews = configSources.flatMap { it.customViews }
+            customViews = configSources.flatMap { it.customViews },
+            bindingAdapters = configSources.flatMap { it.bindingAdapters }
         )
     }
 
@@ -513,7 +526,8 @@ private data class LayoutX2CProcessorConfig(
     val rPackageName: String,
     val manifestFile: File?,
     val symbolFiles: List<File>,
-    val customViews: List<CustomViewDescriptor>
+    val customViews: List<CustomViewDescriptor>,
+    val bindingAdapters: List<BindingAdapterDescriptor>
 )
 
 internal fun expandLayoutNamesWithDependencies(layoutNames: Set<String>, resDir: File): Set<String> {
@@ -541,6 +555,7 @@ private data class LayoutX2CSource(
     val packageName: String?,
     val rPackageName: String?,
     val customViews: List<CustomViewDescriptor>,
+    val bindingAdapters: List<BindingAdapterDescriptor>,
     val ksFile: KSFile
 )
 
