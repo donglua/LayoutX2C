@@ -5,6 +5,9 @@ import java.io.File
 import java.util.jar.JarFile
 import javax.xml.parsers.DocumentBuilderFactory
 
+/**
+ * A module-local Android resource reference such as @color/primary.
+ */
 data class ResourceReference(
     val type: String,
     val name: String
@@ -17,16 +20,28 @@ data class ResolvedResourceReference(
     val packageName: String?
 )
 
+/**
+ * Resolves which generated R class owns a resource reference.
+ */
 interface ResourceReferenceResolver {
     fun resolve(type: String, name: String): ResolvedResourceReference?
 }
 
+/**
+ * Legacy resolver used by tests and code paths that do not have symbol data.
+ * It assumes every known-looking resource belongs to the generated file's
+ * imported current-module R class.
+ */
 object PermissiveResourceReferenceResolver : ResourceReferenceResolver {
     override fun resolve(type: String, name: String): ResolvedResourceReference {
         return ResolvedResourceReference(packageName = null)
     }
 }
 
+/**
+ * Symbol-backed resolver that keeps generated code on the correct R class when
+ * layouts reference resources merged from dependency packages.
+ */
 class StaticResourceReferenceResolver(
     owners: Map<ResourceReference, String>,
     private val currentPackageName: String
@@ -52,6 +67,10 @@ class StaticResourceReferenceResolver(
     }
 }
 
+/**
+ * Returns the Kotlin expression for a resolved resource, using the imported R
+ * for current-module references and a fully qualified package R otherwise.
+ */
 fun ResourceReferenceResolver.referenceCode(
     type: String,
     name: String,
@@ -66,6 +85,11 @@ fun ResourceReferenceResolver.referenceCode(
     }
 }
 
+/**
+ * Parses ordinary resource references that can be statically owned by an R
+ * class. New id declarations and android framework resources are intentionally
+ * excluded because they are handled by different codegen paths.
+ */
 fun parseResourceReference(value: String): ResourceReference? {
     if (!value.startsWith("@") || value.startsWith("@+")) return null
     if (value.startsWith("@android:")) return null
@@ -78,6 +102,11 @@ fun parseResourceReference(value: String): ResourceReference? {
     )
 }
 
+/**
+ * Compact resource symbol table assembled from source res folders, AGP symbol
+ * files, or compiled R classes. The optional owners map records package names
+ * for symbols that do not belong to the current module.
+ */
 class ResourceSymbolTable(
     val references: Set<ResourceReference>,
     val owners: Map<ResourceReference, String> = emptyMap()

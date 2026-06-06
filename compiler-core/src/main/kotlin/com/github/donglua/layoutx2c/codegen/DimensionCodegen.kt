@@ -4,6 +4,10 @@ import com.github.donglua.layoutx2c.resources.PermissiveResourceReferenceResolve
 import com.github.donglua.layoutx2c.resources.ResourceReferenceResolver
 import com.github.donglua.layoutx2c.resources.referenceCode
 
+/**
+ * Emits an integer pixel expression for XML attributes backed by Android's
+ * dimension-pixel-size semantics, such as layout params, margins, and padding.
+ */
 internal fun dimensionToCode(
     value: String,
     resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver,
@@ -29,6 +33,10 @@ internal fun dimensionToCode(
     }
 }
 
+/**
+ * Emits a raw pixel float expression for attributes that Android stores as
+ * continuous dimensions, for example textSize or elevation.
+ */
 internal fun dimensionToPxFloatCode(
     value: String,
     resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver,
@@ -54,6 +62,11 @@ internal fun dimensionToPxFloatCode(
     }
 }
 
+/**
+ * Emits a float expression after applying dimension-pixel-size rounding.
+ * This is used by setters whose parameter type is Float but whose XML behavior
+ * still follows getDimensionPixelSize-style rounding.
+ */
 internal fun dimensionToPixelSizeFloatCode(
     value: String,
     resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver,
