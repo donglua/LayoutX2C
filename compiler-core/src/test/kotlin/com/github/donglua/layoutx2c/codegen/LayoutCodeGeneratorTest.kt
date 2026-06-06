@@ -125,7 +125,7 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.nested_fallback,")
         assertThat(generated).contains(
-            "FallbackChildPlan(intArrayOf(1, 0), \"com.example.CustomView\", false), root_child1)"
+            "FallbackChildPlan(intArrayOf(1, 0), \"com.example.CustomView\"), root_child1)"
         )
     }
 
@@ -207,7 +207,7 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("FallbackInflater.inflateChild(context, R.layout.data_binding_nested_fallback,")
         assertThat(generated).contains(
-            "FallbackChildPlan(intArrayOf(1), \"com.example.CustomView\", false), root)"
+            "FallbackChildPlan(intArrayOf(1), \"com.example.CustomView\"), root)"
         )
     }
 
@@ -256,8 +256,8 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("val root_child0 = AppCompatTextView(context).apply {")
         assertThat(generated).contains(
             "val root_fallbackChildren = FallbackInflater.inflateChildren(context, R.layout.feature_home_entry, " +
-                "arrayOf(FallbackChildPlan(intArrayOf(1), \"com.example.widget.HomeTabLayout\", false), " +
-                "FallbackChildPlan(intArrayOf(2), \"androidx.constraintlayout.widget.Barrier\", false)), root)"
+                "arrayOf(FallbackChildPlan(intArrayOf(1), \"com.example.widget.HomeTabLayout\"), " +
+                "FallbackChildPlan(intArrayOf(2), \"androidx.constraintlayout.widget.Barrier\")), root)"
         )
         assertThat(generated).contains("val root_child1 = root_fallbackChildren[0]")
         assertThat(generated).contains("val root_child2 = root_fallbackChildren[1]")
@@ -303,8 +303,8 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("val root = ConstraintLayout(context)")
         assertThat(generated).contains(
             "val root_fallbackChildren = FallbackInflater.inflateChildren(context, R.layout.constraint_root_like, " +
-                "arrayOf(FallbackChildPlan(intArrayOf(1), \"com.example.widget.HomeTabLayout\", false), " +
-                "FallbackChildPlan(intArrayOf(2), \"com.example.widget.HomePager\", false)), root)"
+                "arrayOf(FallbackChildPlan(intArrayOf(1), \"com.example.widget.HomeTabLayout\"), " +
+                "FallbackChildPlan(intArrayOf(2), \"com.example.widget.HomePager\")), root)"
         )
         assertThat(generated).contains("val root_child0 = AppCompatTextView(context).apply {")
         assertThat(generated).contains("val root_child1 = root_fallbackChildren[0]")
@@ -346,8 +346,8 @@ class LayoutCodeGeneratorTest {
         ).toString()
 
         assertThat(generated).contains(
-            "arrayOf(FallbackChildPlan(intArrayOf(0), \"View\", false), " +
-                "FallbackChildPlan(intArrayOf(1), \"TextView\", false))"
+            "arrayOf(FallbackChildPlan(intArrayOf(0), \"View\"), " +
+                "FallbackChildPlan(intArrayOf(1), \"TextView\"))"
         )
     }
 
@@ -379,10 +379,10 @@ class LayoutCodeGeneratorTest {
         ).toString()
 
         assertThat(generated).contains(
-            "FallbackChildPlan(intArrayOf(0), \"TextView\", false)"
+            "FallbackChildPlan(intArrayOf(0), \"TextView\")"
         )
         assertThat(generated).doesNotContain(
-            "FallbackChildPlan(intArrayOf(0), \"TextView\", true)"
+            "FallbackChildPlan(intArrayOf(0), \"TextView\","
         )
     }
 

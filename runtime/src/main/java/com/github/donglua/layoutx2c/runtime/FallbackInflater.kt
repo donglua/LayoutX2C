@@ -16,8 +16,7 @@ import org.xmlpull.v1.XmlPullParser
 @PublicApi
 class FallbackChildPlan(
     val childPath: IntArray,
-    val targetTag: String,
-    val partialInflateAllowed: Boolean
+    val targetTag: String
 )
 
 @PublicApi

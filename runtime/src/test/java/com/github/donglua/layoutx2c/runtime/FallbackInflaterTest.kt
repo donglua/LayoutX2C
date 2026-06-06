@@ -31,15 +31,15 @@ class FallbackInflaterTest {
     }
 
     @Test
-    fun `child fallback does not keep a partial inflate whitelist`() {
+    fun `child fallback does not expose partial inflate controls`() {
         val source = fallbackInflaterSource()
 
         assertWithMessage("Parser replay partial inflate cannot preserve XmlBlock.Parser identity")
             .that(source)
             .doesNotContain("SAFE_PARTIAL_INFLATE_TAGS")
-        assertWithMessage("Fallback child plans should not re-enable parser replay partial inflate")
+        assertWithMessage("Fallback child plans should not expose a no-op partial inflate switch")
             .that(source)
-            .doesNotContain("childPlan.partialInflateAllowed")
+            .doesNotContain("partialInflateAllowed")
     }
 
     @Test

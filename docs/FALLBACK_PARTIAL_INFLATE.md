@@ -64,10 +64,10 @@ android.util.XmlPullAttributes cannot be cast to android.content.res.XmlBlock$Pa
 - `SAFE_PARTIAL_INFLATE_TAGS`
 - 按 tag 白名单启用 partial inflate
 - 按属性组合启用 partial inflate
-- 让 `FallbackChildPlan.partialInflateAllowed` 重新打开 parser replay 路径
+- 在 `FallbackChildPlan` 暴露 partial inflate 开关
 
-保留 `FallbackChildPlan` 的字段仅用于 API 兼容和生成代码结构稳定。runtime 不应读取该字段来启用
-partial inflate。
+`FallbackChildPlan` 只保留定位 fallback 子树所需的 `childPath` 和诊断用的 `targetTag`。
+不暴露不会生效的 partial inflate 开关，避免把 parser replay 方案带进 1.0 稳定 API。
 
 ## 仍然有效的设计约束
 
@@ -128,7 +128,7 @@ wrapper 方案。可研究方向包括：
 
 相关改动至少需要覆盖：
 
-- codegen 生成的 `FallbackChildPlan(..., false)`。
+- codegen 生成的 `FallbackChildPlan(childPath, targetTag)`，不包含 partial inflate 布尔参数。
 - runtime 源码不再包含 parser replay wrapper。
 - DataBinding wrapper 下的 `childPath` 定位。
 - 多 fallback sibling 只触发一次 full-tree extraction。

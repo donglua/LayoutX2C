@@ -302,11 +302,10 @@ class LayoutCodeGenerator(
 
     private fun childPlanToCode(childPath: List<Int>, node: AnalyzedNode): CodeBlock {
         return CodeBlock.of(
-            "%T(%L, %S, %L)",
+            "%T(%L, %S)",
             fallbackChildPlan,
             childPathToCode(childPath),
-            node.node.tagName,
-            false
+            node.node.tagName
         )
     }
 
