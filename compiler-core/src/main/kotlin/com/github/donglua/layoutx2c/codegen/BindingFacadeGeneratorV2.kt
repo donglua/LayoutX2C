@@ -1,6 +1,7 @@
 package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
+import com.github.donglua.layoutx2c.parser.DataBindingImport
 import com.github.donglua.layoutx2c.parser.DataBindingVariable
 import com.github.donglua.layoutx2c.parser.LayoutNodeType
 import com.squareup.kotlinpoet.AnnotationSpec
@@ -27,7 +28,8 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 class BindingFacadeGeneratorV2(
     private val packageName: String,
     private val rPackageName: String,
-    fieldCollector: BindingFieldCollector? = null
+    fieldCollector: BindingFieldCollector? = null,
+    private val bindingAdapters: List<BindingAdapterDescriptor> = emptyList()
 ) {
     private val fieldCollector: BindingFieldCollector = fieldCollector ?: BindingFieldCollector("$rPackageName.databinding")
 
@@ -36,7 +38,8 @@ class BindingFacadeGeneratorV2(
         layoutName: String,
         layoutResId: String,
         useFastPath: Boolean,
-        dataBindingVariables: List<DataBindingVariable> = emptyList()
+        dataBindingVariables: List<DataBindingVariable> = emptyList(),
+        dataBindingImports: List<DataBindingImport> = emptyList()
     ): FileSpec {
         val bindingClassName = layoutNameToBindingClassName(layoutName)
         val nativeBindingClassName = layoutNameToNativeBindingClassName(layoutName)
@@ -95,7 +98,7 @@ class BindingFacadeGeneratorV2(
             .addFunction(buildInvalidateAll(invalidateDirtyFlag, nestedBindingFields))
             .addFunction(buildHasPendingBindings(nestedBindingFields))
             .addFunction(buildOnFieldChange())
-            .addFunction(buildExecuteBindings(analyzedRoot, fields, nestedBindingFields))
+            .addFunction(buildExecuteBindings(analyzedRoot, fields, nestedBindingFields, dataBindingImports))
             .addFunction(buildSetupTwoWayBindings(analyzedRoot, fields))
             .apply {
                 if (nestedBindingFields.isNotEmpty()) {
@@ -429,7 +432,8 @@ class BindingFacadeGeneratorV2(
     private fun buildExecuteBindings(
         analyzedRoot: AnalyzedNode,
         fields: List<BindingField>,
-        nestedBindingFields: List<BindingField>
+        nestedBindingFields: List<BindingField>,
+        dataBindingImports: List<DataBindingImport>
     ): FunSpec {
         val builder = FunSpec.builder("executeBindings")
             .addModifiers(KModifier.PROTECTED, KModifier.OVERRIDE)
@@ -441,10 +445,11 @@ class BindingFacadeGeneratorV2(
 
         // 收集所有有 @{} 表达式的属性绑定
         val bindings = collectDataBindingExpressions(analyzedRoot, fields)
-        val includeBindings = collectIncludeVariableBindings(analyzedRoot, fields)
+        val adapterBindings = collectBindingAdapterBindings(analyzedRoot, fields, dataBindingImports)
+        val includeBindings = collectIncludeVariableBindings(analyzedRoot, fields, dataBindingImports)
 
         // 为每个绑定生成代码
-        if (bindings.isNotEmpty() || includeBindings.isNotEmpty()) {
+        if (bindings.isNotEmpty() || adapterBindings.isNotEmpty() || includeBindings.isNotEmpty()) {
             builder.beginControlFlow("if (dirtyFlags != 0L)")
         } else if (nestedBindingFields.isEmpty()) {
             builder.beginControlFlow("if (dirtyFlags == 0L)")
@@ -464,6 +469,17 @@ class BindingFacadeGeneratorV2(
             }
         }
 
+        adapterBindings.forEach { binding ->
+            val methodClassName = binding.descriptor.methodClassName.toClassName()
+            builder.addStatement(
+                "%T.%L(%L%L)",
+                methodClassName,
+                binding.descriptor.methodName,
+                binding.viewFieldName,
+                binding.argumentCodes.joinToString(prefix = if (binding.argumentCodes.isEmpty()) "" else ", ")
+            )
+        }
+
         includeBindings.forEach { binding ->
             builder.addStatement(
                 "%L.%L = %L",
@@ -473,7 +489,7 @@ class BindingFacadeGeneratorV2(
             )
         }
 
-        if (bindings.isNotEmpty() || includeBindings.isNotEmpty()) {
+        if (bindings.isNotEmpty() || adapterBindings.isNotEmpty() || includeBindings.isNotEmpty()) {
             builder.endControlFlow()
         }
 
@@ -558,9 +574,55 @@ class BindingFacadeGeneratorV2(
         return bindings
     }
 
+    private fun collectBindingAdapterBindings(
+        node: AnalyzedNode,
+        fields: List<BindingField>,
+        dataBindingImports: List<DataBindingImport>
+    ): List<BindingAdapterBinding> {
+        if (bindingAdapters.isEmpty()) return emptyList()
+        val bindings = mutableListOf<BindingAdapterBinding>()
+
+        fun traverse(analyzed: AnalyzedNode) {
+            val rawId = analyzed.node.attributes["android:id"]
+            val idName = rawId?.removePrefix("@+id/")?.removePrefix("@id/")
+            val viewField = idName?.let { id -> fields.find { it.idName == id } }
+            if (viewField != null) {
+                bindingAdapters.forEach { descriptor ->
+                    val presentAttrs = descriptor.attrs.filter { attrName ->
+                        attrName in analyzed.dataBindingAttributes && analyzed.node.attributes.containsKey(attrName)
+                    }
+                    val shouldEmit = if (descriptor.requireAll) {
+                        presentAttrs.size == descriptor.attrs.size
+                    } else {
+                        presentAttrs.isNotEmpty()
+                    }
+                    if (shouldEmit) {
+                        val argumentCodes = descriptor.attrs.mapNotNull { attrName ->
+                            val attrValue = analyzed.node.attributes[attrName] ?: return@mapNotNull null
+                            dataBindingExpressionToCode(attrValue, dataBindingImports)?.toString()
+                        }
+                        if ((!descriptor.requireAll || argumentCodes.size == descriptor.attrs.size) && argumentCodes.isNotEmpty()) {
+                            bindings += BindingAdapterBinding(
+                                descriptor = descriptor,
+                                viewFieldName = viewField.propertyName,
+                                argumentCodes = argumentCodes
+                            )
+                        }
+                    }
+                }
+            }
+
+            analyzed.children.forEach { traverse(it) }
+        }
+
+        traverse(node)
+        return bindings
+    }
+
     private fun collectIncludeVariableBindings(
         node: AnalyzedNode,
-        fields: List<BindingField>
+        fields: List<BindingField>,
+        dataBindingImports: List<DataBindingImport>
     ): List<IncludeVariableBinding> {
         val bindings = mutableListOf<IncludeVariableBinding>()
 
@@ -573,7 +635,7 @@ class BindingFacadeGeneratorV2(
                 if (field != null) {
                     includeNode.includeAttributes.forEach { (attrName, attrValue) ->
                         val variableName = attrName.toIncludeVariableName() ?: return@forEach
-                        val expressionCode = dataBindingExpressionToCode(attrValue) ?: return@forEach
+                        val expressionCode = dataBindingExpressionToCode(attrValue, dataBindingImports) ?: return@forEach
                         bindings += IncludeVariableBinding(
                             bindingFieldName = field.propertyName,
                             variableName = variableName,
@@ -631,6 +693,12 @@ class BindingFacadeGeneratorV2(
         val expressionCode: CodeBlock
     )
 
+    private data class BindingAdapterBinding(
+        val descriptor: BindingAdapterDescriptor,
+        val viewFieldName: String,
+        val argumentCodes: List<String>
+    )
+
     private data class BrIdProperty(
         val propertyName: String,
         val fallbackId: Int
@@ -686,7 +754,10 @@ class BindingFacadeGeneratorV2(
         return localName.takeIf { it.isKotlinIdentifier() }
     }
 
-    private fun dataBindingExpressionToCode(attrValue: String): CodeBlock? {
+    private fun dataBindingExpressionToCode(
+        attrValue: String,
+        dataBindingImports: List<DataBindingImport>
+    ): CodeBlock? {
         val expression = when {
             attrValue.startsWith("@{") && attrValue.endsWith("}") ->
                 attrValue.substring(2, attrValue.length - 1).trim()
@@ -695,11 +766,26 @@ class BindingFacadeGeneratorV2(
             else -> return null
         }
 
-        if (expression.length >= 2 && expression.first() == '`' && expression.last() == '`') {
-            return CodeBlock.of("%S", expression.substring(1, expression.length - 1))
-        }
+        val importedExpression = qualifyImportedExpression(expression, dataBindingImports)
+        return DataBindingExpressionParser.expressionToCode(importedExpression)?.let { CodeBlock.of("%L", it) }
+    }
 
-        return CodeBlock.of("%L", expression)
+    private fun String.toClassName(): ClassName {
+        val packageName = substringBeforeLast('.', missingDelimiterValue = "")
+        val simpleName = substringAfterLast('.')
+        return ClassName(packageName, simpleName)
+    }
+
+    private fun qualifyImportedExpression(expression: String, dataBindingImports: List<DataBindingImport>): String {
+        val trimmed = expression.trim()
+        val firstSegment = trimmed.substringBefore('.', missingDelimiterValue = "")
+        if (firstSegment.isEmpty()) return trimmed
+        val importedType = dataBindingImports.firstOrNull { dataBindingImport ->
+            val importedName = dataBindingImport.alias ?: dataBindingImport.type.substringAfterLast('.')
+            importedName == firstSegment
+        } ?: return trimmed
+        val suffix = trimmed.removePrefix(firstSegment)
+        return importedType.type + suffix
     }
 
     private fun DataBindingVariable.toNativeSetterTypeName() =

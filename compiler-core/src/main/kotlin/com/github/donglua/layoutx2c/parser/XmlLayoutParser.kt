@@ -52,11 +52,11 @@ class XmlLayoutParser(
         }
 
         val elementChildren = rootElement.elementChildren()
-        val variables = elementChildren
+        val dataElement = elementChildren
             .firstOrNull { it.element.tagName == "data" }
             ?.element
-            ?.dataBindingVariables()
-            .orEmpty()
+        val variables = dataElement?.dataBindingVariables().orEmpty()
+        val imports = dataElement?.dataBindingImports().orEmpty()
         val viewRoot = elementChildren.singleOrNull { it.element.tagName != "data" }
         val isMalformed = viewRoot == null
         return ParsedLayoutRoot(
@@ -65,7 +65,8 @@ class XmlLayoutParser(
                 originalRootTagName = rootElement.tagName,
                 isDataBindingLayout = true,
                 isMalformedDataBindingLayout = isMalformed,
-                dataBindingVariables = variables
+                dataBindingVariables = variables,
+                dataBindingImports = imports
             )
         )
     }
@@ -240,6 +241,23 @@ class XmlLayoutParser(
                     null
                 } else {
                     DataBindingVariable(name, type)
+                }
+            }
+            .toList()
+    }
+
+    private fun Element.dataBindingImports(): List<DataBindingImport> {
+        return elementChildren()
+            .asSequence()
+            .map { it.element }
+            .filter { it.tagName == "import" }
+            .mapNotNull { element ->
+                val type = element.getAttribute("type").trim()
+                val alias = element.getAttribute("alias").trim().takeIf { it.isNotEmpty() }
+                if (type.isEmpty()) {
+                    null
+                } else {
+                    DataBindingImport(type, alias)
                 }
             }
             .toList()

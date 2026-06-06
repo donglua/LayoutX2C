@@ -153,6 +153,29 @@ class XmlLayoutParserTest {
         assertThat(tree.rootMetadata.dataBindingVariables.map { it.type }).containsExactly("java.lang.String")
     }
 
+    @Test
+    fun `parses data binding imports with aliases`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <data>
+                    <import type="com.example.shared.R" />
+                    <import type="com.example.feature.R" alias="FeatureR" />
+                </data>
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </layout>
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "data_binding_imports")
+
+        assertThat(tree.rootMetadata.dataBindingImports.map { it.type }).containsExactly(
+            "com.example.shared.R",
+            "com.example.feature.R"
+        ).inOrder()
+        assertThat(tree.rootMetadata.dataBindingImports.map { it.alias }).containsExactly(null, "FeatureR").inOrder()
+    }
+
     // --- include / merge / ViewStub node type detection ---
 
     @Test

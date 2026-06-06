@@ -64,6 +64,28 @@ object DataBindingExpressionParser {
         }
     }
 
+    fun expressionToCode(expression: String): String? {
+        val trimmed = expression.trim()
+        if (trimmed.isEmpty()) return null
+        if (trimmed.length >= 2 && trimmed.first() == '`' && trimmed.last() == '`') {
+            return "\"${escapeKotlinString(trimmed.substring(1, trimmed.length - 1))}\""
+        }
+        if (trimmed.length >= 2 && trimmed.first() == '"' && trimmed.last() == '"') {
+            return trimmed
+        }
+        if (trimmed.matches(Regex("""-?\d+"""))) return trimmed
+        if (trimmed.matches(Regex("""-?(?:\d+\.\d*|\d*\.\d+)(?:[fF])?"""))) {
+            return trimmed.lowercase()
+        }
+        if (trimmed.matches(Regex("""-?\d+[fF]"""))) {
+            return trimmed.lowercase()
+        }
+        if (trimmed.matches(Regex("""[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*"""))) {
+            return trimmed
+        }
+        return null
+    }
+
     private fun parseExpression(expr: String): DataBindingExpression {
         val trimmed = expr.trim()
 
@@ -107,6 +129,15 @@ object DataBindingExpressionParser {
         if (name.isEmpty()) return false
         if (!name.first().isLetter() && name.first() != '_') return false
         return name.drop(1).all { it.isLetterOrDigit() || it == '_' }
+    }
+
+    private fun escapeKotlinString(value: String): String {
+        return value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
     }
 
     /**
