@@ -19,5 +19,6 @@ data class CustomViewAttribute(
 
 data class CustomViewDescriptor(
     val viewClassName: String,
-    val attributes: List<CustomViewAttribute>
+    val attributes: List<CustomViewAttribute>,
+    val superClassNames: Set<String> = emptySet()
 )

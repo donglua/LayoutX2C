@@ -7,6 +7,8 @@ import com.github.donglua.layoutx2c.parser.IncludeResolver
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.LayoutNodeType
+import com.github.donglua.layoutx2c.registry.CustomViewDescriptor
+import com.github.donglua.layoutx2c.registry.ResourceAwareViewRegistry
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
@@ -957,6 +959,37 @@ class LayoutCodeGeneratorTest {
         val generated = generator.generate(analyzed, "view_gravity", "R.layout.view_gravity").toString()
 
         assertThat(analyzed.unsupportedAttributes).contains("android:gravity")
+        assertThat(generated).doesNotContain("gravity = android.view.Gravity.CENTER")
+    }
+
+    @Test
+    fun `gravity on custom frame layout subclass is accepted and not emitted`() {
+        val customRegistry = ResourceAwareViewRegistry(
+            rPackageName = "com.example",
+            customViews = listOf(
+                CustomViewDescriptor(
+                    viewClassName = "com.example.widget.BadgeFrameLayout",
+                    attributes = emptyList(),
+                    superClassNames = setOf("android.widget.FrameLayout")
+                )
+            )
+        )
+        val xml = """
+            <com.example.widget.BadgeFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center" />
+        """.trimIndent()
+
+        val analyzed = LayoutAnalyzer(customRegistry).analyze(parser.parse(xml, "custom_frame_gravity").root)
+        val generated = LayoutCodeGenerator(
+            packageName = "com.example.generated",
+            rPackageName = "com.example",
+            viewRegistry = customRegistry
+        ).generate(analyzed, "custom_frame_gravity", "R.layout.custom_frame_gravity").toString()
+
+        assertThat(analyzed.unsupportedAttributes).doesNotContain("android:gravity")
+        assertThat(generated).contains("val root = BadgeFrameLayout(context)")
         assertThat(generated).doesNotContain("gravity = android.view.Gravity.CENTER")
     }
 

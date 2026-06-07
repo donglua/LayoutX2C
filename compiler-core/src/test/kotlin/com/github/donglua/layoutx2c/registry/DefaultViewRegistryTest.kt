@@ -247,6 +247,34 @@ class DefaultViewRegistryTest {
         assertThat(customRegistry.canEmitAttribute(analyzed, "app:priceColor")).isTrue()
     }
 
+    @Test
+    fun `custom view inheriting frame layout accepts frame layout gravity`() {
+        val customRegistry = ResourceAwareViewRegistry(
+            rPackageName = "com.example",
+            customViews = listOf(
+                CustomViewDescriptor(
+                    viewClassName = "com.example.widget.BadgeFrameLayout",
+                    attributes = emptyList(),
+                    superClassNames = setOf("android.widget.FrameLayout")
+                )
+            )
+        )
+
+        val root = parser.parse(
+            """
+                <com.example.widget.BadgeFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center" />
+            """.trimIndent(),
+            "custom_badge_frame_layout"
+        ).root
+
+        val analyzed = LayoutAnalyzer(customRegistry).analyze(root)
+
+        assertThat(analyzed.unsupportedAttributes).doesNotContain("android:gravity")
+    }
+
     private fun flatten(node: AnalyzedNode): List<AnalyzedNode> {
         return listOf(node) + node.children.flatMap(::flatten)
     }

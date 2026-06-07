@@ -420,7 +420,34 @@ class LayoutX2CDigestStoreTest {
     @Test
     fun `cache compatibility key is bumped for file resource hash semantics`() {
         assertThat(LayoutX2CDigestCalculator.cacheCompatibilityKey("test"))
-            .isEqualTo("schema=v10|processor=test")
+            .isEqualTo("schema=v11|processor=test")
+    }
+
+    @Test
+    fun `layout digest changes when registry config changes`() {
+        val projectDir = tempDir.newFolder("layoutx2c-registry-config-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val layoutFile = resDir.resolve("layout/demo.xml")
+        layoutFile.parentFile.mkdirs()
+        layoutFile.writeText("<com.example.CustomFrame android:id=\"@+id/root\" />")
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example",
+            registryConfigKey = "customViews=view=com.example.CustomFrame;supers=android.view.View"
+        )
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = layoutFile,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example",
+            registryConfigKey = "customViews=view=com.example.CustomFrame;supers=android.widget.FrameLayout"
+        )
+
+        assertThat(second).isNotEqualTo(first)
     }
 
     @Test

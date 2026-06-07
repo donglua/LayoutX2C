@@ -240,7 +240,7 @@ open class ResourceAwareViewRegistry(
         CommonStateAttributeHandler(),
         CommonViewPresentationAttributeHandler(),
         PaddingAttributeHandler(),
-        GravityAttributeHandler,
+        GravityAttributeHandler(),
         FillViewportAttributeHandler,
         RecyclerViewLayoutManagerAttributeHandler,
         ViewStubAttributeHandler()
@@ -426,6 +426,16 @@ open class ResourceAwareViewRegistry(
     private fun LayoutNode.matchesCustomView(descriptor: CustomViewDescriptor): Boolean {
         return tagName == descriptor.viewClassName ||
             tagName == descriptor.viewClassName.substringAfterLast('.')
+    }
+
+    private fun LayoutNode.matchesCustomViewWithSuperClass(superClassName: String): Boolean {
+        return customViews.any { descriptor ->
+            matchesCustomView(descriptor) && superClassName in descriptor.superClassNames
+        }
+    }
+
+    private fun LayoutNode.isFrameLayoutLike(): Boolean {
+        return isFrameLayout() || matchesCustomViewWithSuperClass("android.widget.FrameLayout")
     }
 
     private fun customValueCode(kind: CustomViewAttributeKind, value: String): CodeBlock? {
@@ -1266,7 +1276,7 @@ open class ResourceAwareViewRegistry(
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
             return when (attrName) {
-                "android:foreground", "android:foregroundGravity" -> node.isFrameLayout()
+                "android:foreground", "android:foregroundGravity" -> node.isFrameLayoutLike()
                 else -> true
             }
         }
@@ -1300,10 +1310,10 @@ open class ResourceAwareViewRegistry(
             attrs["android:backgroundTint"]?.let { value ->
                 emitColorStateListAssignment(builder, "backgroundTintList", value)
             }
-            attrs["android:foreground"]?.takeIf { node.node.isFrameLayout() }?.let { value ->
+            attrs["android:foreground"]?.takeIf { node.node.isFrameLayoutLike() }?.let { value ->
                 emitDrawableAssignment(builder, "foreground", value)
             }
-            attrs["android:foregroundGravity"]?.takeIf { node.node.isFrameLayout() }?.let { value ->
+            attrs["android:foregroundGravity"]?.takeIf { node.node.isFrameLayoutLike() }?.let { value ->
                 builder.addStatement("foregroundGravity = %L", gravityToCode(value))
             }
             attrs["android:importantForAccessibility"]?.let { value ->
@@ -1420,11 +1430,15 @@ open class ResourceAwareViewRegistry(
         }
     }
 
-    private object GravityAttributeHandler : AttributeHandler {
+    private inner class GravityAttributeHandler : AttributeHandler {
         override val names = setOf("android:gravity")
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
-            return node.isLinearLayout() || node.isTextLikeView()
+            return node.isLinearLayout() || node.isTextLikeView() || node.isFrameLayoutLike()
+        }
+
+        override fun canEmit(node: AnalyzedNode, attrName: String): Boolean {
+            return node.node.isLinearLayout() || node.node.isTextLikeView()
         }
 
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {

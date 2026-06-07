@@ -79,7 +79,8 @@ class LayoutX2CProcessor(
                 file = File(sourceFile.filePath),
                 packageName = annotated.packageName(),
                 rPackageName = LayoutX2CConfigParser.extractRPackageName(sourceText),
-                customViews = CustomViewConfigParser.extractCustomViews(sourceText),
+                customViews = CustomViewConfigParser.extractCustomViews(sourceText)
+                    .withResolvedSuperClassNames(resolver),
                 bindingAdapters = BindingAdapterConfigParser.extractBindingAdapters(sourceText),
                 ksFile = sourceFile
             )
@@ -106,7 +107,8 @@ class LayoutX2CProcessor(
                     file = File(sourceFile.filePath),
                     packageName = annotated.packageName(),
                     rPackageName = sourceFile.rPackageName(),
-                    customViews = CustomViewConfigParser.extractCustomViews(sourceText),
+                    customViews = CustomViewConfigParser.extractCustomViews(sourceText)
+                        .withResolvedSuperClassNames(resolver),
                     bindingAdapters = BindingAdapterConfigParser.extractBindingAdapters(sourceText),
                     ksFile = sourceFile
                 )
@@ -122,7 +124,8 @@ class LayoutX2CProcessor(
                     file = File(sourceFile.filePath),
                     packageName = annotated.packageName(),
                     rPackageName = sourceFile.rPackageName(),
-                    customViews = CustomViewConfigParser.extractCustomViews(sourceText),
+                    customViews = CustomViewConfigParser.extractCustomViews(sourceText)
+                        .withResolvedSuperClassNames(resolver),
                     bindingAdapters = BindingAdapterConfigParser.extractBindingAdapters(sourceText),
                     ksFile = sourceFile
                 )
@@ -225,7 +228,8 @@ class LayoutX2CProcessor(
                     resDir = config.resDir,
                     packageName = config.packageName,
                     rPackageName = config.rPackageName,
-                    resourceSymbolsKey = resourceSymbols.stableKey()
+                    resourceSymbolsKey = resourceSymbols.stableKey(),
+                    registryConfigKey = config.registryConfigKey()
                 )
                 val factoryClassName = LayoutX2CNames.factoryClassName(layoutName)
                 val facadeClassName = LayoutX2CNames.facadeClassName(layoutName)
@@ -419,6 +423,42 @@ class LayoutX2CProcessor(
         }
     }
 
+    private fun List<CustomViewDescriptor>.withResolvedSuperClassNames(
+        resolver: Resolver
+    ): List<CustomViewDescriptor> {
+        return map { descriptor ->
+            descriptor.copy(
+                superClassNames = descriptor.superClassNames +
+                    resolveSuperClassNames(resolver, descriptor.viewClassName)
+            )
+        }
+    }
+
+    private fun resolveSuperClassNames(
+        resolver: Resolver,
+        viewClassName: String
+    ): Set<String> {
+        val declaration = resolver.getClassDeclarationByName(
+            resolver.getKSNameFromString(viewClassName)
+        ) ?: return emptySet()
+        val superClassNames = linkedSetOf<String>()
+
+        fun visit(current: KSClassDeclaration) {
+            current.superTypes.forEach { superTypeRef ->
+                val superDeclaration = runCatching {
+                    superTypeRef.resolve().declaration as? KSClassDeclaration
+                }.getOrNull() ?: return@forEach
+                val superClassName = superDeclaration.qualifiedName?.asString() ?: return@forEach
+                if (superClassNames.add(superClassName)) {
+                    visit(superDeclaration)
+                }
+            }
+        }
+
+        visit(declaration)
+        return superClassNames
+    }
+
     private fun generateRegistry(
         packageName: String,
         rPackageName: String,
@@ -546,6 +586,24 @@ private data class LayoutX2CProcessorConfig(
     val customViews: List<CustomViewDescriptor>,
     val bindingAdapters: List<BindingAdapterDescriptor>
 )
+
+private fun LayoutX2CProcessorConfig.registryConfigKey(): String {
+    val customViewKey = customViews
+        .sortedBy { it.viewClassName }
+        .joinToString(separator = "|") { descriptor ->
+            val attrs = descriptor.attributes
+                .sortedBy { it.name }
+                .joinToString(separator = ",") { attr -> "${attr.name}:${attr.kind}" }
+            val supers = descriptor.superClassNames.sorted().joinToString(separator = ",")
+            "view=${descriptor.viewClassName};attrs=$attrs;supers=$supers"
+        }
+    val bindingAdapterKey = bindingAdapters
+        .sortedWith(compareBy<BindingAdapterDescriptor> { it.methodClassName }.thenBy { it.methodName })
+        .joinToString(separator = "|") { descriptor ->
+            "adapter=${descriptor.methodClassName}.${descriptor.methodName};attrs=${descriptor.attrs.joinToString(",")};requireAll=${descriptor.requireAll}"
+        }
+    return "customViews=$customViewKey\nbindingAdapters=$bindingAdapterKey"
+}
 
 /**
  * Returns the explicit layout set plus layouts referenced by include/ViewStub

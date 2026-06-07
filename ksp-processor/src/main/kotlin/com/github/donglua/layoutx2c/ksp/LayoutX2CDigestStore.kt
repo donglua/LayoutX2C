@@ -61,20 +61,22 @@ internal class LayoutX2CDigestStore(private val manifestFile: File) {
 internal object LayoutX2CDigestCalculator {
 
     // Bump this when the digest inputs or hashing semantics change.
-    private const val SCHEMA_VERSION = "v10"
+    private const val SCHEMA_VERSION = "v11"
 
     fun layoutDigest(
         layoutFile: File,
         resDir: File,
         packageName: String,
         rPackageName: String,
-        resourceSymbolsKey: String = ""
+        resourceSymbolsKey: String = "",
+        registryConfigKey: String = ""
     ): String {
         val digest = MessageDigest.getInstance("SHA-256")
         digest.updateString(cacheCompatibilityKey())
         digest.updateString(packageName)
         digest.updateString(rPackageName)
         digest.updateString(resourceSymbolsKey)
+        digest.updateString(registryConfigKey)
         digest.updateFile(layoutFile, resDir)
 
         LayoutDependencyScanner.scanDependencyGraph(layoutFile, resDir)
