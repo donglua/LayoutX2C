@@ -98,6 +98,11 @@ object LayoutX2CConfig {
 例如 `app:priceColor="@color/red"` 会生成类似
 `setPriceColor(ContextCompat.getColor(context, R.color.red))` 的 setter 调用。
 
+`FastCustomView` 还会在 KSP 阶段解析 `viewClass` 的父类链。自定义 View 如果继承了
+LayoutX2C 已支持的 Android / AndroidX View，分析器会复用安全的父类属性语义；例如
+`FrameLayout` 子类可以被识别为 FrameLayout-like View。继承语义只用于已验证可等价的
+平台属性，typed 自定义属性仍需要通过 `FastCustomViewAttr` 显式声明。
+
 如果项目里有确认安全的 DataBinding `BindingAdapter`，也可以显式声明白名单。LayoutX2C
 不会自动扫描或猜测 BindingAdapter；只有声明过的属性组合会在生成的 binding facade
 中调用指定方法，未声明或表达式无法静态转换的场景会继续 fallback，避免静默丢语义：
@@ -182,7 +187,7 @@ fallback 策略。
 - `androidx.viewpager2.widget.ViewPager2`（仅容器创建，不生成 adapter 运行时逻辑）
 - `ViewStub`
 - `View`
-- `@FastCustomViews` 白名单声明的自定义 View（仅生成显式声明的 typed 属性）
+- `@FastCustomViews` 白名单声明的自定义 View（会解析父类链，复用安全的父类属性语义；typed 自定义属性仍需显式声明）
 - `@FastBindingAdapters` 白名单声明的 DataBinding BindingAdapter（仅生成显式声明的属性组合）
 
 高频属性支持：

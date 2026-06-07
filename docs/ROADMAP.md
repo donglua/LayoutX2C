@@ -27,7 +27,8 @@
   已有扩展安全子集支持；`CardView`、`MaterialCardView`、`Toolbar`、`MaterialToolbar`
   已支持基础属性。
 - 自定义 View：用户可以通过 `@FastCustomViews` 在现有配置对象旁声明白名单 View 和 typed
-  属性；声明范围外的自定义 View 或属性继续保守 fallback。
+  属性；KSP 会解析白名单 View 的父类链，复用已验证安全的父类属性语义。声明范围外的自定义
+  View 或 typed 自定义属性继续保守 fallback。
 - 特殊标签：`include`、`merge`、`ViewStub` 已进入编译期支持路径。
 - DataBinding `<layout>` root 会透明解包到真实 View root，并生成继承 `ViewDataBinding` 的
   `{Name}X2CBinding`。
@@ -86,7 +87,7 @@
 **当前限制**
 
 - `fragment`、无法解析的 include、循环 include、超出递归深度限制的 include，以及无法等价生成的特殊语义仍会保守 fallback。
-- 自定义 View 只支持显式白名单和 typed 属性；未声明属性、无法转换的值和未声明 View 仍会 fallback。
+- 自定义 View 只支持显式白名单、可解析父类链上的安全平台属性，以及显式 typed 属性；未声明属性、无法转换的值和未声明 View 仍会 fallback。
 - 精确资源图只用于 digest/cache invalidation，不把 style / theme 语义编译成常量；`?attr/` 和动态 theme 仍保守 fallback。
 - 复杂 DataBinding 表达式、BindingAdapter、Observable / LiveData 自动订阅和 lifecycle 观察者语义仍交给原生 DataBinding。
 - connected Android generated vs inflated 等价性测试依赖设备或 CI 环境运行。
