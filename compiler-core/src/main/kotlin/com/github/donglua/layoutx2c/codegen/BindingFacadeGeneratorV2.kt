@@ -599,8 +599,8 @@ class BindingFacadeGeneratorV2(
             val viewField = idName?.let { id -> fields.find { it.idName == id } }
             if (viewField != null) {
                 bindingAdapters.forEach { descriptor ->
-                    val presentAttrs = descriptor.attrs.filter { attrName ->
-                        attrName in analyzed.dataBindingAttributes && analyzed.node.attributes.containsKey(attrName)
+                    val presentAttrs = descriptor.attrs.mapNotNull { attrName ->
+                        bindingAdapterXmlAttrName(attrName, analyzed.dataBindingAttributes)
                     }
                     val shouldEmit = if (descriptor.requireAll) {
                         presentAttrs.size == descriptor.attrs.size
@@ -609,7 +609,11 @@ class BindingFacadeGeneratorV2(
                     }
                     if (shouldEmit) {
                         val argumentCodes = descriptor.attrs.mapNotNull { attrName ->
-                            val attrValue = analyzed.node.attributes[attrName] ?: return@mapNotNull null
+                            val xmlAttrName = bindingAdapterXmlAttrName(
+                                attrName,
+                                analyzed.dataBindingAttributes
+                            ) ?: return@mapNotNull null
+                            val attrValue = analyzed.node.attributes[xmlAttrName] ?: return@mapNotNull null
                             dataBindingExpressionToCode(attrValue, dataBindingImports)?.toString()
                         }
                         if ((!descriptor.requireAll || argumentCodes.size == descriptor.attrs.size) && argumentCodes.isNotEmpty()) {

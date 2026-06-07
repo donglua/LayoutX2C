@@ -2,6 +2,7 @@ package com.github.donglua.layoutx2c.analyzer
 
 import com.github.donglua.layoutx2c.codegen.BindingAdapterDescriptor
 import com.github.donglua.layoutx2c.codegen.DataBindingExpressionParser
+import com.github.donglua.layoutx2c.codegen.bindingAdapterXmlAttrName
 import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.LayoutNodeType
 import com.github.donglua.layoutx2c.registry.DefaultViewRegistry
@@ -210,7 +211,9 @@ class LayoutAnalyzerV2(
     }
 
     private fun isDeclaredBindingAdapterAttribute(attrName: String): Boolean {
-        return bindingAdapters.any { descriptor -> attrName in descriptor.attrs }
+        return bindingAdapters.any { descriptor ->
+            descriptor.attrs.any { bindingAdapterXmlAttrName(it, setOf(attrName)) != null }
+        }
     }
 
     private fun isSupportedBindingAdapterExpression(attrValue: String): Boolean {

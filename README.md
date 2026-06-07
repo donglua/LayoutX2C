@@ -125,6 +125,8 @@ object LayoutX2CConfig {
 
 例如 `app:stateColorRes="@{R.color.sample_state}"` 和 `app:stateSizeDp="@{3F}"`
 会生成类似 `SampleBindingAdapters.setViewState(view, R.color.sample_state, 3f)`。
+`attrs` 推荐写 XML 完整属性名；自定义 `app:` 属性也兼容无前缀写法，
+例如 `"stateColorRes"` 会按 `app:stateColorRes` 匹配。
 
 只有在资源目录、`R` 包名或生成包名不符合默认推导时，才需要手动传：
 `layoutx2c.resDir`、`layoutx2c.rPackageName`、`layoutx2c.packageName`。

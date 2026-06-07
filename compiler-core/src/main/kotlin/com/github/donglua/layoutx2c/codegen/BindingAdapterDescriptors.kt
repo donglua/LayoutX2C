@@ -6,3 +6,11 @@ data class BindingAdapterDescriptor(
     val methodName: String,
     val requireAll: Boolean = true
 )
+
+internal fun bindingAdapterXmlAttrName(
+    declaredAttrName: String,
+    availableAttributeNames: Set<String>
+): String? {
+    val xmlAttrName = if (declaredAttrName.contains(":")) declaredAttrName else "app:$declaredAttrName"
+    return xmlAttrName.takeIf { it in availableAttributeNames }
+}
