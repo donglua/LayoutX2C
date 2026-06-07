@@ -373,9 +373,18 @@ open class ResourceAwareViewRegistry(
 
     override fun emitAttributes(builder: CodeBlock.Builder, node: AnalyzedNode) {
         for (handler in attributeHandlers) {
-            if (handler.shouldEmit(node) || handler.hasAnyAttribute(node.node.attributes, node.supportedAttributes)) {
+            if (handler.shouldEmit(node) || handler.hasSupportedEmittableAttribute(node)) {
                 handler.emit(builder, node)
             }
+        }
+    }
+
+    private fun AttributeHandler.hasSupportedEmittableAttribute(node: AnalyzedNode): Boolean {
+        return names.any { attrName ->
+            attrName in node.node.attributes &&
+                attrName in node.supportedAttributes &&
+                supports(node.node, node.parentTagName, attrName) &&
+                canEmit(node, attrName)
         }
     }
 

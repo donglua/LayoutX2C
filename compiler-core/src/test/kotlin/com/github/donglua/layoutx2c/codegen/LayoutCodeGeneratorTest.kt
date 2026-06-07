@@ -976,6 +976,22 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `linear layout orientation does not emit guideline orientation`() {
+        val xml = """
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "linear_orientation").root)
+        val generated = generator.generate(analyzed, "linear_orientation", "R.layout.linear_orientation").toString()
+
+        assertThat(generated).contains("orientation = LinearLayout.HORIZONTAL")
+        assertThat(generated).doesNotContain("orientation = ConstraintLayout.LayoutParams.HORIZONTAL")
+    }
+
+    @Test
     fun `image view emits src scaleType and tint`() {
         val xml = """
             <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
