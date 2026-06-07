@@ -19,6 +19,12 @@ object LayoutX2CRegistry {
     private val failedPackages = mutableSetOf<String>()
 
     /**
+     * 负缓存：记录已知没有 generated factory 的 layoutId。
+     * 避免对 fallback layout 重复查询 Map 和触发 ensureGeneratedLayoutsRegistered。
+     */
+    private val knownMissingLayouts = mutableSetOf<Int>()
+
+    /**
      * 注册一个 layout 的 generated factory。
      */
     fun register(@LayoutRes layoutId: Int, factory: LayoutFactory) {
@@ -30,8 +36,20 @@ object LayoutX2CRegistry {
      * 如果没有注册对应的 factory，返回 null（调用方应 fallback 到 LayoutInflater）。
      */
     fun create(context: Context, @LayoutRes layoutId: Int, parent: ViewGroup?): View? {
+        // 快速路径：已知没有 factory 的 layout 直接返回 null
+        if (layoutId in knownMissingLayouts) {
+            return null
+        }
+
         ensureGeneratedLayoutsRegistered(context)
-        return factories[layoutId]?.create(context, parent)
+        val factory = factories[layoutId]
+
+        // 记录负缓存：避免下次重复查询
+        if (factory == null) {
+            knownMissingLayouts.add(layoutId)
+        }
+
+        return factory?.create(context, parent)
     }
 
     /**

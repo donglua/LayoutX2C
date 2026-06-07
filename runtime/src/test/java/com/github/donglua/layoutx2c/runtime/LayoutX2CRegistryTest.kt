@@ -21,6 +21,21 @@ class LayoutX2CRegistryTest {
             .contains("failedPackages.add(packageName)")
     }
 
+    @Test
+    fun `negative cache for missing layout IDs avoids repeated lookups`() {
+        val source = runtimeSource("LayoutX2CRegistry.kt")
+
+        assertWithMessage("negative cache should be declared for missing layouts")
+            .that(source)
+            .contains("knownMissingLayouts")
+        assertWithMessage("negative cache should provide fast path for known missing layouts")
+            .that(source)
+            .contains("if (layoutId in knownMissingLayouts)")
+        assertWithMessage("missing layout should be recorded in negative cache")
+            .that(source)
+            .contains("knownMissingLayouts.add(layoutId)")
+    }
+
     private fun runtimeSource(fileName: String): String {
         val moduleDir = listOf(File("."), File("runtime"))
             .map { it.canonicalFile }
