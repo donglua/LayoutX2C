@@ -167,11 +167,7 @@ object DemoLayoutCatalog {
             status = Status.Binding,
             codeViewerClassName = "DemoDataBindingIncludeChildX2CBinding"
         ) { context, parent ->
-            val binding = DemoDataBindingIncludeChildX2CBinding.inflate(LayoutInflater.from(context), parent, false)
-            binding.text = "首页"
-            binding.icon = R.drawable.ic_layoutx2c_demo
-            binding.executePendingBindings()
-            binding.root
+            DemoDataBindingIncludeChildX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
         },
         Entry(
             "Binding Include Parent",

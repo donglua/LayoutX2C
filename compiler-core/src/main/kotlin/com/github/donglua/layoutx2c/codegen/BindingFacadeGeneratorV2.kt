@@ -374,21 +374,25 @@ class BindingFacadeGeneratorV2(
                 )
             } else if (refsVarName != null) {
                 builder.addStatement(
-                    "val %L = %L.get(R.id.%L) as? %T\n⇥?: rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
+                    "val %L = %L.get(R.id.%L) as? %T\n⇥?: rootView.findViewById<%T>(R.id.%L)\n⇥?: rootView.takeIf { it.id == R.id.%L } as? %T\n⇥?: error(%S)⇤",
                     field.propertyName,
                     refsVarName,
                     field.idName,
                     field.viewClass,
                     field.viewClass,
                     field.idName,
+                    field.idName,
+                    field.viewClass,
                     "Missing required view with ID: ${field.idName}"
                 )
             } else {
                 builder.addStatement(
-                    "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: error(%S)⇤",
+                    "val %L = rootView.findViewById<%T>(R.id.%L)\n⇥?: rootView.takeIf { it.id == R.id.%L } as? %T\n⇥?: error(%S)⇤",
                     field.propertyName,
                     field.viewClass,
                     field.idName,
+                    field.idName,
+                    field.viewClass,
                     "Missing required view with ID: ${field.idName}"
                 )
             }
