@@ -53,7 +53,7 @@ ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="$SIGNING_IN_MEMORY_KEY_PASSWORD" 
   --no-configuration-cache
 ```
 
-Upload `build/central-portal/layoutx2c-1.0.0-rc.1-central-bundle.zip` in Central
+Upload `build/central-portal/layoutx2c-1.0.0-central-bundle.zip` in Central
 Portal's `Publish Component` page. The bundle is a Maven Repository Layout zip
 and does not require `MAVEN_CENTRAL_USERNAME` or `MAVEN_CENTRAL_PASSWORD` until
 it is uploaded through Central Portal or published by CI.
@@ -85,8 +85,8 @@ release notes.
 After local verification passes:
 
 ```bash
-git tag -a 1.0.0-rc.1 -m "Release 1.0.0-rc.1"
-git push origin 1.0.0-rc.1
+git tag -a 1.0.0 -m "Release 1.0.0"
+git push origin 1.0.0
 ```
 
 The GitHub Actions release workflow then runs:
@@ -103,18 +103,18 @@ Pushing the git tag triggers the workflow, but it does not by itself guarantee a
 public GitHub Release page. After the workflow succeeds:
 
 ```bash
-gh release create 1.0.0-rc.1 --title "LayoutX2C 1.0.0-rc.1" --prerelease --notes-file docs/RELEASE_NOTES_1_0.md
-gh release view 1.0.0-rc.1 --json isDraft,isPrerelease,url
+gh release create 1.0.0 --title "LayoutX2C 1.0.0" --notes-file docs/RELEASE_NOTES_1_0.md
+gh release view 1.0.0 --json isDraft,isPrerelease,url
 ```
 
 If the release page already exists, update it instead:
 
 ```bash
-gh release edit 1.0.0-rc.1 --title "LayoutX2C 1.0.0-rc.1" --prerelease --notes-file docs/RELEASE_NOTES_1_0.md
-gh release view 1.0.0-rc.1 --json isDraft,isPrerelease,url
+gh release edit 1.0.0 --title "LayoutX2C 1.0.0" --notes-file docs/RELEASE_NOTES_1_0.md
+gh release view 1.0.0 --json isDraft,isPrerelease,url
 ```
 
-The RC release should report `isDraft=false` and `isPrerelease=true`.
+The stable release should report `isDraft=false` and `isPrerelease=false`.
 
 ## Failure Boundaries
 
