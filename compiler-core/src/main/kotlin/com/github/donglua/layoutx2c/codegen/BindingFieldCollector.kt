@@ -8,6 +8,7 @@ data class BindingField(
     val idName: String,
     val propertyName: String,
     val viewClass: ClassName,
+    val isRoot: Boolean = false,
     val isNestedBinding: Boolean = false,
     val nestedBindingLayoutName: String? = null
 )
@@ -22,7 +23,7 @@ class BindingFieldCollector(
 ) {
     fun collect(root: LayoutNode): BindingFieldResult {
         val fields = mutableListOf<BindingField>()
-        collectFields(root, fields)
+        collectFields(root, fields, isRoot = true)
 
         val duplicateIds = fields
             .groupBy { it.idName }
@@ -37,7 +38,7 @@ class BindingFieldCollector(
         return BindingFieldResult.Success(fields)
     }
 
-    private fun collectFields(node: LayoutNode, fields: MutableList<BindingField>) {
+    private fun collectFields(node: LayoutNode, fields: MutableList<BindingField>, isRoot: Boolean) {
         val includeNode = node.nodeType as? LayoutNodeType.Include
         node.attributes["android:id"]?.toIdName()?.let { idName ->
             val isNestedBinding = includeNode?.isDataBindingLayout == true && node.tagName != "merge"
@@ -45,6 +46,7 @@ class BindingFieldCollector(
                 idName = idName,
                 propertyName = idName.toPropertyName(),
                 viewClass = bindingViewClass(node, isNestedBinding),
+                isRoot = isRoot,
                 isNestedBinding = isNestedBinding,
                 nestedBindingLayoutName = includeNode?.layoutRef?.takeIf { isNestedBinding }
             )
@@ -54,7 +56,7 @@ class BindingFieldCollector(
             return
         }
 
-        node.children.forEach { child -> collectFields(child, fields) }
+        node.children.forEach { child -> collectFields(child, fields, isRoot = false) }
     }
 
     private fun String.toIdName(): String {

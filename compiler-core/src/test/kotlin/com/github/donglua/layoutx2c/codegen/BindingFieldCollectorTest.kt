@@ -32,6 +32,7 @@ class BindingFieldCollectorTest {
         assertThat(result).isInstanceOf(BindingFieldResult.Success::class.java)
         val fields = (result as BindingFieldResult.Success).fields
         assertThat(fields.map { it.propertyName }).containsExactly("rootLayout", "titleText", "avatar").inOrder()
+        assertThat(fields.map { it.isRoot }).containsExactly(true, false, false).inOrder()
         assertThat(fields.map { it.idName }).containsExactly("root_layout", "title_text", "avatar").inOrder()
         assertThat(fields.map { it.viewClass.simpleName }).containsExactly(
             "LinearLayout",

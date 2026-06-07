@@ -110,6 +110,35 @@ class BindingFacadeGeneratorV2Test {
     }
 
     @Test
+    fun `generated binding binds root id field from root view directly`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                <LinearLayout
+                    android:id="@+id/include_child_root"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:id="@+id/include_child_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </layout>
+        """.trimIndent()
+        val tree = parser.parse(xml, "include_child")
+        val analyzed = analyzer.analyze(tree.root)
+
+        val generated = generator.generate(
+            analyzedRoot = analyzed,
+            layoutName = "include_child",
+            layoutResId = "R.layout.include_child",
+            useFastPath = true
+        ).toString()
+
+        assertThat(generated).contains("val includeChildRoot = rootView as? LinearLayout")
+        assertThat(generated).doesNotContain("rootView.findViewById<LinearLayout>(R.id.include_child_root)")
+    }
+
+    @Test
     fun `generated binding extends native data binding base and implements supported contract`() {
         val xml = """
             <layout xmlns:android="http://schemas.android.com/apk/res/android">

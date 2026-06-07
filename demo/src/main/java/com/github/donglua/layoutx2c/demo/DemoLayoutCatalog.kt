@@ -177,12 +177,15 @@ object DemoLayoutCatalog {
             summary = "DataBinding include variables propagated into X2C child binding subclasses",
             status = Status.Binding,
             codeViewerClassName = "DemoDataBindingIncludeParentX2CBinding",
-            previewMode = PreviewMode.Interactive
+            previewMode = PreviewMode.Interactive,
+            configurePreview = { _, preview ->
+                val binding = DataBindingUtil.getBinding<DemoDataBindingIncludeParentX2CBinding>(preview)
+                    ?: DemoDataBindingIncludeParentX2CBinding.bind(preview)
+                binding.dynamicText = "动态"
+                binding.executePendingBindings()
+            }
         ) { context, parent ->
-            val binding = DemoDataBindingIncludeParentX2CBinding.inflate(LayoutInflater.from(context), parent, false)
-            binding.dynamicText = "动态"
-            binding.executePendingBindings()
-            binding.root
+            DemoDataBindingIncludeParentX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
         },
         Entry(
             "Scroll + Image",

@@ -372,6 +372,13 @@ class BindingFacadeGeneratorV2(
                     field.nestedBindingX2CClassName(),
                     rootVarName
                 )
+            } else if (field.isRoot) {
+                builder.addStatement(
+                    "val %L = rootView as? %T\n⇥?: error(%S)⇤",
+                    field.propertyName,
+                    field.viewClass,
+                    "Root view is not ${field.viewClass.simpleName}"
+                )
             } else if (refsVarName != null) {
                 builder.addStatement(
                     "val %L = %L.get(R.id.%L) as? %T\n⇥?: rootView.findViewById<%T>(R.id.%L)\n⇥?: rootView.takeIf { it.id == R.id.%L } as? %T\n⇥?: error(%S)⇤",
