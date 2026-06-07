@@ -26,6 +26,9 @@ import java.io.File
 /**
  * KSP Processor：扫描 @FastLayouts / @FastLayoutPattern 注解，
  * 解析对应的 layout XML，生成 LayoutFactory 实现类。
+ *
+ * Processor 只在首轮 KSP 中运行一次。所有 layout 输出都由配置源码触发，
+ * XML、values、R symbol 等非 Kotlin 输入通过 digest cache 自行追踪变化。
  */
 class LayoutX2CProcessor(
     private val codeGenerator: CodeGenerator,
@@ -156,9 +159,13 @@ class LayoutX2CProcessor(
             }
         }
         layoutNames.addAll(patternLayoutNames.sorted())
+
+        // include / ViewStub 的目标 layout 也必须生成 factory，否则上层生成代码
+        // 会引用不存在的 facade。这里递归展开依赖，而不是只生成用户显式声明的入口 layout。
         layoutNames.addAll(expandLayoutNamesWithDependencies(layoutNames, config.resDir))
 
-
+        // 资源符号表决定 @color/@dimen 等引用应指向当前模块 R 还是依赖包 R；
+        // 同一个 stable key 也进入 digest，确保依赖资源集合变化时会重新生成。
         val resourceSymbols = LayoutX2CResourceSymbols.resolve(
             resDir = config.resDir,
             explicitSymbolFiles = config.symbolFiles
@@ -199,6 +206,9 @@ class LayoutX2CProcessor(
         )
         val generatedLayouts = mutableListOf<Pair<String, String>>()
         val sourceFiles = configSources.map { it.ksFile }.distinctBy { it.filePath }
+
+        // KSP 只能对源码依赖建模；layout/resource 这类文件变化由 digestStore 负责。
+        // layout 输出是 isolating，registry 聚合所有 layout，见 LayoutX2CDependencyFactory。
         val layoutDependencies = LayoutX2CDependencyFactory.layout(sourceFiles)
         val digestStore = config.manifestFile?.let(::LayoutX2CDigestStore)
 
@@ -221,6 +231,8 @@ class LayoutX2CProcessor(
                 val facadeClassName = LayoutX2CNames.facadeClassName(layoutName)
                 val bindingFacadeClassName = LayoutX2CNames.bindingFacadeClassName(layoutName)
 
+                // KSP 每轮仍需要 createNewFile 写出产物。digest 命中时从自有缓存
+                // 恢复到 KSP output，避免重新 parse/analyze/codegen 非 Kotlin 输入。
                 if (digestStore?.isUnchanged(layoutName, layoutDigest) == true) {
                     val cachedOutputs = mutableListOf(
                         CachedOutput(factoryClassName, "kt"),
@@ -254,6 +266,9 @@ class LayoutX2CProcessor(
 
                 val tree = parser.parse(xmlFile)
                 val analyzed = analyzer.analyze(tree.root)
+
+                // Binding facade 只对合法 DataBinding wrapper 生成。malformed wrapper
+                // 仍写 report，但跳过 factory，避免生成无法匹配原生 Binding 语义的代码。
                 val bindingFacadeEligibility = BindingFacadeEligibility.evaluate(tree, analyzed)
                 val report = reportGenerator.generate(analyzed, layoutName, tree)
                 if (bindingFacadeEligibility.status == BindingFacadeStatus.BINDING_FACADE_SKIPPED_MALFORMED_LAYOUT) {
@@ -340,6 +355,7 @@ class LayoutX2CProcessor(
         }
 
         if (generatedLayouts.isNotEmpty()) {
+            // Registry 是 layoutId -> factory 的聚合索引，只记录本轮实际写出或恢复的 layout。
             generateRegistry(
                 config.packageName,
                 config.rPackageName,
@@ -439,6 +455,7 @@ class LayoutX2CProcessor(
             rPackageName = rPackageName
         )
 
+        // Registry 内容只取决于生成出的 layout 列表和包名；命中时同样恢复到 KSP output。
         if (digestStore?.isUnchanged(REGISTRY_DIGEST_KEY, registryDigest) == true) {
             val cachedRegistry = digestStore.cachedFile(
                 REGISTRY_DIGEST_KEY,
@@ -530,6 +547,12 @@ private data class LayoutX2CProcessorConfig(
     val bindingAdapters: List<BindingAdapterDescriptor>
 )
 
+/**
+ * Returns the explicit layout set plus layouts referenced by include/ViewStub
+ * dependencies. Generated code uses facade calls across those boundaries, so
+ * every reachable dependency needs an output even when the user only annotated
+ * the top-level entry layout.
+ */
 internal fun expandLayoutNamesWithDependencies(layoutNames: Set<String>, resDir: File): Set<String> {
     val expanded = layoutNames.toMutableSet()
     val pending = ArrayDeque(layoutNames.sorted())
@@ -561,11 +584,19 @@ private data class LayoutX2CSource(
 
 internal object LayoutX2CDependencyFactory {
 
+    /**
+     * Per-layout files are isolating with respect to annotated config sources;
+     * resource-level invalidation is handled by LayoutX2CDigestStore.
+     */
     fun layout(sourceFiles: List<KSFile>): Dependencies = fromSources(
         aggregating = false,
         sourceFiles = sourceFiles
     )
 
+    /**
+     * The registry aggregates every generated layout mapping, so a config source
+     * change can alter the whole file even when individual layout factories are cached.
+     */
     fun registry(sourceFiles: List<KSFile>): Dependencies = fromSources(
         aggregating = true,
         sourceFiles = sourceFiles
