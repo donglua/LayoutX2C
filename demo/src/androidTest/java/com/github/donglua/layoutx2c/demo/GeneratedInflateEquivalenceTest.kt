@@ -89,6 +89,37 @@ class GeneratedInflateEquivalenceTest {
             val generatedRelative = inflateGenerated(relativeEntry)
 
             assertEquivalentPaddingById("demo_relative/relative_badge", platformRelative, generatedRelative, R.id.relative_badge)
+            assertEquivalentRelativeRulesById(
+                "demo_relative/relative_anchor",
+                platformRelative,
+                generatedRelative,
+                R.id.relative_anchor,
+                RelativeLayout.CENTER_IN_PARENT
+            )
+            assertEquivalentRelativeRulesById(
+                "demo_relative/relative_above",
+                platformRelative,
+                generatedRelative,
+                R.id.relative_above,
+                RelativeLayout.ABOVE,
+                RelativeLayout.CENTER_HORIZONTAL
+            )
+            assertEquivalentRelativeRulesById(
+                "demo_relative/relative_start_of",
+                platformRelative,
+                generatedRelative,
+                R.id.relative_start_of,
+                RelativeLayout.START_OF,
+                RelativeLayout.CENTER_VERTICAL
+            )
+            assertEquivalentRelativeRulesById(
+                "demo_relative/relative_end_of",
+                platformRelative,
+                generatedRelative,
+                R.id.relative_end_of,
+                RelativeLayout.END_OF,
+                RelativeLayout.CENTER_VERTICAL
+            )
         }
     }
 
@@ -708,6 +739,24 @@ class GeneratedInflateEquivalenceTest {
             PaddingSnapshot(actual.paddingLeft, actual.paddingTop, actual.paddingRight, actual.paddingBottom),
             differences
         )
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentRelativeRulesById(
+        path: String,
+        expectedRoot: View,
+        actualRoot: View,
+        childId: Int,
+        vararg rules: Int
+    ) {
+        val expected = expectedRoot.findViewById<View>(childId).layoutParams as RelativeLayout.LayoutParams
+        val actual = actualRoot.findViewById<View>(childId).layoutParams as RelativeLayout.LayoutParams
+        val differences = mutableListOf<String>()
+        for (rule in rules) {
+            checkField(path, "relativeRule[$rule]", expected.getRule(rule), actual.getRule(rule), differences)
+        }
         if (differences.isNotEmpty()) {
             throw AssertionError(differences.joinToString(separator = "\n"))
         }

@@ -34,4 +34,40 @@
         android:text="@string/demo_relative_body"
         android:textSize="14sp" />
 
+    <TextView
+        android:id="@+id/relative_anchor"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_centerInParent="true"
+        android:gravity="center"
+        android:text="A"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/relative_above"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/relative_anchor"
+        android:layout_centerHorizontal="true"
+        android:text="Above"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/relative_start_of"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toStartOf="@id/relative_anchor"
+        android:layout_centerVertical="true"
+        android:text="Start"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/relative_end_of"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/relative_anchor"
+        android:layout_centerVertical="true"
+        android:text="End"
+        android:textSize="12sp" />
+
 </RelativeLayout>
