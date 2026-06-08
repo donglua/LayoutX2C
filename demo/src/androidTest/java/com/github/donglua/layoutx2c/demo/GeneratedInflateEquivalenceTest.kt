@@ -93,6 +93,19 @@ class GeneratedInflateEquivalenceTest {
     }
 
     @Test
+    fun generatedImageViewsPreserveDrawableTintAndScaleTypes() {
+        runOnMainThread {
+            val entry = entry("demo_scroll_image")
+            val platformInflated = inflatePlatform(entry)
+            val generated = inflateGenerated(entry)
+
+            assertEquivalentImageView("demo_scroll_image/icon", platformInflated, generated, R.id.demo_scroll_image_icon)
+            assertEquivalentImageView("demo_scroll_image/crop", platformInflated, generated, R.id.demo_scroll_image_crop)
+            assertEquivalentImageView("demo_scroll_image/fit", platformInflated, generated, R.id.demo_scroll_image_fit)
+        }
+    }
+
+    @Test
     fun registryFacadeInflatesEveryGeneratedDemoLayout() {
         runOnMainThread {
             requireTrue(LayoutX2CRegistry.initialize(context))
@@ -637,6 +650,18 @@ class GeneratedInflateEquivalenceTest {
         val actual = actualRoot.findViewById<TextView>(childId)
         val differences = mutableListOf<String>()
         checkFloatField(path, "textSize", expected.textSize, actual.textSize, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentImageView(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<ImageView>(childId)
+        val actual = actualRoot.findViewById<ImageView>(childId)
+        val differences = mutableListOf<String>()
+        checkField(path, "drawable", expected.drawable != null, actual.drawable != null, differences)
+        checkField(path, "imageTint", expected.imageTintList?.defaultColor, actual.imageTintList?.defaultColor, differences)
+        checkField(path, "scaleType", expected.scaleType, actual.scaleType, differences)
         if (differences.isNotEmpty()) {
             throw AssertionError(differences.joinToString(separator = "\n"))
         }

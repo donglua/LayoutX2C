@@ -21,6 +21,25 @@
             android:scaleType="centerInside"
             android:tint="@color/demo_image_tint" />
 
+        <ImageView
+            android:id="@+id/demo_scroll_image_crop"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:src="@drawable/ic_layoutx2c_demo"
+            android:scaleType="centerCrop"
+            android:tint="@color/demo_image_tint" />
+
+        <ImageView
+            android:id="@+id/demo_scroll_image_fit"
+            android:layout_width="96dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:src="@drawable/ic_demo_scroll_image"
+            android:scaleType="fitCenter" />
+
         <TextView
             android:id="@+id/demo_scroll_image_title"
             android:layout_width="match_parent"
