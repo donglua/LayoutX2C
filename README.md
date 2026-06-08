@@ -1,6 +1,7 @@
 # LayoutX2C
 
 ![Maven Central Version](https://img.shields.io/maven-central/v/io.github.donglua.layoutx2c/runtime)
+[![codecov](https://codecov.io/gh/donglua/LayoutX2C/branch/main/graph/badge.svg)](https://codecov.io/gh/donglua/LayoutX2C)
 
 编译期 XML Layout 到代码生成工具，采用渐进式策略：能生成的生成，不能的 fallback，永远不让编译失败。
 
