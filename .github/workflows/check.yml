@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -26,6 +27,15 @@ jobs:
 
       - name: Test and generate coverage
         run: ./gradlew test koverXmlReport koverHtmlReport
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: build/reports/kover/report.xml
+          flags: kover
+          name: layoutx2c-kover
+          fail_ci_if_error: true
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
