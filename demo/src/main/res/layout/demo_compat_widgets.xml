@@ -18,8 +18,19 @@
         android:scrollHorizontally="true"
         android:singleLine="true"
         android:text="Compat text attributes"
-        android:textAllCaps="false"
+        android:textAllCaps="true"
         android:textIsSelectable="true"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/compat_text_lines"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="middle"
+        android:fontFamily="serif"
+        android:lines="2"
+        android:minLines="2"
+        android:text="Line bounded text"
         android:textSize="14sp" />
 
     <FrameLayout

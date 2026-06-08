@@ -187,11 +187,30 @@ class GeneratedInflateEquivalenceTest {
 
             val expectedText = platformInflated.findViewById<TextView>(R.id.compat_text)
             val actualText = generated.findViewById<TextView>(R.id.compat_text)
+            checkField(entry.layoutName, "compat_text.text", expectedText.text.toString(), actualText.text.toString(), differences)
+            checkField(
+                entry.layoutName,
+                "compat_text.allCapsTransformation",
+                expectedText.transformedText("Mixed Case"),
+                actualText.transformedText("Mixed Case"),
+                differences
+            )
+            checkField(entry.layoutName, "compat_text.ellipsize", expectedText.ellipsize, actualText.ellipsize, differences)
             checkField(entry.layoutName, "compat_text.maxLines", expectedText.maxLines, actualText.maxLines, differences)
+            checkField(entry.layoutName, "compat_text.minLines", expectedText.minLines, actualText.minLines, differences)
             checkField(entry.layoutName, "compat_text.includeFontPadding", expectedText.includeFontPadding, actualText.includeFontPadding, differences)
             checkFloatField(entry.layoutName, "compat_text.lineSpacingExtra", expectedText.lineSpacingExtra, actualText.lineSpacingExtra, differences)
             checkFloatField(entry.layoutName, "compat_text.lineSpacingMultiplier", expectedText.lineSpacingMultiplier, actualText.lineSpacingMultiplier, differences)
+            checkField(entry.layoutName, "compat_text.typeface", expectedText.typeface?.toString(), actualText.typeface?.toString(), differences)
             checkField(entry.layoutName, "compat_text.isTextSelectable", expectedText.isTextSelectable, actualText.isTextSelectable, differences)
+            checkField(entry.layoutName, "compat_text.isHorizontallyScrollable", expectedText.isHorizontallyScrollable, actualText.isHorizontallyScrollable, differences)
+
+            val expectedTextLines = platformInflated.findViewById<TextView>(R.id.compat_text_lines)
+            val actualTextLines = generated.findViewById<TextView>(R.id.compat_text_lines)
+            checkField(entry.layoutName, "compat_text_lines.ellipsize", expectedTextLines.ellipsize, actualTextLines.ellipsize, differences)
+            checkField(entry.layoutName, "compat_text_lines.maxLines", expectedTextLines.maxLines, actualTextLines.maxLines, differences)
+            checkField(entry.layoutName, "compat_text_lines.minLines", expectedTextLines.minLines, actualTextLines.minLines, differences)
+            checkField(entry.layoutName, "compat_text_lines.typeface", expectedTextLines.typeface?.toString(), actualTextLines.typeface?.toString(), differences)
 
             val expectedPanel = platformInflated.findViewById<FrameLayout>(R.id.compat_panel)
             val actualPanel = generated.findViewById<FrameLayout>(R.id.compat_panel)
@@ -745,6 +764,10 @@ class GeneratedInflateEquivalenceTest {
         if (abs(expected - actual) > 0.01f) {
             differences += "$path $fieldName expected <$expected> but was <$actual>"
         }
+    }
+
+    private fun TextView.transformedText(value: String): String {
+        return transformationMethod?.getTransformation(value, this)?.toString() ?: value
     }
 
     private fun android.content.res.Resources.getResourceEntryNameOrNull(id: Int): String? {

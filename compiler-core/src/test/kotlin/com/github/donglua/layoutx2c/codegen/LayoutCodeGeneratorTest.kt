@@ -717,6 +717,8 @@ class LayoutCodeGeneratorTest {
 
         assertThat(generated).contains("setAllCaps(true)")
         assertThat(generated).contains("setSingleLine(true)")
+        assertThat(generated.indexOf("setAllCaps(true)"))
+            .isLessThan(generated.indexOf("setSingleLine(true)"))
         assertThat(generated).contains("ellipsize = TextUtils.TruncateAt.MIDDLE")
         assertThat(generated).contains("maxLines = 3")
         assertThat(generated).contains("minLines = 1")
