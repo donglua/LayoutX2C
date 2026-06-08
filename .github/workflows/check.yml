@@ -27,6 +27,9 @@ jobs:
       - name: Test and generate coverage
         run: ./gradlew test koverXmlReport koverHtmlReport
 
+      - name: Import Codecov verification key
+        run: curl -fsSL https://uploader.codecov.io/verification.gpg | gpg --batch --import
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
