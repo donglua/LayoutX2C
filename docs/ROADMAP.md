@@ -36,18 +36,19 @@
 **已支持的关键属性**
 
 - 通用：尺寸、padding、margin、gravity、visibility、id、background、alpha、
-  contentDescription、tag、backgroundTint、foreground、importantForAccessibility、
-  overScrollMode、scrollbars。
-- Text-like：text、textColor、textSize、textStyle、hint、inputType、textAllCaps、
+  contentDescription、tag、backgroundTint、foreground、foregroundTint、selected、
+  activated、duplicateParentState、importantForAccessibility、overScrollMode、scrollbars。
+- Text-like：text、textColor、textSize、textStyle、hint、inputType、imeOptions、
+  maxLength、selectAllOnFocus、textAllCaps、
   singleLine、ellipsize、line count、fontFamily、lineSpacing、selectable / horizontal scroll。
 - ImageView：src、scaleType、tint。
 - Progress / selection widgets：checked、progress、tint、thumb、rating 等基础属性。
 - Card / Toolbar：corner radius、elevation、stroke、title、subtitle、navigationIcon。
 - ScrollView：fillViewport。
 - RelativeLayout 常见规则。
-- ConstraintLayout 安全子集：普通 start/end/top/bottom 约束、`0dp` match constraint、
-  horizontal/vertical bias、Guideline、dimension ratio、percent、chain style / weight、
-  gone margin。
+- ConstraintLayout 安全子集：普通 start/end/left/right/top/bottom 约束、
+  `0dp` match constraint、horizontal/vertical bias、Guideline begin / end / percent、
+  dimension ratio、percent、chain style / weight、gone margin。
 
 **DataBinding 子集**
 

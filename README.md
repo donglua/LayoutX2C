@@ -196,16 +196,16 @@ fallback 策略。
 高频属性支持：
 
 - 通用：`id`, `visibility`, `background`, `padding*`, `enabled`, `clickable`, `focusable`,
-  `elevation`, `minWidth`, `minHeight`, `alpha`, `contentDescription`, `tag`,
-  `backgroundTint`, `foreground`, `foregroundGravity`, `importantForAccessibility`,
-  `overScrollMode`, `scrollbars`
+  `selected`, `activated`, `duplicateParentState`, `elevation`, `minWidth`, `minHeight`,
+  `alpha`, `contentDescription`, `tag`, `backgroundTint`, `foreground`, `foregroundTint`,
+  `foregroundGravity`, `importantForAccessibility`, `overScrollMode`, `scrollbars`
 - LayoutParams：`layout_width`, `layout_height`, `layout_margin*`, `layout_weight`,
   `layout_gravity`
 - Text-like：`text`, `textColor`, `textSize`, `textStyle`, `gravity`, `textAllCaps`,
   `singleLine`, `ellipsize`, `maxLines`, `minLines`, `lines`, `includeFontPadding`,
   `lineSpacingExtra`, `lineSpacingMultiplier`, `fontFamily`, `textIsSelectable`,
   `scrollHorizontally`
-- EditText：`hint`, 常见 `inputType`
+- EditText：`hint`, 常见 `inputType`, `imeOptions`, `maxLength`, `selectAllOnFocus`
 - ImageView：`src`, `scaleType`, `tint`
 - CompoundButton：`checked`
 - Progress widgets：`indeterminate`, `max`, `progress`, `secondaryProgress`,
@@ -221,9 +221,11 @@ fallback 策略。
   `layout_alignParentRight`, `layout_alignParentTop`, `layout_alignParentBottom`,
   `layout_centerInParent`, `layout_centerHorizontal`, `layout_centerVertical`
 - RecyclerView：`app:layoutManager` 仅作为容器元数据接受并忽略
-- ConstraintLayout：普通 start/end/top/bottom 约束、`0dp` match constraint、
+- ConstraintLayout：普通 start/end/left/right/top/bottom 约束、`0dp` match constraint、
   `layout_constraintHorizontal_bias`、`layout_constraintVertical_bias`、Guideline、
-  dimension ratio、percent、chain style / weight、gone margin
+  `layout_constraintGuide_begin` / `layout_constraintGuide_end` /
+  `layout_constraintGuide_percent`、dimension ratio、percent、chain style / weight、
+  gone margin
 - ViewStub：`android:layout`, `android:inflatedId`
 
 未支持的 View 会 fallback 到原生 `LayoutInflater`；不安全或无法等价生成的属性值会触发
@@ -270,6 +272,7 @@ catalog：
 - `demo_relative`
 - `demo_include`（include + merge + ViewStub）
 - `demo_constraint`（ConstraintLayout 安全子集）
+- `demo_constraint_guideline`（ConstraintLayout Guideline begin / end / percent）
 - `demo_recycler`（RecyclerView 容器）
 - `demo_fallback`（故意触发 runtime fallback）
 - `demo_data_binding`, `demo_data_binding_enhanced`
