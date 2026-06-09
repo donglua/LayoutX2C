@@ -742,10 +742,14 @@ class LayoutCodeGeneratorTest {
                 android:tag="panel"
                 android:backgroundTint="@color/title"
                 android:foreground="@drawable/title_background"
+                android:foregroundTint="@color/title"
                 android:foregroundGravity="center"
                 android:importantForAccessibility="yes"
                 android:overScrollMode="never"
-                android:scrollbars="vertical" />
+                android:scrollbars="vertical"
+                android:selected="true"
+                android:activated="true"
+                android:duplicateParentState="true" />
         """.trimIndent()
 
         val analyzed = analyzer.analyze(parser.parse(xml, "common_view_presentation_attrs").root)
@@ -760,11 +764,15 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("tag = \"panel\"")
         assertThat(generated).contains("backgroundTintList = ContextCompat.getColorStateList(context, R.color.title)")
         assertThat(generated).contains("foreground = ContextCompat.getDrawable(context, R.drawable.title_background)")
+        assertThat(generated).contains("foregroundTintList = ContextCompat.getColorStateList(context, R.color.title)")
         assertThat(generated).contains("foregroundGravity = android.view.Gravity.CENTER")
         assertThat(generated).contains("importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES")
         assertThat(generated).contains("overScrollMode = View.OVER_SCROLL_NEVER")
         assertThat(generated).contains("isHorizontalScrollBarEnabled = false")
         assertThat(generated).contains("isVerticalScrollBarEnabled = true")
+        assertThat(generated).contains("isSelected = true")
+        assertThat(generated).contains("isActivated = true")
+        assertThat(generated).contains("isDuplicateParentStateEnabled = true")
     }
 
     @Test

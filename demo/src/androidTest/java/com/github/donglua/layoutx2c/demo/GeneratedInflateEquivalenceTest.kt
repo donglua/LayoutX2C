@@ -279,11 +279,13 @@ class GeneratedInflateEquivalenceTest {
             checkField(entry.layoutName, "compat_panel.tag", expectedPanel.tag, actualPanel.tag, differences)
             checkField(entry.layoutName, "compat_panel.backgroundTint", expectedPanel.backgroundTintList?.defaultColor, actualPanel.backgroundTintList?.defaultColor, differences)
             checkField(entry.layoutName, "compat_panel.foreground", expectedPanel.foreground != null, actualPanel.foreground != null, differences)
+            checkField(entry.layoutName, "compat_panel.foregroundTint", expectedPanel.foregroundTintList?.defaultColor, actualPanel.foregroundTintList?.defaultColor, differences)
             checkField(entry.layoutName, "compat_panel.foregroundGravity", expectedPanel.foregroundGravity, actualPanel.foregroundGravity, differences)
             checkField(entry.layoutName, "compat_panel.importantForAccessibility", expectedPanel.importantForAccessibility, actualPanel.importantForAccessibility, differences)
             checkField(entry.layoutName, "compat_panel.overScrollMode", expectedPanel.overScrollMode, actualPanel.overScrollMode, differences)
             checkField(entry.layoutName, "compat_panel.horizontalScrollbar", expectedPanel.isHorizontalScrollBarEnabled, actualPanel.isHorizontalScrollBarEnabled, differences)
             checkField(entry.layoutName, "compat_panel.verticalScrollbar", expectedPanel.isVerticalScrollBarEnabled, actualPanel.isVerticalScrollBarEnabled, differences)
+            checkField(entry.layoutName, "compat_panel.duplicateParentState", expectedPanel.isDuplicateParentStateEnabled, actualPanel.isDuplicateParentStateEnabled, differences)
 
             val expectedProgress = platformInflated.findViewById<ProgressBar>(R.id.compat_progress)
             val actualProgress = generated.findViewById<ProgressBar>(R.id.compat_progress)

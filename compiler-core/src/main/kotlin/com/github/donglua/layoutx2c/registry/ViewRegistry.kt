@@ -1209,6 +1209,9 @@ open class ResourceAwareViewRegistry(
             "android:enabled",
             "android:clickable",
             "android:focusable",
+            "android:selected",
+            "android:activated",
+            "android:duplicateParentState",
             "android:elevation",
             "android:minWidth",
             "android:minHeight"
@@ -1218,7 +1221,10 @@ open class ResourceAwareViewRegistry(
             return when (attrName) {
                 "android:enabled",
                 "android:clickable",
-                "android:focusable" -> isSupportedBoolean(value)
+                "android:focusable",
+                "android:selected",
+                "android:activated",
+                "android:duplicateParentState" -> isSupportedBoolean(value)
                 "android:elevation",
                 "android:minWidth",
                 "android:minHeight" -> isSupportedDimension(value) && supportsResourceReference(value)
@@ -1249,6 +1255,15 @@ open class ResourceAwareViewRegistry(
             attrs["android:focusable"]?.let { value ->
                 builder.addStatement("isFocusable = %L", value == "true")
             }
+            attrs["android:selected"]?.let { value ->
+                builder.addStatement("isSelected = %L", value == "true")
+            }
+            attrs["android:activated"]?.let { value ->
+                builder.addStatement("isActivated = %L", value == "true")
+            }
+            attrs["android:duplicateParentState"]?.let { value ->
+                builder.addStatement("isDuplicateParentStateEnabled = %L", value == "true")
+            }
             attrs["android:elevation"]?.let { value ->
                 builder.addStatement("elevation = %L", dimensionToPxFloatCode(value, resourceResolver, rPackageName))
             }
@@ -1268,6 +1283,7 @@ open class ResourceAwareViewRegistry(
             "android:tag",
             "android:backgroundTint",
             "android:foreground",
+            "android:foregroundTint",
             "android:foregroundGravity",
             "android:importantForAccessibility",
             "android:overScrollMode",
@@ -1276,7 +1292,7 @@ open class ResourceAwareViewRegistry(
 
         override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
             return when (attrName) {
-                "android:foreground", "android:foregroundGravity" -> node.isFrameLayoutLike()
+                "android:foreground", "android:foregroundTint", "android:foregroundGravity" -> node.isFrameLayoutLike()
                 else -> true
             }
         }
@@ -1288,6 +1304,7 @@ open class ResourceAwareViewRegistry(
                 "android:tag" -> isSupportedLiteralOrStringReference(value) && supportsResourceReference(value)
                 "android:backgroundTint" -> isSupportedColor(value) && supportsResourceReference(value)
                 "android:foreground" -> isSupportedDrawableReference(value) && supportsResourceReference(value)
+                "android:foregroundTint" -> isSupportedColor(value) && supportsResourceReference(value)
                 "android:foregroundGravity" -> true
                 "android:importantForAccessibility" -> importantForAccessibilityToCode(value) != null
                 "android:overScrollMode" -> overScrollModeToCode(value) != null
@@ -1312,6 +1329,9 @@ open class ResourceAwareViewRegistry(
             }
             attrs["android:foreground"]?.takeIf { node.node.isFrameLayoutLike() }?.let { value ->
                 emitDrawableAssignment(builder, "foreground", value)
+            }
+            attrs["android:foregroundTint"]?.takeIf { node.node.isFrameLayoutLike() }?.let { value ->
+                emitColorStateListAssignment(builder, "foregroundTintList", value)
             }
             attrs["android:foregroundGravity"]?.takeIf { node.node.isFrameLayoutLike() }?.let { value ->
                 builder.addStatement("foregroundGravity = %L", gravityToCode(value))
