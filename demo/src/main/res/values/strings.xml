@@ -22,6 +22,7 @@
     <string name="code_viewer_relative">Relative</string>
     <string name="code_viewer_include">Include</string>
     <string name="code_viewer_constraint">Constraint</string>
+    <string name="code_viewer_constraint_guideline">Guideline</string>
     <string name="code_viewer_recycler">Recycler</string>
     <string name="code_viewer_fallback">Fallback</string>
     <string name="code_viewer_binding">Binding</string>

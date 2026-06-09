@@ -14,6 +14,7 @@ object CodeViewerSelector {
         Entry(R.id.btn_demo_relative, "demo_relative"),
         Entry(R.id.btn_demo_include, "demo_include"),
         Entry(R.id.btn_demo_constraint, "demo_constraint"),
+        Entry(R.id.btn_demo_constraint_guideline, "demo_constraint_guideline"),
         Entry(R.id.btn_demo_recycler, "demo_recycler"),
         Entry(R.id.btn_demo_fallback, "demo_fallback"),
         Entry(R.id.btn_demo_binding, "demo_data_binding"),
