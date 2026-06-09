@@ -904,6 +904,9 @@ class LayoutCodeGeneratorTest {
                 android:layout_height="wrap_content"
                 android:hint="@string/app_name"
                 android:inputType="textPersonName|textCapWords"
+                android:imeOptions="actionDone|flagNoExtractUi"
+                android:maxLength="12"
+                android:selectAllOnFocus="true"
                 android:textSize="16sp" />
         """.trimIndent()
 
@@ -916,6 +919,10 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("inputType = android.text.InputType.TYPE_CLASS_TEXT or")
         assertThat(generated).contains("android.text.InputType.TYPE_TEXT_VARIATION_PERSON_NAME or")
         assertThat(generated).contains("android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS")
+        assertThat(generated).contains("imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE or")
+        assertThat(generated).contains("android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI")
+        assertThat(generated).contains("filters = filters + InputFilter.LengthFilter(12)")
+        assertThat(generated).contains("setSelectAllOnFocus(true)")
         assertThat(generated).contains("setTextSize(TypedValue.COMPLEX_UNIT_PX,")
     }
 

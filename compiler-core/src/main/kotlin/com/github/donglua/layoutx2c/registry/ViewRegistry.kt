@@ -231,6 +231,7 @@ open class ResourceAwareViewRegistry(
         TextPresentationAttributeHandler(),
         HintAttributeHandler(),
         InputTypeAttributeHandler,
+        EditTextBehaviorAttributeHandler,
         ImageSourceAttributeHandler(),
         ImageScaleTypeAttributeHandler,
         ImageTintAttributeHandler(),
@@ -871,6 +872,42 @@ open class ResourceAwareViewRegistry(
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             node.node.attributes["android:inputType"]?.let { value ->
                 builder.addStatement("inputType = %L", inputTypeToCode(value))
+            }
+        }
+    }
+
+    private object EditTextBehaviorAttributeHandler : AttributeHandler {
+        override val names = setOf(
+            "android:imeOptions",
+            "android:maxLength",
+            "android:selectAllOnFocus"
+        )
+
+        override fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean {
+            return node.isEditText()
+        }
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return when (attrName) {
+                "android:imeOptions" -> imeOptionsToCode(value) != null
+                "android:maxLength" -> value.toIntOrNull()?.let { it >= 0 } == true
+                "android:selectAllOnFocus" -> isSupportedBoolean(value)
+                else -> false
+            }
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            val attrs = node.node.attributes
+            attrs["android:imeOptions"]?.let { value ->
+                imeOptionsToCode(value)?.let { code ->
+                    builder.addStatement("imeOptions = %L", code)
+                }
+            }
+            attrs["android:maxLength"]?.toIntOrNull()?.takeIf { it >= 0 }?.let { maxLength ->
+                builder.addStatement("filters = filters + %T.LengthFilter(%L)", ClassName("android.text", "InputFilter"), maxLength)
+            }
+            attrs["android:selectAllOnFocus"]?.let { value ->
+                builder.addStatement("setSelectAllOnFocus(%L)", value == "true")
             }
         }
     }
@@ -1793,4 +1830,30 @@ private fun inputTypeToCode(value: String): String {
             else -> "android.text.InputType.TYPE_NULL"
         }
     }
+}
+
+private fun imeOptionsToCode(value: String): String? {
+    val parts = value.split("|").map { it.trim() }.filter { it.isNotEmpty() }
+    if (parts.isEmpty()) return null
+    return parts.map { part ->
+        when (part) {
+            "actionUnspecified" -> "android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED"
+            "actionNone" -> "android.view.inputmethod.EditorInfo.IME_ACTION_NONE"
+            "actionGo" -> "android.view.inputmethod.EditorInfo.IME_ACTION_GO"
+            "actionSearch" -> "android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH"
+            "actionSend" -> "android.view.inputmethod.EditorInfo.IME_ACTION_SEND"
+            "actionNext" -> "android.view.inputmethod.EditorInfo.IME_ACTION_NEXT"
+            "actionDone" -> "android.view.inputmethod.EditorInfo.IME_ACTION_DONE"
+            "actionPrevious" -> "android.view.inputmethod.EditorInfo.IME_ACTION_PREVIOUS"
+            "flagNoExtractUi" -> "android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI"
+            "flagNoFullscreen" -> "android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN"
+            "flagNavigatePrevious" -> "android.view.inputmethod.EditorInfo.IME_FLAG_NAVIGATE_PREVIOUS"
+            "flagNavigateNext" -> "android.view.inputmethod.EditorInfo.IME_FLAG_NAVIGATE_NEXT"
+            "flagNoAccessoryAction" -> "android.view.inputmethod.EditorInfo.IME_FLAG_NO_ACCESSORY_ACTION"
+            "flagNoEnterAction" -> "android.view.inputmethod.EditorInfo.IME_FLAG_NO_ENTER_ACTION"
+            "flagForceAscii" -> "android.view.inputmethod.EditorInfo.IME_FLAG_FORCE_ASCII"
+            "flagNoPersonalizedLearning" -> "android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING"
+            else -> return null
+        }
+    }.joinToString(" or ")
 }

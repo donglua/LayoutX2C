@@ -83,6 +83,7 @@ class GeneratedInflateEquivalenceTest {
             assertEquivalentMinimumHeightById("demo_form/form_name", platformForm, generatedForm, R.id.form_name)
             assertEquivalentMinimumWidthById("demo_form/form_submit", platformForm, generatedForm, R.id.form_submit)
             assertEquivalentElevationById("demo_form/form_submit", platformForm, generatedForm, R.id.form_submit)
+            assertEquivalentEditTextBehavior("demo_form/form_name", platformForm, generatedForm, R.id.form_name)
 
             val relativeEntry = entry("demo_relative")
             val platformRelative = inflatePlatform(relativeEntry)
@@ -707,6 +708,20 @@ class GeneratedInflateEquivalenceTest {
         val actual = actualRoot.findViewById<TextView>(childId)
         val differences = mutableListOf<String>()
         checkFloatField(path, "textSize", expected.textSize, actual.textSize, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentEditTextBehavior(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<EditText>(childId)
+        val actual = actualRoot.findViewById<EditText>(childId)
+        val differences = mutableListOf<String>()
+        checkField(path, "imeOptions", expected.imeOptions, actual.imeOptions, differences)
+
+        expected.setText("abcdefghijkl")
+        actual.setText("abcdefghijkl")
+        checkField(path, "maxLengthBehavior", expected.text.toString(), actual.text.toString(), differences)
         if (differences.isNotEmpty()) {
             throw AssertionError(differences.joinToString(separator = "\n"))
         }
