@@ -11,6 +11,7 @@ object LayoutX2CConfig {
         R.layout.demo_relative,
         R.layout.demo_include,
         R.layout.demo_constraint,
+        R.layout.demo_constraint_guideline,
         R.layout.demo_recycler,
         R.layout.demo_fallback,
         R.layout.demo_data_binding,

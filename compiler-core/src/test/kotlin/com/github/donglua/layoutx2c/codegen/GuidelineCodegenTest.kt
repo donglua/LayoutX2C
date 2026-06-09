@@ -40,11 +40,13 @@ class GuidelineCodegenTest {
         assertThat(generated).contains("import androidx.constraintlayout.widget.Guideline")
         assertThat(generated).contains("val root_child0 = Guideline(context)")
 
-        // Should set orientation to VERTICAL
-        assertThat(generated).contains("orientation = ConstraintLayout.LayoutParams.VERTICAL")
+        // Should set orientation on the generated ConstraintLayout.LayoutParams, not on Guideline itself.
+        assertThat(generated).contains("root_child0LayoutParams.orientation = ConstraintLayout.LayoutParams.VERTICAL")
+        assertThat(generated).doesNotContain("root_child0 = Guideline(context).apply {\n      id = R.id.guideline_vertical\n      orientation =")
 
-        // Should call setGuidelinePercent with 0.3
-        assertThat(generated).contains("setGuidelinePercent(0.3")
+        // Should set guideline percent on the generated ConstraintLayout.LayoutParams.
+        assertThat(generated).contains("root_child0LayoutParams.guidePercent = 0.3")
+        assertThat(generated).doesNotContain("setGuidelinePercent")
     }
 
     @Test
@@ -69,12 +71,13 @@ class GuidelineCodegenTest {
         val analyzed = analyzer.analyze(tree.root)
         val generated = generator.generate(analyzed, "test_guideline_begin", "R.layout.test_guideline_begin").toString()
 
-        // Should set orientation to HORIZONTAL
-        assertThat(generated).contains("orientation = ConstraintLayout.LayoutParams.HORIZONTAL")
+        // Should set orientation on the generated ConstraintLayout.LayoutParams, not on Guideline itself.
+        assertThat(generated).contains("root_child0LayoutParams.orientation = ConstraintLayout.LayoutParams.HORIZONTAL")
 
-        // Should call setGuidelineBegin with dimension value
-        assertThat(generated).contains("setGuidelineBegin(")
-        assertThat(generated).contains("100")
+        // Should set guideline begin on the generated ConstraintLayout.LayoutParams.
+        assertThat(generated).contains("root_child0LayoutParams.guideBegin = ")
+        assertThat(generated).contains("(100f * density).toInt()")
+        assertThat(generated).doesNotContain("setGuidelineBegin")
     }
 
     @Test
@@ -99,9 +102,10 @@ class GuidelineCodegenTest {
         val analyzed = analyzer.analyze(tree.root)
         val generated = generator.generate(analyzed, "test_guideline_end", "R.layout.test_guideline_end").toString()
 
-        // Should call setGuidelineEnd
-        assertThat(generated).contains("setGuidelineEnd(")
-        assertThat(generated).contains("50")
+        // Should set guideline end on the generated ConstraintLayout.LayoutParams.
+        assertThat(generated).contains("root_child0LayoutParams.guideEnd = ")
+        assertThat(generated).contains("(50f * density).toInt()")
+        assertThat(generated).doesNotContain("setGuidelineEnd")
     }
 
     @Test

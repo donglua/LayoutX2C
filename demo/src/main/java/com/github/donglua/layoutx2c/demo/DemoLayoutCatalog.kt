@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
+import com.github.donglua.layoutx2c.demo.generated.DemoConstraintGuidelineX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoConstraintX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoCompatWidgetsX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingIncludeChildX2CBinding
@@ -109,6 +110,16 @@ object DemoLayoutCatalog {
             status = Status.Generated
         ) { context, parent ->
             DemoConstraintX2C.inflate(context, parent)
+        },
+        Entry(
+            "Constraint Guideline",
+            "demo_constraint_guideline",
+            R.layout.demo_constraint_guideline,
+            "Layout_DemoConstraintGuideline",
+            summary = "ConstraintLayout guidelines with begin, end, and percent positioning",
+            status = Status.Generated
+        ) { context, parent ->
+            DemoConstraintGuidelineX2C.inflate(context, parent)
         },
         Entry(
             "Recycler",

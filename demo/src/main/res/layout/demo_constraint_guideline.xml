@@ -22,6 +22,14 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_begin="100dp" />
 
+    <!-- Vertical guideline at 48dp from end -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_end"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        app:layout_constraintGuide_end="48dp" />
+
     <!-- TextView constrained to guidelines -->
     <TextView
         android:id="@+id/guideline_title"
@@ -31,7 +39,7 @@
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="@id/guideline_vertical"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/guideline_end"
         app:layout_constraintTop_toTopOf="@id/guideline_horizontal" />
 
     <!-- Another TextView on the left side -->

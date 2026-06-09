@@ -333,6 +333,46 @@ class DefaultLayoutParamsEmitter(
                 continue
             }
         }
+
+        if (ConstraintLayoutRules.isGuideline(node.node.tagName)) {
+            val orientation = when (node.node.attributes["android:orientation"]) {
+                "vertical" -> "VERTICAL"
+                "horizontal" -> "HORIZONTAL"
+                else -> null
+            }
+            if (orientation != null) {
+                builder.addStatement(
+                    "%L.orientation = %T.%L",
+                    layoutParamsVarName,
+                    constraintLayoutParamsClass,
+                    orientation
+                )
+            }
+
+            node.node.attributes["app:layout_constraintGuide_begin"]?.let { value ->
+                builder.addStatement(
+                    "%L.guideBegin = %L",
+                    layoutParamsVarName,
+                    dimensionToPixelOffsetCode(value, resourceResolver, rPackageName)
+                )
+            }
+
+            node.node.attributes["app:layout_constraintGuide_end"]?.let { value ->
+                builder.addStatement(
+                    "%L.guideEnd = %L",
+                    layoutParamsVarName,
+                    dimensionToPixelOffsetCode(value, resourceResolver, rPackageName)
+                )
+            }
+
+            node.node.attributes["app:layout_constraintGuide_percent"]?.toFloatOrNull()?.let { percent ->
+                builder.addStatement(
+                    "%L.guidePercent = %Lf",
+                    layoutParamsVarName,
+                    percent
+                )
+            }
+        }
     }
 
     private fun constraintAnchorReference(value: String): CodeBlock {

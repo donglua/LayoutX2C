@@ -222,6 +222,22 @@ class GeneratedInflateEquivalenceTest {
     }
 
     @Test
+    fun generatedGuidelinesPreserveConstraintMetadata() {
+        runOnMainThread {
+            val entry = entry("demo_constraint_guideline")
+            val platformInflated = inflatePlatform(entry)
+            val generated = inflateGenerated(entry)
+
+            assertEquivalent(entry.layoutName, snapshot(platformInflated), snapshot(generated))
+            assertEquivalentGuidelineParams("demo_constraint_guideline/vertical", platformInflated, generated, R.id.guideline_vertical)
+            assertEquivalentGuidelineParams("demo_constraint_guideline/horizontal", platformInflated, generated, R.id.guideline_horizontal)
+            assertEquivalentGuidelineParams("demo_constraint_guideline/end", platformInflated, generated, R.id.guideline_end)
+            assertEquivalentConstraintParams("demo_constraint_guideline/title", platformInflated, generated, R.id.guideline_title)
+            assertEquivalentConstraintParams("demo_constraint_guideline/left", platformInflated, generated, R.id.guideline_left)
+        }
+    }
+
+    @Test
     fun generatedCompatWidgetsPreserveExpandedProperties() {
         runOnMainThread {
             val entry = entry("demo_compat_widgets")
@@ -306,7 +322,11 @@ class GeneratedInflateEquivalenceTest {
             checkFloatField(entry.layoutName, "constraint.horizontalWeight", expectedConstraintParams.horizontalWeight, actualConstraintParams.horizontalWeight, differences)
             checkFloatField(entry.layoutName, "constraint.verticalWeight", expectedConstraintParams.verticalWeight, actualConstraintParams.verticalWeight, differences)
             checkField(entry.layoutName, "constraint.goneStartMargin", expectedConstraintParams.goneStartMargin, actualConstraintParams.goneStartMargin, differences)
+            checkField(entry.layoutName, "constraint.goneEndMargin", expectedConstraintParams.goneEndMargin, actualConstraintParams.goneEndMargin, differences)
             checkField(entry.layoutName, "constraint.goneTopMargin", expectedConstraintParams.goneTopMargin, actualConstraintParams.goneTopMargin, differences)
+            checkField(entry.layoutName, "constraint.goneBottomMargin", expectedConstraintParams.goneBottomMargin, actualConstraintParams.goneBottomMargin, differences)
+            checkField(entry.layoutName, "constraint.leftToLeft", expectedConstraintParams.leftToLeft, actualConstraintParams.leftToLeft, differences)
+            checkField(entry.layoutName, "constraint.rightToRight", expectedConstraintParams.rightToRight, actualConstraintParams.rightToRight, differences)
 
             val expectedCard = platformInflated.findViewById<CardView>(R.id.compat_card)
             val actualCard = generated.findViewById<CardView>(R.id.compat_card)
@@ -524,6 +544,10 @@ class GeneratedInflateEquivalenceTest {
                     startToEnd = it.startToEnd,
                     endToStart = it.endToStart,
                     endToEnd = it.endToEnd,
+                    leftToLeft = it.leftToLeft,
+                    leftToRight = it.leftToRight,
+                    rightToLeft = it.rightToLeft,
+                    rightToRight = it.rightToRight,
                     topToTop = it.topToTop,
                     topToBottom = it.topToBottom,
                     bottomToTop = it.bottomToTop,
@@ -786,12 +810,29 @@ class GeneratedInflateEquivalenceTest {
         checkField(path, "startToEnd", expected.startToEnd, actual.startToEnd, differences)
         checkField(path, "endToStart", expected.endToStart, actual.endToStart, differences)
         checkField(path, "endToEnd", expected.endToEnd, actual.endToEnd, differences)
+        checkField(path, "leftToLeft", expected.leftToLeft, actual.leftToLeft, differences)
+        checkField(path, "leftToRight", expected.leftToRight, actual.leftToRight, differences)
+        checkField(path, "rightToLeft", expected.rightToLeft, actual.rightToLeft, differences)
+        checkField(path, "rightToRight", expected.rightToRight, actual.rightToRight, differences)
         checkField(path, "topToTop", expected.topToTop, actual.topToTop, differences)
         checkField(path, "topToBottom", expected.topToBottom, actual.topToBottom, differences)
         checkField(path, "bottomToTop", expected.bottomToTop, actual.bottomToTop, differences)
         checkField(path, "bottomToBottom", expected.bottomToBottom, actual.bottomToBottom, differences)
         checkFloatField(path, "horizontalBias", expected.horizontalBias, actual.horizontalBias, differences)
         checkFloatField(path, "verticalBias", expected.verticalBias, actual.verticalBias, differences)
+        if (differences.isNotEmpty()) {
+            throw AssertionError(differences.joinToString(separator = "\n"))
+        }
+    }
+
+    private fun assertEquivalentGuidelineParams(path: String, expectedRoot: View, actualRoot: View, childId: Int) {
+        val expected = expectedRoot.findViewById<View>(childId).layoutParams as ConstraintLayoutParams
+        val actual = actualRoot.findViewById<View>(childId).layoutParams as ConstraintLayoutParams
+        val differences = mutableListOf<String>()
+        checkField(path, "orientation", expected.orientation, actual.orientation, differences)
+        checkField(path, "guideBegin", expected.guideBegin, actual.guideBegin, differences)
+        checkField(path, "guideEnd", expected.guideEnd, actual.guideEnd, differences)
+        checkFloatField(path, "guidePercent", expected.guidePercent, actual.guidePercent, differences)
         if (differences.isNotEmpty()) {
             throw AssertionError(differences.joinToString(separator = "\n"))
         }
@@ -903,6 +944,10 @@ class GeneratedInflateEquivalenceTest {
         val startToEnd: Int,
         val endToStart: Int,
         val endToEnd: Int,
+        val leftToLeft: Int,
+        val leftToRight: Int,
+        val rightToLeft: Int,
+        val rightToRight: Int,
         val topToTop: Int,
         val topToBottom: Int,
         val bottomToTop: Int,

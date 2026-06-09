@@ -1536,36 +1536,9 @@ open class ResourceAwareViewRegistry(
             }
         }
 
-        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
-            // Orientation
-            node.node.attributes["android:orientation"]?.let { value ->
-                val orientationConstant = when (value) {
-                    "vertical" -> "ConstraintLayout.LayoutParams.VERTICAL"
-                    "horizontal" -> "ConstraintLayout.LayoutParams.HORIZONTAL"
-                    else -> return@let
-                }
-                builder.addStatement("orientation = %L", orientationConstant)
-            }
+        override fun canEmit(node: AnalyzedNode, attrName: String): Boolean = false
 
-            // Guide begin
-            node.node.attributes["app:layout_constraintGuide_begin"]?.let { value ->
-                val dimensionCode = dimensionToCode(value, resourceResolver, rPackageName)
-                builder.addStatement("setGuidelineBegin(%L)", dimensionCode)
-            }
-
-            // Guide end
-            node.node.attributes["app:layout_constraintGuide_end"]?.let { value ->
-                val dimensionCode = dimensionToCode(value, resourceResolver, rPackageName)
-                builder.addStatement("setGuidelineEnd(%L)", dimensionCode)
-            }
-
-            // Guide percent
-            node.node.attributes["app:layout_constraintGuide_percent"]?.let { value ->
-                value.toFloatOrNull()?.let { percent ->
-                    builder.addStatement("setGuidelinePercent(%Lf)", percent)
-                }
-            }
-        }
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) = Unit
     }
 }
 

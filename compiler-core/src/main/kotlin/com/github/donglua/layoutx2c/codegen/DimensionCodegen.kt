@@ -34,6 +34,39 @@ internal fun dimensionToCode(
 }
 
 /**
+ * Emits an integer pixel expression for XML attributes backed by Android's
+ * dimension-pixel-offset semantics. Unlike pixel-size values, .5 fractions are
+ * truncated, matching attributes such as ConstraintLayout guideline offsets.
+ */
+internal fun dimensionToPixelOffsetCode(
+    value: String,
+    resourceResolver: ResourceReferenceResolver = PermissiveResourceReferenceResolver,
+    rPackageName: String = ""
+): String {
+    return when {
+        value == "0" || value == "0dp" || value == "0px" -> "0"
+        value.endsWith("dp") -> {
+            val num = value.removeSuffix("dp")
+            "(${num}f * density).toInt()"
+        }
+        value.endsWith("sp") -> {
+            val num = value.removeSuffix("sp")
+            "android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, ${num}f, context.resources.displayMetrics).toInt()"
+        }
+        value.endsWith("px") -> {
+            val num = value.removeSuffix("px")
+            "(${num}f).toInt()"
+        }
+        value.startsWith("@dimen/") -> {
+            val resName = value.removePrefix("@dimen/")
+            val resCode = resourceResolver.referenceCode("dimen", resName, rPackageName) ?: return "0"
+            "context.resources.getDimensionPixelOffset($resCode)"
+        }
+        else -> "0"
+    }
+}
+
+/**
  * Emits a raw pixel float expression for attributes that Android stores as
  * continuous dimensions, for example textSize or elevation.
  */
