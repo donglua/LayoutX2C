@@ -1098,6 +1098,46 @@ class LayoutCodeGeneratorTest {
     }
 
     @Test
+    fun `theme color and drawable references emit runtime resolution`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:textColor="?attr/colorPrimary" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "theme_refs").root)
+        val generated = generator.generate(analyzed, "theme_refs", "R.layout.theme_refs").toString()
+
+        assertThat(generated).contains("context.theme.resolveAttribute(R.attr.selectableItemBackground, outValue, true)")
+        assertThat(generated).contains("context.theme.resolveAttribute(R.attr.colorPrimary, outValue, true)")
+        assertThat(generated).contains("background = run")
+        assertThat(generated).contains("setTextColor(run")
+        assertThat(generated).doesNotContain("FallbackInflater")
+    }
+
+    @Test
+    fun `image view theme drawable and tint references emit runtime resolution`() {
+        val xml = """
+            <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="?attr/listPreferredItemIcon"
+                android:tint="?android:attr/textColorPrimary" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "theme_image_refs").root)
+        val generated = generator.generate(analyzed, "theme_image_refs", "R.layout.theme_image_refs").toString()
+
+        assertThat(generated).contains("context.theme.resolveAttribute(R.attr.listPreferredItemIcon, outValue, true)")
+        assertThat(generated).contains("context.theme.resolveAttribute(android.R.attr.textColorPrimary, outValue, true)")
+        assertThat(generated).contains("setImageDrawable(run")
+        assertThat(generated).contains("imageTintList = run")
+        assertThat(generated).doesNotContain("FallbackInflater")
+    }
+
+    @Test
     fun `text size pixel values emit platform pixel size rounding`() {
         val xml = """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"

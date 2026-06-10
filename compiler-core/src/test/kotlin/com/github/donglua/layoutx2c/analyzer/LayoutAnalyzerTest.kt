@@ -297,18 +297,34 @@ class LayoutAnalyzerTest {
     }
 
     @Test
-    fun `theme reference in value forces FALLBACK`() {
+    fun `unsupported theme reference in value forces FALLBACK`() {
         val xml = """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="?attr/colorPrimary" />
+                android:text="?attr/titleText" />
         """.trimIndent()
 
         val tree = parser.parse(xml, "test")
         val result = analyzer.analyze(tree.root)
 
         assertThat(result.supportLevel).isEqualTo(SupportLevel.FALLBACK)
+    }
+
+    @Test
+    fun `supported color and drawable theme references return FULL`() {
+        val xml = """
+            <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:textColor="?attr/colorPrimary" />
+        """.trimIndent()
+
+        val tree = parser.parse(xml, "theme_refs")
+        val result = analyzer.analyze(tree.root)
+
+        assertThat(result.supportLevel).isEqualTo(SupportLevel.FULL)
     }
 
     @Test

@@ -90,8 +90,10 @@ class LayoutAnalyzer(
             return markAsFallback(node, parentTagName)
         }
 
-        // 3. 检查是否有 ?attr/ 引用（运行时 theme 依赖）
-        val hasThemeRef = node.attributes.values.any { it.startsWith("?") }
+        // 3. 检查是否有无法静态等价生成的 ?attr/ 引用（运行时 theme 依赖）
+        val hasThemeRef = node.attributes.any { (attrName, value) ->
+            value.startsWith("?") && !viewRegistry.isSupportedThemeAttributeValue(node, parentTagName, attrName, value)
+        }
         if (hasThemeRef) {
             return markAsFallback(node, parentTagName)
         }

@@ -35,6 +35,7 @@ interface ViewAnalysisRegistry {
     fun viewHandlerFor(tagName: String): ViewHandler?
     fun isKnownLayoutAttribute(attrName: String): Boolean
     fun isSupportedAttribute(node: LayoutNode, parentTagName: String?, attrName: String): Boolean
+    fun isSupportedThemeAttributeValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean
     fun hasUnsupportedAttributeValue(node: LayoutNode, parentTagName: String?): Boolean
     fun hasUnsupportedLayoutAttributeValue(node: LayoutNode, parentTagName: String?): Boolean = false
     fun hasInvalidRelativeLayoutParamForNode(node: LayoutNode, parentTagName: String?): Boolean
@@ -58,6 +59,8 @@ private interface AttributeHandler {
     fun supports(node: LayoutNode, parentTagName: String?, attrName: String): Boolean = true
 
     fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean = true
+
+    fun supportsThemeValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean = false
 
     fun canEmit(node: AnalyzedNode, attrName: String): Boolean = true
 
@@ -310,6 +313,21 @@ open class ResourceAwareViewRegistry(
         return false
     }
 
+    override fun isSupportedThemeAttributeValue(
+        node: LayoutNode,
+        parentTagName: String?,
+        attrName: String,
+        value: String
+    ): Boolean {
+        if (!isSupportedThemeAttr(value)) return false
+        return attributeHandlersByName[attrName]
+            ?.any { handler ->
+                handler.supports(node, parentTagName, attrName) &&
+                    handler.supportsThemeValue(node, parentTagName, attrName, value)
+            }
+            ?: false
+    }
+
     override fun hasUnsupportedLayoutAttributeValue(node: LayoutNode, parentTagName: String?): Boolean {
         for ((attrName, value) in node.attributes) {
             if (attrName !in layoutAttributeNames) continue
@@ -397,6 +415,58 @@ open class ResourceAwareViewRegistry(
 
     private fun resourceCode(type: String, name: String): String? {
         return resourceResolver.referenceCode(type, name, rPackageName)
+    }
+
+    private fun themeAttrCode(value: String): String? {
+        return when {
+            value.startsWith("?attr/") -> "R.attr.${value.removePrefix("?attr/")}"
+            value.startsWith("?android:attr/") -> "android.R.attr.${value.removePrefix("?android:attr/")}"
+            else -> null
+        }
+    }
+
+    private fun themeColorIntCode(value: String): CodeBlock? {
+        val attrCode = themeAttrCode(value) ?: return null
+        return CodeBlock.of(
+            "run {\n" +
+                "val outValue = %T()\n" +
+                "context.theme.resolveAttribute(%L, outValue, true)\n" +
+                "if (outValue.resourceId != 0) %T.getColor(context, outValue.resourceId) else outValue.data\n" +
+                "}",
+            ClassName("android.util", "TypedValue"),
+            attrCode,
+            ClassName("androidx.core.content", "ContextCompat")
+        )
+    }
+
+    private fun themeColorStateListCode(value: String): CodeBlock? {
+        val attrCode = themeAttrCode(value) ?: return null
+        return CodeBlock.of(
+            "run {\n" +
+                "val outValue = %T()\n" +
+                "context.theme.resolveAttribute(%L, outValue, true)\n" +
+                "if (outValue.resourceId != 0) %T.getColorStateList(context, outValue.resourceId) else %T.valueOf(outValue.data)\n" +
+                "}",
+            ClassName("android.util", "TypedValue"),
+            attrCode,
+            ClassName("androidx.core.content", "ContextCompat"),
+            ClassName("android.content.res", "ColorStateList")
+        )
+    }
+
+    private fun themeDrawableCode(value: String): CodeBlock? {
+        val attrCode = themeAttrCode(value) ?: return null
+        return CodeBlock.of(
+            "run {\n" +
+                "val outValue = %T()\n" +
+                "context.theme.resolveAttribute(%L, outValue, true)\n" +
+                "if (outValue.resourceId != 0) %T.getDrawable(context, outValue.resourceId) else %T(outValue.data)\n" +
+                "}",
+            ClassName("android.util", "TypedValue"),
+            attrCode,
+            ClassName("androidx.core.content", "ContextCompat"),
+            ClassName("android.graphics.drawable", "ColorDrawable")
+        )
     }
 
     private inner class CustomViewAttributeHandler(
@@ -611,9 +681,18 @@ open class ResourceAwareViewRegistry(
             return isSupportedBackground(value) && supportsResourceReference(value)
         }
 
+        override fun supportsThemeValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return isSupportedThemeAttr(value)
+        }
+
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             node.node.attributes["android:background"]?.let { value ->
                 when {
+                    isSupportedThemeAttr(value) -> {
+                        themeDrawableCode(value)?.let { code ->
+                            builder.addStatement("background = %L", code)
+                        }
+                    }
                     value.startsWith("@drawable/") -> {
                         val resName = value.removePrefix("@drawable/")
                         resourceCode("drawable", resName)?.let { resCode ->
@@ -674,6 +753,10 @@ open class ResourceAwareViewRegistry(
             return isSupportedColor(value) && supportsResourceReference(value)
         }
 
+        override fun supportsThemeValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return isSupportedThemeAttr(value)
+        }
+
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             node.node.attributes["android:textColor"]?.let { value ->
                 emitColorAssignment(builder, value, "setTextColor")
@@ -682,6 +765,11 @@ open class ResourceAwareViewRegistry(
 
         private fun emitColorAssignment(builder: CodeBlock.Builder, value: String, methodName: String) {
             when {
+                isSupportedThemeAttr(value) -> {
+                    themeColorStateListCode(value)?.let { code ->
+                        builder.addStatement("%L(%L)", methodName, code)
+                    }
+                }
                 value.startsWith("@color/") -> {
                     val resName = value.removePrefix("@color/")
                     resourceCode("color", resName)?.let { resCode ->
@@ -921,15 +1009,26 @@ open class ResourceAwareViewRegistry(
         }
 
         override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
-            return !value.startsWith("@drawable/") || supportsResourceReference(value)
+            return isSupportedDrawableReference(value) && supportsResourceReference(value)
+        }
+
+        override fun supportsThemeValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return isSupportedThemeAttr(value)
         }
 
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             node.node.attributes["android:src"]?.let { value ->
-                if (value.startsWith("@drawable/")) {
-                    val resName = value.removePrefix("@drawable/")
-                    resourceCode("drawable", resName)?.let { resCode ->
-                        builder.addStatement("setImageResource(%L)", resCode)
+                when {
+                    isSupportedThemeAttr(value) -> {
+                        themeDrawableCode(value)?.let { code ->
+                            builder.addStatement("setImageDrawable(%L)", code)
+                        }
+                    }
+                    value.startsWith("@drawable/") -> {
+                        val resName = value.removePrefix("@drawable/")
+                        resourceCode("drawable", resName)?.let { resCode ->
+                            builder.addStatement("setImageResource(%L)", resCode)
+                        }
                     }
                 }
             }
@@ -964,18 +1063,37 @@ open class ResourceAwareViewRegistry(
         }
 
         override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
-            return !value.startsWith("@color/") || supportsResourceReference(value)
+            return isSupportedColor(value) && supportsResourceReference(value)
+        }
+
+        override fun supportsThemeValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return isSupportedThemeAttr(value)
         }
 
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             (node.node.attributes["app:tint"] ?: node.node.attributes["android:tint"])?.let { value ->
-                if (value.startsWith("@color/")) {
-                    val resName = value.removePrefix("@color/")
-                    resourceCode("color", resName)?.let { resCode ->
+                when {
+                    isSupportedThemeAttr(value) -> {
+                        themeColorStateListCode(value)?.let { code ->
+                            builder.addStatement("imageTintList = %L", code)
+                        }
+                    }
+                    value.startsWith("@color/") -> {
+                        val resName = value.removePrefix("@color/")
+                        resourceCode("color", resName)?.let { resCode ->
+                            builder.addStatement(
+                                "imageTintList = %T.getColorStateList(context, %L)",
+                                ClassName("androidx.core.content", "ContextCompat"),
+                                resCode
+                            )
+                        }
+                    }
+                    value.startsWith("#") -> {
                         builder.addStatement(
-                            "imageTintList = %T.getColorStateList(context, %L)",
-                            ClassName("androidx.core.content", "ContextCompat"),
-                            resCode
+                            "imageTintList = %T.valueOf(%T.parseColor(%S))",
+                            ClassName("android.content.res", "ColorStateList"),
+                            ClassName("android.graphics", "Color"),
+                            value
                         )
                     }
                 }
@@ -1351,6 +1469,15 @@ open class ResourceAwareViewRegistry(
             }
         }
 
+        override fun supportsThemeValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return when (attrName) {
+                "android:backgroundTint",
+                "android:foreground",
+                "android:foregroundTint" -> isSupportedThemeAttr(value)
+                else -> false
+            }
+        }
+
         override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
             val attrs = node.node.attributes
             attrs["android:alpha"]?.let { value ->
@@ -1416,6 +1543,11 @@ open class ResourceAwareViewRegistry(
 
         private fun emitColorStateListAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
             when {
+                isSupportedThemeAttr(value) -> {
+                    themeColorStateListCode(value)?.let { code ->
+                        builder.addStatement("%L = %L", propertyName, code)
+                    }
+                }
                 value.startsWith("@color/") -> {
                     val resName = value.removePrefix("@color/")
                     resourceCode("color", resName)?.let { resCode ->
@@ -1440,15 +1572,22 @@ open class ResourceAwareViewRegistry(
         }
 
         private fun emitDrawableAssignment(builder: CodeBlock.Builder, propertyName: String, value: String) {
-            if (value.startsWith("@drawable/")) {
-                val resName = value.removePrefix("@drawable/")
-                resourceCode("drawable", resName)?.let { resCode ->
-                    builder.addStatement(
-                        "%L = %T.getDrawable(context, %L)",
-                        propertyName,
-                        ClassName("androidx.core.content", "ContextCompat"),
-                        resCode
-                    )
+            when {
+                isSupportedThemeAttr(value) -> {
+                    themeDrawableCode(value)?.let { code ->
+                        builder.addStatement("%L = %L", propertyName, code)
+                    }
+                }
+                value.startsWith("@drawable/") -> {
+                    val resName = value.removePrefix("@drawable/")
+                    resourceCode("drawable", resName)?.let { resCode ->
+                        builder.addStatement(
+                            "%L = %T.getDrawable(context, %L)",
+                            propertyName,
+                            ClassName("androidx.core.content", "ContextCompat"),
+                            resCode
+                        )
+                    }
                 }
             }
         }
@@ -1770,7 +1909,7 @@ private fun isSupportedDimension(value: String): Boolean {
 }
 
 private fun isSupportedColor(value: String): Boolean {
-    return value.startsWith("@color/") || value.startsWith("#")
+    return value.startsWith("@color/") || value.startsWith("#") || isSupportedThemeAttr(value)
 }
 
 private fun isSupportedBackground(value: String): Boolean {
@@ -1778,7 +1917,11 @@ private fun isSupportedBackground(value: String): Boolean {
 }
 
 private fun isSupportedDrawableReference(value: String): Boolean {
-    return value.startsWith("@drawable/")
+    return value.startsWith("@drawable/") || isSupportedThemeAttr(value)
+}
+
+private fun isSupportedThemeAttr(value: String): Boolean {
+    return value.startsWith("?attr/") || value.startsWith("?android:attr/")
 }
 
 private fun isSupportedLiteralOrStringReference(value: String): Boolean {

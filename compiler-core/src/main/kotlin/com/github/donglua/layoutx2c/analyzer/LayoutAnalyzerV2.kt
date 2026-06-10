@@ -156,8 +156,13 @@ class LayoutAnalyzerV2(
     private fun shouldForceFallback(node: LayoutNode, parentTagName: String?): Boolean {
         // Force-fallback attributes (style, theme)
         if (node.attributes.keys.any { it in viewRegistry.forceFallbackAttributes }) return true
-        // ?attr/ runtime theme references
-        if (node.attributes.values.any { it.startsWith("?") }) return true
+        // ?attr/ runtime theme references are safe only when the registry emits equivalent runtime resolution.
+        if (node.attributes.any { (attrName, value) ->
+                value.startsWith("?") && !viewRegistry.isSupportedThemeAttributeValue(node, parentTagName, attrName, value)
+            }
+        ) {
+            return true
+        }
         // Registry-level unsupported value check
         if (viewRegistry.hasUnsupportedAttributeValue(node, parentTagName)) return true
         return false
