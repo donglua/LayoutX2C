@@ -78,6 +78,13 @@ internal object LayoutX2CDigestCalculator {
         digest.updateString(resourceSymbolsKey)
         digest.updateString(registryConfigKey)
         digest.updateFile(layoutFile, resDir)
+        val primaryLayoutFile = layoutFile.canonicalFile
+        resDir.resolveLayoutFiles(layoutFile.nameWithoutExtension)
+            .filter { it.canonicalFile != primaryLayoutFile }
+            .forEach { variantFile ->
+                digest.updateString("layout-variant")
+                digest.updateFile(variantFile, resDir)
+            }
 
         LayoutDependencyScanner.scanDependencyGraph(layoutFile, resDir)
             .sortedWith(

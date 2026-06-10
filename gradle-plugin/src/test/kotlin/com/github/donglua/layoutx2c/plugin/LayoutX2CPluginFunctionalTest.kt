@@ -52,6 +52,21 @@ class LayoutX2CPluginFunctionalTest {
         assertThat(fixture.generatedSnapshot()).isEqualTo(firstSnapshot)
         assertThat(fixture.registryFile.readText()).isEqualTo(firstRegistry)
 
+        fixture.layoutVariant("layout-land", "demo_one").writeText(layoutXml("First landscape changed"))
+        fixture.runKsp()
+
+        val afterVariantManifest = fixture.digestManifest()
+        assertThat(afterVariantManifest.getProperty("registry"))
+            .isEqualTo(firstRegistryDigest)
+        assertThat(afterVariantManifest.getProperty("demo_one"))
+            .isNotEqualTo(firstManifest.getProperty("demo_one"))
+        assertThat(afterVariantManifest.getProperty("demo_two"))
+            .isEqualTo(firstManifest.getProperty("demo_two"))
+        assertThat(afterVariantManifest.getProperty("pattern_alpha"))
+            .isEqualTo(firstManifest.getProperty("pattern_alpha"))
+        assertThat(afterVariantManifest.getProperty("pattern_beta"))
+            .isEqualTo(firstManifest.getProperty("pattern_beta"))
+
         fixture.layout("demo_one").writeText(layoutXml("First changed"))
         fixture.runKsp()
 
@@ -60,13 +75,13 @@ class LayoutX2CPluginFunctionalTest {
         assertThat(afterLayoutManifest.getProperty("registry"))
             .isEqualTo(firstRegistryDigest)
         assertThat(afterLayoutManifest.getProperty("demo_one"))
-            .isNotEqualTo(firstManifest.getProperty("demo_one"))
+            .isNotEqualTo(afterVariantManifest.getProperty("demo_one"))
         assertThat(afterLayoutManifest.getProperty("demo_two"))
-            .isEqualTo(firstManifest.getProperty("demo_two"))
+            .isEqualTo(afterVariantManifest.getProperty("demo_two"))
         assertThat(afterLayoutManifest.getProperty("pattern_alpha"))
-            .isEqualTo(firstManifest.getProperty("pattern_alpha"))
+            .isEqualTo(afterVariantManifest.getProperty("pattern_alpha"))
         assertThat(afterLayoutManifest.getProperty("pattern_beta"))
-            .isEqualTo(firstManifest.getProperty("pattern_beta"))
+            .isEqualTo(afterVariantManifest.getProperty("pattern_beta"))
         assertThat(afterLayoutSnapshot["kotlin/com/example/generated/Layout_DemoOne.kt"])
             .isNotEqualTo(firstSnapshot["kotlin/com/example/generated/Layout_DemoOne.kt"])
         assertThat(afterLayoutSnapshot["kotlin/com/example/generated/Layout_DemoTwo.kt"])
@@ -232,6 +247,8 @@ class LayoutX2CPluginFunctionalTest {
 
         appDir.resolve("src/main/res/layout").mkdirs()
         appDir.resolve("src/main/res/layout/demo_one.xml").writeText(layoutXml("First"))
+        appDir.resolve("src/main/res/layout-land").mkdirs()
+        appDir.resolve("src/main/res/layout-land/demo_one.xml").writeText(layoutXml("First landscape"))
         appDir.resolve("src/main/res/layout/demo_two.xml").writeText(
             """
             <TextView xmlns:android="http://schemas.android.com/apk/res/android"
@@ -301,6 +318,10 @@ class LayoutX2CPluginFunctionalTest {
             get() = appDir.resolve("build/reports/layoutx2c/index.html")
 
         fun layout(name: String): File = appDir.resolve("src/main/res/layout/$name.xml")
+
+        fun layoutVariant(variantDir: String, name: String): File {
+            return appDir.resolve("src/main/res/$variantDir/$name.xml")
+        }
 
         fun cacheDir(layoutName: String, digest: String): File {
             return appDir.resolve("build/layoutx2c/ksp/generated/$layoutName/$digest")

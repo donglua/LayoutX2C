@@ -85,8 +85,8 @@ class LayoutX2CPlugin : Plugin<Project> {
                     LayoutX2CResourceArgumentProvider(
                         trackedResources = project.files(
                             project.fileTree(project.layout.projectDirectory.dir("src")).apply {
-                                include("**/res/layout/*.xml")
-                                include("**/res/values/*.xml")
+                                include("**/res/layout*/*.xml")
+                                include("**/res/values*/*.xml")
                             }
                         ),
                         cacheDir = project.layout.buildDirectory

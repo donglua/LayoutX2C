@@ -13,12 +13,14 @@ sealed class IncludeResult {
 /**
  * Recursively resolves `<include>` layout references.
  *
- * @param layoutDir The `res/layout` directory containing layout XML files.
+ * @param layoutDir The primary layout directory containing layout XML files.
  * @param maxDepth Maximum recursion depth to prevent runaway resolution (default 10).
+ * @param fallbackLayoutDirs Additional layout directories to search when the primary directory misses an include.
  */
 open class IncludeResolver(
     private val layoutDir: File,
-    private val maxDepth: Int = 10
+    private val maxDepth: Int = 10,
+    private val fallbackLayoutDirs: List<File> = emptyList()
 ) {
 
     /**
@@ -41,20 +43,23 @@ open class IncludeResolver(
         if (layoutRef in visitedLayouts) return IncludeResult.CircularReference
 
         // Locate the XML file
-        val xmlFile = File(layoutDir, "$layoutRef.xml")
+        val xmlFile = resolveLayoutFile(layoutRef)
         if (!xmlFile.exists() || !xmlFile.isFile) return IncludeResult.NotFound
 
         // Create a child resolver that carries forward visited state
         val currentDepth = depth
         val childVisited = visitedLayouts + layoutRef
-        val childResolver = object : IncludeResolver(layoutDir, maxDepth) {
+        val childResolver = object : IncludeResolver(
+            layoutDir = xmlFile.parentFile,
+            maxDepth = maxDepth,
+            fallbackLayoutDirs = searchLayoutDirs().filter { it.canonicalPath != xmlFile.parentFile.canonicalPath }
+        ) {
             override fun resolveInclude(
                 layoutRef: String,
                 visitedLayouts: Set<String>,
                 depth: Int
             ): IncludeResult {
-                // Delegate to parent's resolveInclude with accumulated state
-                return this@IncludeResolver.resolveInclude(layoutRef, childVisited, currentDepth + 1)
+                return super.resolveInclude(layoutRef, childVisited, currentDepth + 1)
             }
         }
 
@@ -65,5 +70,17 @@ open class IncludeResolver(
         } catch (e: Exception) {
             IncludeResult.ParseError(e)
         }
+    }
+
+    private fun resolveLayoutFile(layoutRef: String): File {
+        return searchLayoutDirs()
+            .map { File(it, "$layoutRef.xml") }
+            .firstOrNull { it.isFile }
+            ?: File(layoutDir, "$layoutRef.xml")
+    }
+
+    private fun searchLayoutDirs(): List<File> {
+        return (listOf(layoutDir) + fallbackLayoutDirs)
+            .distinctBy { it.canonicalPath }
     }
 }

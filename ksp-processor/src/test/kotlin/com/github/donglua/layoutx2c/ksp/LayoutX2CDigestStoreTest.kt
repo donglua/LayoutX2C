@@ -68,6 +68,36 @@ class LayoutX2CDigestStoreTest {
     }
 
     @Test
+    fun `layout digest changes when qualified layout variant changes`() {
+        val projectDir = tempDir.newFolder("layoutx2c-variant-digest")
+        val resDir = projectDir.resolve("src/main/res")
+        val defaultLayout = resDir.resolve("layout/demo.xml")
+        val landscapeLayout = resDir.resolve("layout-land/demo.xml")
+        defaultLayout.parentFile.mkdirs()
+        landscapeLayout.parentFile.mkdirs()
+        defaultLayout.writeText("<TextView android:text=\"default\" />")
+        landscapeLayout.writeText("<TextView android:text=\"land\" />")
+
+        val first = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = defaultLayout,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        landscapeLayout.writeText("<TextView android:text=\"land changed\" />")
+
+        val second = LayoutX2CDigestCalculator.layoutDigest(
+            layoutFile = defaultLayout,
+            resDir = resDir,
+            packageName = "com.example.generated",
+            rPackageName = "com.example"
+        )
+
+        assertThat(second).isNotEqualTo(first)
+    }
+
+    @Test
     fun `layout digest changes when values resource changes`() {
         val projectDir = tempDir.newFolder("layoutx2c-values-digest")
         val resDir = projectDir.resolve("src/main/res")

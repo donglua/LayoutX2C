@@ -49,7 +49,10 @@ internal object ResourceDependencyScanner {
     }
 
     private fun layoutFiles(layoutFile: File, resDir: File): List<File> {
-        return listOf(layoutFile) + LayoutDependencyScanner.scanDependencies(layoutFile, resDir)
+        val entryFiles = resDir.resolveLayoutFiles(layoutFile.nameWithoutExtension)
+            .ifEmpty { listOf(layoutFile).filter { it.isFile } }
+        return (entryFiles + LayoutDependencyScanner.scanDependencies(layoutFile, resDir))
+            .distinctBy { it.canonicalPath }
     }
 
     private fun resolve(

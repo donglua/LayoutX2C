@@ -20,8 +20,12 @@ internal object LayoutDependencyScanner {
     fun scanDependencyGraph(layoutFile: File, resDir: File): Set<Dependency> {
         val visited = linkedSetOf<File>()
         val dependencies = linkedMapOf<String, Dependency>()
-        scanFile(layoutFile, resDir, visited, dependencies)
-        dependencies.remove(layoutFile.canonicalPath)
+        val entryFiles = resDir.resolveLayoutFiles(layoutFile.nameWithoutExtension)
+            .ifEmpty { listOf(layoutFile).filter { it.isFile } }
+        for (entryFile in entryFiles) {
+            scanFile(entryFile, resDir, visited, dependencies)
+        }
+        entryFiles.forEach { dependencies.remove(it.canonicalPath) }
         return dependencies.values.toSet()
     }
 
@@ -36,7 +40,7 @@ internal object LayoutDependencyScanner {
         if (!layoutFile.isFile) return
 
         for (layoutRef in scanLayoutRefs(layoutFile)) {
-            val dependencyFile = resolveLayoutFile(layoutRef, resDir)
+            val dependencyFile = resolveLayoutFile(layoutRef, resDir, layoutFile)
             val key = dependencyFile?.canonicalPath ?: "missing:$layoutRef"
             dependencies.putIfAbsent(key, Dependency(layoutRef, dependencyFile))
             if (dependencyFile != null) {
@@ -79,9 +83,12 @@ internal object LayoutDependencyScanner {
         return refs
     }
 
-    private fun resolveLayoutFile(layoutRef: String, resDir: File): File? {
-        val file = File(resDir, "layout/$layoutRef.xml")
-        return file.takeIf { it.isFile }
+    private fun resolveLayoutFile(layoutRef: String, resDir: File, fromLayoutFile: File): File? {
+        val siblingVariant = fromLayoutFile.parentFile?.resolve("$layoutRef.xml")
+        if (siblingVariant?.isFile == true) {
+            return siblingVariant
+        }
+        return resDir.primaryLayoutFile(layoutRef)
     }
 
     private fun extractLayoutRef(raw: String): String? {

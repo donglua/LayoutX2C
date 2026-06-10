@@ -137,10 +137,10 @@ class LayoutX2CProcessor(
         }
 
         val config = resolveConfig(configSources)
-        val layoutDir = File(config.resDir, "layout")
+        val layoutDirs = config.resDir.layoutResourceDirs()
 
-        if (!layoutDir.exists()) {
-            logger.warn("Layout directory not found: $layoutDir")
+        if (layoutDirs.isEmpty()) {
+            logger.warn("Layout directories not found under: ${config.resDir}")
             return emptyList()
         }
 
@@ -154,11 +154,7 @@ class LayoutX2CProcessor(
                 ?.value as? String ?: ""
 
             if (prefix.isNotEmpty()) {
-                layoutDir.listFiles()?.filter {
-                    it.isFile && it.extension == "xml" && it.nameWithoutExtension.startsWith(prefix)
-                }?.forEach {
-                    patternLayoutNames.add(it.nameWithoutExtension)
-                }
+                patternLayoutNames.addAll(config.resDir.layoutNamesWithPrefix(prefix))
             }
         }
         layoutNames.addAll(patternLayoutNames.sorted())
@@ -188,10 +184,6 @@ class LayoutX2CProcessor(
             bindingAdapters = config.bindingAdapters
         )
 
-        // 创建带 include 解析能力的 parser，layoutDir 用于查找被 include 的 XML
-        val includeResolver = IncludeResolver(layoutDir)
-        val parser = XmlLayoutParser(includeResolver = includeResolver)
-
         // 为每个 layout 生成代码
         val codeGen = LayoutCodeGenerator(
             packageName = config.packageName,
@@ -216,9 +208,9 @@ class LayoutX2CProcessor(
         val digestStore = config.manifestFile?.let(::LayoutX2CDigestStore)
 
         for (layoutName in layoutNames) {
-            val xmlFile = File(layoutDir, "$layoutName.xml")
-            if (!xmlFile.exists()) {
-                logger.warn("Layout file not found: $xmlFile")
+            val xmlFile = config.resDir.primaryLayoutFile(layoutName)
+            if (xmlFile == null) {
+                logger.warn("Layout file not found for $layoutName under: ${config.resDir}")
                 continue
             }
 
@@ -268,6 +260,11 @@ class LayoutX2CProcessor(
                     }
                 }
 
+                val includeResolver = IncludeResolver(
+                    layoutDir = xmlFile.parentFile,
+                    fallbackLayoutDirs = layoutDirs.filter { it.canonicalPath != xmlFile.parentFile.canonicalPath }
+                )
+                val parser = XmlLayoutParser(includeResolver = includeResolver)
                 val tree = parser.parse(xmlFile)
                 val analyzed = analyzer.analyze(tree.root)
 
