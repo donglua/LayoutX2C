@@ -110,6 +110,51 @@ class BindingFacadeGeneratorV2Test {
     }
 
     @Test
+    fun `malformed data binding include uses native binding instead of missing x2c facade`() {
+        tempFolder.newFile("broken_child.xml").writeText(
+            """
+                <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                    <data>
+                        <variable
+                            name="title"
+                            type="java.lang.String" />
+                    </data>
+                </layout>
+            """.trimIndent()
+        )
+        val includeParser = XmlLayoutParser(includeResolver = IncludeResolver(tempFolder.root))
+        val tree = includeParser.parse(
+            """
+                <layout xmlns:android="http://schemas.android.com/apk/res/android">
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+                        <include
+                            android:id="@+id/broken"
+                            layout="@layout/broken_child"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </FrameLayout>
+                </layout>
+            """.trimIndent(),
+            "host_with_broken_include"
+        )
+        val analyzed = analyzer.analyze(tree.root)
+
+        val generated = generator.generate(
+            analyzedRoot = analyzed,
+            layoutName = "host_with_broken_include",
+            layoutResId = "R.layout.host_with_broken_include",
+            useFastPath = true,
+            dataBindingVariables = tree.rootMetadata.dataBindingVariables
+        ).toString()
+
+        assertThat(generated).contains("val broken: BrokenChildBinding = DataBindingUtil.bind(brokenRoot)")
+        assertThat(generated).doesNotContain("BrokenChildX2CBinding.bind")
+        assertThat(generated).contains("setContainedBinding(broken)")
+    }
+
+    @Test
     fun `generated binding binds root id field from root view directly`() {
         val xml = """
             <layout xmlns:android="http://schemas.android.com/apk/res/android">

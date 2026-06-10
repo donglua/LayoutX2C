@@ -10,6 +10,7 @@ data class BindingField(
     val viewClass: ClassName,
     val isRoot: Boolean = false,
     val isNestedBinding: Boolean = false,
+    val useNestedX2CBinding: Boolean = true,
     val nestedBindingLayoutName: String? = null
 )
 
@@ -48,6 +49,7 @@ class BindingFieldCollector(
                 viewClass = bindingViewClass(node, isNestedBinding),
                 isRoot = isRoot,
                 isNestedBinding = isNestedBinding,
+                useNestedX2CBinding = includeNode?.isMalformedDataBindingLayout != true,
                 nestedBindingLayoutName = includeNode?.layoutRef?.takeIf { isNestedBinding }
             )
         }

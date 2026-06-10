@@ -100,7 +100,8 @@ class XmlLayoutParser(
                 is IncludeResult.Success -> {
                     val includedRoot = resolved.tree.root
                     val resolvedNodeType = nodeType.copy(
-                        isDataBindingLayout = resolved.tree.rootMetadata.isDataBindingLayout
+                        isDataBindingLayout = resolved.tree.rootMetadata.isDataBindingLayout,
+                        isMalformedDataBindingLayout = resolved.tree.rootMetadata.isMalformedDataBindingLayout
                     )
 
                     // If the included root is a <merge> tag, native Android ignores

@@ -365,13 +365,24 @@ class BindingFacadeGeneratorV2(
                         "Missing required view with ID: ${field.idName}"
                     )
                 }
-                builder.addStatement(
-                    "val %L: %T = %T.bind(%L)",
-                    field.propertyName,
-                    field.viewClass,
-                    field.nestedBindingX2CClassName(),
-                    rootVarName
-                )
+                if (field.useNestedX2CBinding) {
+                    builder.addStatement(
+                        "val %L: %T = %T.bind(%L)",
+                        field.propertyName,
+                        field.viewClass,
+                        field.nestedBindingX2CClassName(),
+                        rootVarName
+                    )
+                } else {
+                    builder.addStatement(
+                        "val %L: %T = %T.bind(%L)\n⇥?: error(%S)⇤",
+                        field.propertyName,
+                        field.viewClass,
+                        ClassName("androidx.databinding", "DataBindingUtil"),
+                        rootVarName,
+                        "Missing required binding with ID: ${field.idName}"
+                    )
+                }
             } else if (field.isRoot) {
                 builder.addStatement(
                     "val %L = rootView as? %T\n⇥?: error(%S)⇤",

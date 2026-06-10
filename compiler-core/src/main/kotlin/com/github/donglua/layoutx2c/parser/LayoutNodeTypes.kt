@@ -10,6 +10,7 @@ sealed class LayoutNodeType {
         val layoutRef: String,
         val resolutionError: String? = null,
         val isDataBindingLayout: Boolean = false,
+        val isMalformedDataBindingLayout: Boolean = false,
         val includeAttributes: Map<String, String> = emptyMap()
     ) : LayoutNodeType()
     object Merge : LayoutNodeType()
