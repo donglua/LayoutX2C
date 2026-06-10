@@ -179,4 +179,41 @@ class BindingAdapterCodegenTest {
 
         assertThat(analyzed.children.single().unsupportedAttributes).contains("app:stateColorRes")
     }
+
+    @Test
+    fun `unsupported binding adapter expression does not emit adapter call`() {
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <View
+                        android:id="@+id/state_indicator"
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        app:stateColorRes="@{vm.colorRes + 1}"
+                        app:stateSizeDp="@{3F}" />
+                </FrameLayout>
+            </layout>
+        """.trimIndent()
+
+        val tree = XmlLayoutParser().parse(xml, "item_unsupported_binding_adapter_expression")
+        val analyzed = LayoutAnalyzerV2(bindingAdapters = bindingAdapters).analyze(tree.root)
+        val generated = BindingFacadeGeneratorV2(
+            packageName = "com.example.generated",
+            rPackageName = "com.example",
+            bindingAdapters = bindingAdapters
+        ).generate(
+            analyzedRoot = analyzed,
+            layoutName = "item_unsupported_binding_adapter_expression",
+            layoutResId = "R.layout.item_unsupported_binding_adapter_expression",
+            useFastPath = true,
+            dataBindingVariables = tree.rootMetadata.dataBindingVariables,
+            dataBindingImports = tree.rootMetadata.dataBindingImports
+        ).toString()
+
+        assertThat(analyzed.children.single().unsupportedAttributes).contains("app:stateColorRes")
+        assertThat(generated).doesNotContain("SampleBindingAdapters.setViewState")
+    }
 }
