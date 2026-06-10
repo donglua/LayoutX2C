@@ -117,4 +117,58 @@ class DataBindingExpressionParserTest {
         val refs = DataBindingExpressionParser.extractVariableReferences(expr)
         assertThat(refs).containsAtLeast("user", "default")
     }
+
+    @Test
+    fun `expression extraction rejects incomplete wrappers`() {
+        assertThat(DataBindingExpressionParser.extractExpression("@{title")).isNull()
+        assertThat(DataBindingExpressionParser.extractExpression("@=title}")).isNull()
+        assertThat(DataBindingExpressionParser.parse("plain text")).isEqualTo(DataBindingExpression.NoExpression)
+        assertThat(DataBindingExpressionParser.isTwoWayBinding("@={title")).isFalse()
+        assertThat(DataBindingExpressionParser.isTwoWayBinding("title}")).isFalse()
+    }
+
+    @Test
+    fun `expression to code supports literals identifiers and rejects complex expressions`() {
+        assertThat(DataBindingExpressionParser.expressionToCode("")).isNull()
+        assertThat(DataBindingExpressionParser.expressionToCode("`hello \"user\"\n`"))
+            .isEqualTo("\"hello \\\"user\\\"\\n\"")
+        assertThat(DataBindingExpressionParser.expressionToCode("`row\tone\rnext\\`"))
+            .isEqualTo("\"row\\tone\\rnext\\\\\"")
+        assertThat(DataBindingExpressionParser.expressionToCode("\"quoted\"")).isEqualTo("\"quoted\"")
+        assertThat(DataBindingExpressionParser.expressionToCode("-42")).isEqualTo("-42")
+        assertThat(DataBindingExpressionParser.expressionToCode(".5")).isEqualTo(".5")
+        assertThat(DataBindingExpressionParser.expressionToCode("3.5F")).isEqualTo("3.5f")
+        assertThat(DataBindingExpressionParser.expressionToCode("-7F")).isEqualTo("-7f")
+        assertThat(DataBindingExpressionParser.expressionToCode("user.profile.name")).isEqualTo("user.profile.name")
+        assertThat(DataBindingExpressionParser.expressionToCode("user + title")).isNull()
+    }
+
+    @Test
+    fun `parse returns complex expressions for malformed structured inputs`() {
+        assertThat(DataBindingExpressionParser.parse("@{1bad}"))
+            .isEqualTo(DataBindingExpression.ComplexExpression("1bad"))
+        assertThat(DataBindingExpressionParser.parse("@{.name}"))
+            .isEqualTo(DataBindingExpression.ComplexExpression(".name"))
+        assertThat(DataBindingExpressionParser.parse("@{a : b ? c}"))
+            .isEqualTo(DataBindingExpression.ComplexExpression("a : b ? c"))
+        assertThat(DataBindingExpressionParser.parse("@{_name}"))
+            .isEqualTo(DataBindingExpression.VariableReference("_name"))
+        assertThat(DataBindingExpressionParser.parse("@{user-name}"))
+            .isEqualTo(DataBindingExpression.ComplexExpression("user-name"))
+    }
+
+    @Test
+    fun `variable extraction handles all expression variants`() {
+        assertThat(DataBindingExpressionParser.extractVariableReferences(DataBindingExpression.NoExpression)).isEmpty()
+        assertThat(
+            DataBindingExpressionParser.extractVariableReferences(
+                DataBindingExpression.TwoWayBinding(DataBindingExpression.PropertyAccess("form", "title"))
+            )
+        ).containsExactly("form")
+        assertThat(
+            DataBindingExpressionParser.extractVariableReferences(
+                DataBindingExpression.ComplexExpression("user.name + account_id + 42")
+            )
+        ).containsAtLeast("user", "name", "account_id")
+    }
 }

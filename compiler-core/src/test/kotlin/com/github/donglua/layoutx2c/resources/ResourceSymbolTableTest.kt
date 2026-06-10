@@ -136,6 +136,33 @@ class ResourceSymbolTableTest {
         assertThat(baseOwned.stableKey()).isNotEqualTo(appOwned.stableKey())
     }
 
+    @Test
+    fun `parses and formats resource reference edge cases`() {
+        assertThat(parseResourceReference("plain")).isNull()
+        assertThat(parseResourceReference("@+id/title")).isNull()
+        assertThat(parseResourceReference("@android:color/white")).isNull()
+        assertThat(parseResourceReference("@color")).isNull()
+        assertThat(parseResourceReference("@/missing_type")).isNull()
+        assertThat(parseResourceReference("@color/")).isNull()
+        assertThat(parseResourceReference("@color/title"))
+            .isEqualTo(ResourceReference("color", "title"))
+
+        val localResolver = StaticResourceReferenceResolver(
+            owners = mapOf(ResourceReference("color", "title") to "com.example.app"),
+            currentPackageName = "com.example.app"
+        )
+        val externalResolver = StaticResourceReferenceResolver(
+            owners = mapOf(ResourceReference("color", "title") to "com.example.base"),
+            currentPackageName = "com.example.app"
+        )
+
+        assertThat(localResolver.referenceCode("color", "title", "com.example.app"))
+            .isEqualTo("R.color.title")
+        assertThat(externalResolver.referenceCode("color", "title", "com.example.app"))
+            .isEqualTo("com.example.base.R.color.title")
+        assertThat(localResolver.referenceCode("color", "missing", "com.example.app")).isNull()
+    }
+
     private fun compileRJar(packageName: String, rBody: String): java.io.File {
         val srcDir = tempDir.newFolder("r-src")
         val classesDir = tempDir.newFolder("r-classes")
