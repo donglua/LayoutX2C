@@ -317,7 +317,7 @@ class LayoutAnalyzerTest {
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:rotation="10">
+                android:nextFocusForward="@id/next">
             </LinearLayout>
         """.trimIndent()
 
@@ -325,7 +325,7 @@ class LayoutAnalyzerTest {
         val result = analyzer.analyze(tree.root)
 
         assertThat(result.supportLevel).isEqualTo(SupportLevel.PARTIAL)
-        assertThat(result.unsupportedAttributes).contains("android:rotation")
+        assertThat(result.unsupportedAttributes).contains("android:nextFocusForward")
     }
 
     @Test

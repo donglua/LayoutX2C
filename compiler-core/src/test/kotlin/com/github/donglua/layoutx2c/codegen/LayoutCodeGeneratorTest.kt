@@ -1638,4 +1638,37 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("layoutResource = R.layout.my_layout")
         assertThat(generated).contains("inflatedId = R.id.inflated")
     }
+
+    @Test
+    fun `common transform and state attributes emit property code`() {
+        val xml = """
+            <View xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
+                android:translationX="4dp"
+                android:translationY="@dimen/card_offset"
+                android:translationZ="2px"
+                android:rotation="15"
+                android:rotationX="-10.5"
+                android:rotationY="3"
+                android:scaleX="1.2"
+                android:scaleY="0.8"
+                android:keepScreenOn="true" />
+        """.trimIndent()
+
+        val analyzed = analyzer.analyze(parser.parse(xml, "common_transform_attrs").root)
+        val generated = generator.generate(analyzed, "common_transform_attrs", "R.layout.common_transform_attrs").toString()
+
+        assertThat(generated).contains("val root = View(context).apply {")
+        assertThat(generated).contains("translationX = (4f * density)")
+        assertThat(generated).contains("translationY = context.resources.getDimension(R.dimen.card_offset)")
+        assertThat(generated).contains("translationZ = 2f")
+        assertThat(generated).contains("rotation = 15f")
+        assertThat(generated).contains("rotationX = -10.5f")
+        assertThat(generated).contains("rotationY = 3f")
+        assertThat(generated).contains("scaleX = 1.2f")
+        assertThat(generated).contains("scaleY = 0.8f")
+        assertThat(generated).contains("keepScreenOn = true")
+        assertThat(generated).doesNotContain("FallbackInflater")
+    }
 }

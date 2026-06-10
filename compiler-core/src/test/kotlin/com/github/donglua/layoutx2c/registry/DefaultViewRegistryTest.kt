@@ -275,6 +275,21 @@ class DefaultViewRegistryTest {
         assertThat(analyzed.unsupportedAttributes).doesNotContain("android:gravity")
     }
 
+    @Test
+    fun `malformed transform attributes are rejected`() {
+        val root = parser.parse(
+            """
+                <View xmlns:android="http://schemas.android.com/apk/res/android"
+                    android:layout_width="1dp"
+                    android:layout_height="1dp"
+                    android:rotation="@dimen/angle" />
+            """.trimIndent(),
+            "bad_transform_attr"
+        ).root
+
+        assertThat(registry.hasUnsupportedAttributeValue(root, null)).isTrue()
+    }
+
     private fun flatten(node: AnalyzedNode): List<AnalyzedNode> {
         return listOf(node) + node.children.flatMap(::flatten)
     }

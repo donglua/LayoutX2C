@@ -240,6 +240,7 @@ open class ResourceAwareViewRegistry(
         CheckedAttributeHandler,
         CommonStateAttributeHandler(),
         CommonViewPresentationAttributeHandler(),
+        CommonTransformAttributeHandler(),
         PaddingAttributeHandler(),
         GravityAttributeHandler(),
         FillViewportAttributeHandler,
@@ -1450,6 +1451,80 @@ open class ResourceAwareViewRegistry(
                     )
                 }
             }
+        }
+    }
+
+    private inner class CommonTransformAttributeHandler : AttributeHandler {
+        override val names = setOf(
+            "android:translationX",
+            "android:translationY",
+            "android:translationZ",
+            "android:rotation",
+            "android:rotationX",
+            "android:rotationY",
+            "android:scaleX",
+            "android:scaleY",
+            "android:keepScreenOn"
+        )
+
+        override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            return when (attrName) {
+                "android:translationX",
+                "android:translationY",
+                "android:translationZ" -> isSupportedDimension(value) && supportsResourceReference(value)
+                "android:rotation",
+                "android:rotationX",
+                "android:rotationY",
+                "android:scaleX",
+                "android:scaleY" -> value.toFloatOrNull() != null
+                "android:keepScreenOn" -> isSupportedBoolean(value)
+                else -> false
+            }
+        }
+
+        override fun emit(builder: CodeBlock.Builder, node: AnalyzedNode) {
+            val attrs = node.node.attributes
+            emitDimensionFloatProperty(builder, attrs, "android:translationX", "translationX")
+            emitDimensionFloatProperty(builder, attrs, "android:translationY", "translationY")
+            emitDimensionFloatProperty(builder, attrs, "android:translationZ", "translationZ")
+            emitFloatProperty(builder, attrs, "android:rotation", "rotation")
+            emitFloatProperty(builder, attrs, "android:rotationX", "rotationX")
+            emitFloatProperty(builder, attrs, "android:rotationY", "rotationY")
+            emitFloatProperty(builder, attrs, "android:scaleX", "scaleX")
+            emitFloatProperty(builder, attrs, "android:scaleY", "scaleY")
+            attrs["android:keepScreenOn"]?.let { value ->
+                builder.addStatement("keepScreenOn = %L", value == "true")
+            }
+        }
+
+        private fun emitDimensionFloatProperty(
+            builder: CodeBlock.Builder,
+            attrs: Map<String, String>,
+            attrName: String,
+            propertyName: String
+        ) {
+            attrs[attrName]?.let { value ->
+                builder.addStatement(
+                    "%L = %L",
+                    propertyName,
+                    dimensionToPxFloatCode(value, resourceResolver, rPackageName)
+                )
+            }
+        }
+
+        private fun emitFloatProperty(
+            builder: CodeBlock.Builder,
+            attrs: Map<String, String>,
+            attrName: String,
+            propertyName: String
+        ) {
+            attrs[attrName]?.toFloatOrNull()?.let { value ->
+                builder.addStatement("%L = %L", propertyName, value.toCodeLiteral())
+            }
+        }
+
+        private fun Float.toCodeLiteral(): String {
+            return toString().removeSuffix(".0") + "f"
         }
     }
 
