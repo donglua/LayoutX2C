@@ -3,6 +3,7 @@ package com.github.donglua.layoutx2c.ksp
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzer
 import com.github.donglua.layoutx2c.analyzer.LayoutAnalyzerV2
 import com.github.donglua.layoutx2c.analyzer.SupportLevel
+import com.github.donglua.layoutx2c.codegen.BindingFacadeGeneratorV2
 import com.github.donglua.layoutx2c.codegen.DefaultLayoutParamsEmitter
 import com.github.donglua.layoutx2c.codegen.LayoutCodeGenerator
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
@@ -21,6 +22,80 @@ class LayoutX2CGenerationFixtureTest {
 
     @get:Rule
     val tempDir = TemporaryFolder()
+
+    @Test
+    fun `binding adapter config feeds generated binding facade`() {
+        val configSource = """
+            package com.fixture.legacy.home
+
+            import com.fixture.binding.SampleBindingAdapters
+            import com.fixture.feature.home.R
+            import com.github.donglua.layoutx2c.runtime.annotation.FastBindingAdapter
+            import com.github.donglua.layoutx2c.runtime.annotation.FastBindingAdapters
+            import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig
+
+            @FastLayoutConfig
+            @FastBindingAdapters(
+                FastBindingAdapter(
+                    attrs = [
+                        "app:stateColorRes",
+                        "app:stateSizeDp"
+                    ],
+                    methodClass = SampleBindingAdapters::class,
+                    methodName = "setViewState"
+                )
+            )
+            object LayoutX2CConfig {
+                val layouts = intArrayOf(
+                    R.layout.item_sample_binding_adapter,
+                )
+            }
+        """.trimIndent()
+        val xml = """
+            <layout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+                <data>
+                    <import type="com.fixture.shared.R" />
+                </data>
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+                    <View
+                        android:id="@+id/state_indicator"
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        app:stateColorRes="@{R.color.sample_state}"
+                        app:stateSizeDp="@{3F}" />
+                </FrameLayout>
+            </layout>
+        """.trimIndent()
+
+        val layoutNames = LayoutX2CConfigParser.extractLayoutNames(configSource)
+        val rPackageName = LayoutX2CConfigParser.extractRPackageName(configSource)
+        val bindingAdapters = BindingAdapterConfigParser.extractBindingAdapters(configSource)
+        val tree = XmlLayoutParser().parse(xml, "item_sample_binding_adapter")
+        val analyzed = LayoutAnalyzerV2(bindingAdapters = bindingAdapters).analyze(tree.root)
+        val generated = BindingFacadeGeneratorV2(
+            packageName = "$rPackageName.generated",
+            rPackageName = rPackageName ?: error("R package missing"),
+            bindingAdapters = bindingAdapters
+        ).generate(
+            analyzedRoot = analyzed,
+            layoutName = "item_sample_binding_adapter",
+            layoutResId = "R.layout.item_sample_binding_adapter",
+            useFastPath = true,
+            dataBindingVariables = tree.rootMetadata.dataBindingVariables,
+            dataBindingImports = tree.rootMetadata.dataBindingImports
+        ).toString()
+
+        assertThat(layoutNames).containsExactly("item_sample_binding_adapter")
+        assertThat(rPackageName).isEqualTo("com.fixture.feature.home")
+        assertThat(bindingAdapters).hasSize(1)
+        assertThat(analyzed.children.single().unsupportedAttributes).isEmpty()
+        assertThat(generated).contains(
+            "SampleBindingAdapters.setViewState(stateIndicator, com.fixture.shared.R.color.sample_state, 3f)"
+        )
+    }
 
     @Test
     fun `bare ksp config generates data binding constraint root instead of root fallback`() {
