@@ -76,12 +76,12 @@
 - Registry 仍是 aggregating 输出，但已通过内容 digest/cache 避免 Registry 内容未变时重复走完整生成路径。
 - Gradle 插件已提供 `layoutX2CReport`，可输出项目级 JSON / HTML 汇总，并支持 CI fallback policy。
 
-**1.0 仓库就绪状态**
+**发布状态**
 
-- Runtime-facing API 已使用 `@PublicApi` / `@ExperimentalApi` 标注，1.0 迁移边界见
-  `docs/MIGRATION_1_0.md`。
-- 版本号已准备为 `1.0.0`，Maven Central / Gradle Plugin Portal 发布配置和 release workflow
-  已就绪；真实发布仍需要 tag、Maven Central credentials、signing key，以及可选 Gradle Plugin Portal secrets。
+- `1.0.0` 已发布到 Maven Central、Gradle Plugin Portal 和 GitHub Release。
+- `1.1.0` 已准备发布，主要包含安全属性支持面扩展、DataBinding / BindingAdapter 修复、
+  qualified resource tracking、fallback 性能文档和 CI 覆盖率增强。
+- Runtime-facing API 已使用 `@PublicApi` / `@ExperimentalApi` 标注；breaking change 必须有迁移说明。
 - `runtime` consumer ProGuard / R8 rules 已覆盖 generated factory 和 app-package generated registry。
 - benchmark 方法、release 步骤和本地验证命令分别记录在 `docs/BENCHMARKS.md` 和 `docs/RELEASE.md`。
 
@@ -97,33 +97,31 @@
 
 ## Next
 
-**仓库侧 1.0 工作已全部完成**。下一步是执行外部发布。
+**仓库侧 1.1.0 工作已进入发布准备**。下一步是执行 release gate、打 tag，并验证外部仓库同步。
 
-### ✅ 已完成的 1.0 准备工作
+### ✅ 已完成的 1.1.0 准备工作
 
 以下任务已在仓库中完成：
 
-1. **Android 等价性测试补齐** ✅
-   - 已覆盖 include、nested include、include + merge、ViewStub、ConstraintLayout 安全子集
-   - 已覆盖 fallback 子树和父级 LayoutParams 保留语义
-   - 已对比 generated vs inflated 的 View tree、id、visibility、LayoutParams 和关键属性
+1. **安全属性支持面扩展** ✅
+   - 已补齐 transform、EditText、view state、supported theme drawable attrs
+   - Unsupported values 继续保守 fallback
 
-2. **README 和 Demo 同步** ✅
-   - README 已更新完整支持范围
-   - Demo 已补齐所有 XML 样例和 benchmark 入口
-   - 已明确 DataBinding binding 子类的支持边界
+2. **DataBinding / BindingAdapter 修复** ✅
+   - 已处理 malformed binding include
+   - 已覆盖 BindingAdapter config generation 和 unsupported expression 路径
+   - include/root 字段绑定行为继续保持原生语义边界
 
-3. **精确资源引用图** ✅
-   - 已实现 layout → style/dimen/color/string/drawable 精确依赖追踪
-   - 修改被引用资源会触发相关 layout 重新生成
-   - 修改无关资源不触发无关 factory 重生成
+3. **增量和资源追踪增强** ✅
+   - 已追踪 qualified layout resources
+   - values qualifier 变体和 layout resource dirs 进入 digest/cache 决策
 
-4. **API 标注和文档** ✅
-   - `@PublicApi` / `@ExperimentalApi` 已完成标注
-   - `docs/MIGRATION_1_0.md`、`docs/BENCHMARKS.md`、`docs/RELEASE.md` 已完成
-   - 版本号已设为 `1.0.0`
+4. **验证和发布材料** ✅
+   - 已新增 `docs/RELEASE_NOTES_1_1.md`
+   - 已补充 fallback 性能约束文档
+   - 已新增 Kover / Codecov 覆盖率上报
 
-### 🚀 待执行：1.0 外部发布
+### 🚀 待执行：1.1.0 外部发布
 
 **唯一剩余任务**：执行真实外部发布（需要维护者权限）
 
@@ -136,12 +134,13 @@
 
 2. **打 tag 触发发布**
    ```bash
-   git tag -a 1.0.0 -m "Release 1.0.0"
-   git push origin 1.0.0
+   VERSION=1.1.0
+   git tag -a "$VERSION" -m "Release $VERSION"
+   git push origin "$VERSION"
    ```
 
 3. **验证发布结果**
-   - Maven Central: `io.github.donglua.layoutx2c:runtime:1.0.0`
+   - Maven Central: `io.github.donglua.layoutx2c:runtime:1.1.0`
    - Gradle Plugin Portal: `io.github.donglua.layoutx2c`（如已配置）
 
 4. **发布 GitHub Release**

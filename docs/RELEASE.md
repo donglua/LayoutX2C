@@ -1,7 +1,7 @@
 # LayoutX2C Release Guide
 
-LayoutX2C artifacts are released from a SemVer tag such as `1.0.0-rc.1` or
-`1.0.0`.
+LayoutX2C artifacts are released from a SemVer tag such as `1.1.0-rc.1` or
+`1.1.0`.
 
 ## Required Secrets
 
@@ -46,6 +46,7 @@ Verify local publication metadata without remote credentials:
 Build a Central Portal manual upload bundle for the `Publish Component` flow:
 
 ```bash
+VERSION=1.1.0
 ORG_GRADLE_PROJECT_signingInMemoryKey="$SIGNING_IN_MEMORY_KEY" \
 ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="$SIGNING_IN_MEMORY_KEY_PASSWORD" \
 ./gradlew buildCentralPortalBundle \
@@ -53,7 +54,7 @@ ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="$SIGNING_IN_MEMORY_KEY_PASSWORD" 
   --no-configuration-cache
 ```
 
-Upload `build/central-portal/layoutx2c-1.0.0-central-bundle.zip` in Central
+Upload `build/central-portal/layoutx2c-${VERSION}-central-bundle.zip` in Central
 Portal's `Publish Component` page. The bundle is a Maven Repository Layout zip
 and does not require `MAVEN_CENTRAL_USERNAME` or `MAVEN_CENTRAL_PASSWORD` until
 it is uploaded through Central Portal or published by CI.
@@ -85,8 +86,9 @@ release notes.
 After local verification passes:
 
 ```bash
-git tag -a 1.0.0 -m "Release 1.0.0"
-git push origin 1.0.0
+VERSION=1.1.0
+git tag -a "$VERSION" -m "Release $VERSION"
+git push origin "$VERSION"
 ```
 
 The GitHub Actions release workflow then runs:
@@ -103,15 +105,19 @@ Pushing the git tag triggers the workflow, but it does not by itself guarantee a
 public GitHub Release page. After the workflow succeeds:
 
 ```bash
-gh release create 1.0.0 --title "LayoutX2C 1.0.0" --notes-file docs/RELEASE_NOTES_1_0.md
-gh release view 1.0.0 --json isDraft,isPrerelease,url
+VERSION=1.1.0
+NOTES_FILE=docs/RELEASE_NOTES_1_1.md
+gh release create "$VERSION" --title "LayoutX2C $VERSION" --notes-file "$NOTES_FILE"
+gh release view "$VERSION" --json isDraft,isPrerelease,url
 ```
 
 If the release page already exists, update it instead:
 
 ```bash
-gh release edit 1.0.0 --title "LayoutX2C 1.0.0" --notes-file docs/RELEASE_NOTES_1_0.md
-gh release view 1.0.0 --json isDraft,isPrerelease,url
+VERSION=1.1.0
+NOTES_FILE=docs/RELEASE_NOTES_1_1.md
+gh release edit "$VERSION" --title "LayoutX2C $VERSION" --notes-file "$NOTES_FILE"
+gh release view "$VERSION" --json isDraft,isPrerelease,url
 ```
 
 The stable release should report `isDraft=false` and `isPrerelease=false`.
