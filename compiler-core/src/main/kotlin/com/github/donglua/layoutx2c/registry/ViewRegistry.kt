@@ -1009,6 +1009,10 @@ open class ResourceAwareViewRegistry(
         }
 
         override fun supportsValue(node: LayoutNode, parentTagName: String?, attrName: String, value: String): Boolean {
+            // DataBinding 表达式会在运行时通过 executeBindings() 处理，不需要在这里验证
+            if (isDataBindingExpression(value)) {
+                return true
+            }
             return isSupportedDrawableReference(value) && supportsResourceReference(value)
         }
 
@@ -1922,6 +1926,11 @@ private fun isSupportedDrawableReference(value: String): Boolean {
 
 private fun isSupportedThemeAttr(value: String): Boolean {
     return value.startsWith("?attr/") || value.startsWith("?android:attr/")
+}
+
+private fun isDataBindingExpression(value: String): Boolean {
+    return (value.startsWith("@{") && value.endsWith("}")) ||
+           (value.startsWith("@={") && value.endsWith("}"))
 }
 
 private fun isSupportedLiteralOrStringReference(value: String): Boolean {
