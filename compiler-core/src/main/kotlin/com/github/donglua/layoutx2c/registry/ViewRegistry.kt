@@ -435,7 +435,7 @@ open class ResourceAwareViewRegistry(
                 "}",
             ClassName("android.util", "TypedValue"),
             attrCode,
-            ClassName("androidx.core.content", "ContextCompat")
+            ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat")
         )
     }
 
@@ -449,7 +449,7 @@ open class ResourceAwareViewRegistry(
                 "}",
             ClassName("android.util", "TypedValue"),
             attrCode,
-            ClassName("androidx.core.content", "ContextCompat"),
+            ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
             ClassName("android.content.res", "ColorStateList")
         )
     }
@@ -464,7 +464,7 @@ open class ResourceAwareViewRegistry(
                 "}",
             ClassName("android.util", "TypedValue"),
             attrCode,
-            ClassName("androidx.core.content", "ContextCompat"),
+            ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
             ClassName("android.graphics.drawable", "ColorDrawable")
         )
     }
@@ -553,7 +553,7 @@ open class ResourceAwareViewRegistry(
                 resourceCode("color", resName)?.let { resCode ->
                     CodeBlock.of(
                         "%T.getColor(context, %L)",
-                        ClassName("androidx.core.content", "ContextCompat"),
+                        ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                         resCode
                     )
                 }
@@ -572,7 +572,7 @@ open class ResourceAwareViewRegistry(
                 resourceCode("color", resName)?.let { resCode ->
                     CodeBlock.of(
                         "%T.getColorStateList(context, %L)",
-                        ClassName("androidx.core.content", "ContextCompat"),
+                        ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                         resCode
                     )
                 }
@@ -595,7 +595,7 @@ open class ResourceAwareViewRegistry(
         return resourceCode("drawable", resName)?.let { resCode ->
             CodeBlock.of(
                 "%T.getDrawable(context, %L)",
-                ClassName("androidx.core.content", "ContextCompat"),
+                ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                 resCode
             )
         }
@@ -704,7 +704,7 @@ open class ResourceAwareViewRegistry(
                         resourceCode("color", resName)?.let { resCode ->
                             builder.addStatement(
                                 "setBackgroundColor(%T.getColor(context, %L))",
-                                ClassName("androidx.core.content", "ContextCompat"),
+                                ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                                 resCode
                             )
                         }
@@ -776,7 +776,7 @@ open class ResourceAwareViewRegistry(
                         builder.addStatement(
                             "%L(%T.getColor(context, %L))",
                             methodName,
-                            ClassName("androidx.core.content", "ContextCompat"),
+                            ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                             resCode
                         )
                     }
@@ -1087,7 +1087,7 @@ open class ResourceAwareViewRegistry(
                         resourceCode("color", resName)?.let { resCode ->
                             builder.addStatement(
                                 "imageTintList = %T.getColorStateList(context, %L)",
-                                ClassName("androidx.core.content", "ContextCompat"),
+                                ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                                 resCode
                             )
                         }
@@ -1204,7 +1204,7 @@ open class ResourceAwareViewRegistry(
                     builder.addStatement(
                         "%L = %T.getColorStateList(context, %L)",
                         propertyName,
-                        ClassName("androidx.core.content", "ContextCompat"),
+                        ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                         resCode
                     )
                 }
@@ -1218,7 +1218,7 @@ open class ResourceAwareViewRegistry(
                     builder.addStatement(
                         "%L = %T.getDrawable(context, %L)",
                         propertyName,
-                        ClassName("androidx.core.content", "ContextCompat"),
+                        ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                         resCode
                     )
                 }
@@ -1313,7 +1313,7 @@ open class ResourceAwareViewRegistry(
                         builder.addStatement(
                             "%L = %T.getColor(context, %L)",
                             propertyName,
-                            ClassName("androidx.core.content", "ContextCompat"),
+                            ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                             resCode
                         )
                     }
@@ -1336,7 +1336,7 @@ open class ResourceAwareViewRegistry(
                     builder.addStatement(
                         "%L = %T.getDrawable(context, %L)",
                         propertyName,
-                        ClassName("androidx.core.content", "ContextCompat"),
+                        ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                         resCode
                     )
                 }
@@ -1558,7 +1558,7 @@ open class ResourceAwareViewRegistry(
                         builder.addStatement(
                             "%L = %T.getColorStateList(context, %L)",
                             propertyName,
-                            ClassName("androidx.core.content", "ContextCompat"),
+                            ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                             resCode
                         )
                     }
@@ -1588,7 +1588,7 @@ open class ResourceAwareViewRegistry(
                         builder.addStatement(
                             "%L = %T.getDrawable(context, %L)",
                             propertyName,
-                            ClassName("androidx.core.content", "ContextCompat"),
+                            ClassName("com.github.donglua.layoutx2c.runtime", "ResourceCompat"),
                             resCode
                         )
                     }
