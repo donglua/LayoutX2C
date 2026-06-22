@@ -204,7 +204,7 @@ class LayoutX2CGenerationFixtureTest {
         ).generate(analyzed, "price_view", "R.layout.price_view").toString()
 
         assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
-        assertThat(generated).contains("setPriceColor(ContextCompat.getColor(context, R.color.red))")
+        assertThat(generated).contains("setPriceColor(ResourceCompat.getColor(context, R.color.red))")
     }
 
     @Test
@@ -256,7 +256,7 @@ class LayoutX2CGenerationFixtureTest {
 
         assertThat(analyzed.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
         assertThat(generated).contains("val root_child0 = MainTabLayout(context).apply")
-        assertThat(generated).contains("setBackgroundColor(ContextCompat.getColor(context, R.color.dependency_panel))")
+        assertThat(generated).contains("setBackgroundColor(ResourceCompat.getColor(context, R.color.dependency_panel))")
         assertThat(generated).doesNotContain(
             "FallbackChildPlan(intArrayOf(0), \"com.fixture.widget.MainTabLayout\""
         )

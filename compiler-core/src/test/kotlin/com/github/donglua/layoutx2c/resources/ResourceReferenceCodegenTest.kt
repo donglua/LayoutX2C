@@ -74,7 +74,7 @@ class ResourceReferenceCodegenTest {
         val generated = generator.generate(analyzed, "local_color", "R.layout.local_color").toString()
 
         assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
-        assertThat(generated).contains("ContextCompat.getColor(context, R.color.local_divider)")
+        assertThat(generated).contains("ResourceCompat.getColor(context, R.color.local_divider)")
         assertThat(generated).doesNotContain("FallbackInflater.inflate(context, R.layout.local_color, parent)")
     }
 
@@ -101,8 +101,8 @@ class ResourceReferenceCodegenTest {
         val generated = generator.generate(analyzed, "owned_color", "R.layout.owned_color").toString()
 
         assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
-        assertThat(generated).contains("ContextCompat.getColor(context, com.example.base.R.color.base_divider)")
-        assertThat(generated).doesNotContain("ContextCompat.getColor(context, R.color.base_divider)")
+        assertThat(generated).contains("ResourceCompat.getColor(context, com.example.base.R.color.base_divider)")
+        assertThat(generated).doesNotContain("ResourceCompat.getColor(context, R.color.base_divider)")
     }
 
     @Test
@@ -136,8 +136,8 @@ class ResourceReferenceCodegenTest {
         val generated = generator.generate(analyzed, "package_aware_color", "R.layout.package_aware_color").toString()
 
         assertThat(analyzed.supportLevel).isEqualTo(SupportLevel.FULL)
-        assertThat(generated).contains("ContextCompat.getColor(context, com.example.base.R.color.base_divider)")
-        assertThat(generated).doesNotContain("ContextCompat.getColor(context, R.color.base_divider)")
+        assertThat(generated).contains("ResourceCompat.getColor(context, com.example.base.R.color.base_divider)")
+        assertThat(generated).doesNotContain("ResourceCompat.getColor(context, R.color.base_divider)")
     }
 
     private fun generator(

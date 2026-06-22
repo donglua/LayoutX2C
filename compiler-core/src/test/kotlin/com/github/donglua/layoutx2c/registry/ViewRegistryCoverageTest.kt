@@ -62,10 +62,10 @@ class ViewRegistryCoverageTest {
         assertThat(generated).contains("setRatio(1.5f)")
         assertThat(generated).contains("setGap((8f * density + 0.5f).toInt())")
         assertThat(generated).contains("setHexColor(Color.parseColor(\"#123456\"))")
-        assertThat(generated).contains("setRefColor(ContextCompat.getColor(context, R.color.accent))")
+        assertThat(generated).contains("setRefColor(ResourceCompat.getColor(context, R.color.accent))")
         assertThat(generated).contains("setHexTint(ColorStateList.valueOf(Color.parseColor(\"#654321\")))")
-        assertThat(generated).contains("setRefTint(ContextCompat.getColorStateList(context, R.color.selector))")
-        assertThat(generated).contains("setIcon(ContextCompat.getDrawable(context, R.drawable.ic_demo))")
+        assertThat(generated).contains("setRefTint(ResourceCompat.getColorStateList(context, R.color.selector))")
+        assertThat(generated).contains("setIcon(ResourceCompat.getDrawable(context, R.drawable.ic_demo))")
         assertThat(generated).contains("setAnyRef(R.layout.other)")
     }
 
