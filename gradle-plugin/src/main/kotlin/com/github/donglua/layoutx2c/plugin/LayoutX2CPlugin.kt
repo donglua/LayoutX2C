@@ -26,7 +26,7 @@ class LayoutX2CPlugin : Plugin<Project> {
     companion object {
         const val EXTENSION_NAME = "layoutX2C"
         const val GROUP = "io.github.donglua.layoutx2c"
-        const val VERSION = "1.2.0"
+        const val VERSION = "1.3.0"
     }
 
     override fun apply(project: Project) {
