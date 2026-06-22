@@ -1006,7 +1006,10 @@ class LayoutCodeGeneratorTest {
         ).generate(analyzed, "custom_frame_gravity", "R.layout.custom_frame_gravity").toString()
 
         assertThat(analyzed.unsupportedAttributes).doesNotContain("android:gravity")
-        assertThat(generated).contains("val root = BadgeFrameLayout(context)")
+        assertThat(generated).contains(
+            "val root = ViewFactoryCompat.createView(context, \"com.example.widget.BadgeFrameLayout\", null) { " +
+                "BadgeFrameLayout(context) }"
+        )
         assertThat(generated).doesNotContain("gravity = android.view.Gravity.CENTER")
     }
 
