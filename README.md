@@ -99,12 +99,71 @@ object LayoutX2CConfig {
 ```
 
 例如 `app:priceColor="@color/red"` 会生成类似
-`setPriceColor(ContextCompat.getColor(context, R.color.red))` 的 setter 调用。
+`setPriceColor(ResourceCompat.getColor(context, R.color.red))` 的 setter 调用。
 
 `FastCustomView` 还会在 KSP 阶段解析 `viewClass` 的父类链。自定义 View 如果继承了
 LayoutX2C 已支持的 Android / AndroidX View，分析器会复用安全的父类属性语义；例如
 `FrameLayout` 子类可以被识别为 FrameLayout-like View。继承语义只用于已验证可等价的
 平台属性，typed 自定义属性仍需要通过 `FastCustomViewAttr` 显式声明。
+
+## 运行时扩展点
+
+### 资源加载
+
+生成代码通过 `ResourceCompat` 读取 `@color`、`@drawable`、`@dimen`、`@string`
+等资源。默认实现委托给 AndroidX `ContextCompat` 和系统 `Resources`；换肤框架或
+自定义资源系统可以在应用初始化时注册 `ResourceLoader`：
+
+```kotlin
+import com.github.donglua.layoutx2c.runtime.ResourceLoader
+import com.github.donglua.layoutx2c.runtime.ResourceLoaderRegistry
+
+ResourceLoaderRegistry.setResourceLoader(customResourceLoader)
+```
+
+测试或主题切换结束后，可以恢复默认行为：
+
+```kotlin
+ResourceLoaderRegistry.reset()
+```
+
+### 自定义 View 创建
+
+对 `cn.xxx`、`com.example.xxx` 这类自定义全限定名 View，生成代码会先经过
+`ViewFactoryCompat`，业务侧可以注册 `ViewFactory` 接管创建过程。未返回自定义
+View 时，LayoutX2C 会继续使用默认构造函数。
+
+```kotlin
+import com.github.donglua.layoutx2c.runtime.ViewFactoryRegistry
+
+ViewFactoryRegistry.setViewFactory { context, name, attrs ->
+    when (name) {
+        "com.example.widget.PriceView" -> PriceView(context, attrs)
+        else -> null
+    }
+}
+```
+
+`attrs` 的类型是 `AttributeSet?`。当前生成路径不会重放平台 XML parser，因此
+`attrs` 可能为 `null`。如果现有 inflater 强依赖非空 `AttributeSet`，adapter
+应在 `attrs == null` 时返回 `null`，避免破坏默认创建路径：
+
+```kotlin
+val inflater = JZViewInflater()
+
+ViewFactoryRegistry.setViewFactory { context, name, attrs ->
+    attrs?.let { inflater.createView(context, name, it) }
+}
+```
+
+需要完全等价复用这类 inflater 时，还需要额外的 synthetic `AttributeSet` 支持；
+在没有真实 XML `AttributeSet` 的情况下，不建议直接伪造平台 inflate 语义。
+
+恢复默认行为：
+
+```kotlin
+ViewFactoryRegistry.reset()
+```
 
 如果项目里有确认安全的 DataBinding `BindingAdapter`，也可以显式声明白名单。LayoutX2C
 不会自动扫描或猜测 BindingAdapter；只有声明过的属性组合会在生成的 binding facade
