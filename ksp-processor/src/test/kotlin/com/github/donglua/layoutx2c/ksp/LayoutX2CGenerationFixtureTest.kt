@@ -255,7 +255,10 @@ class LayoutX2CGenerationFixtureTest {
         ).generate(analyzed, "activity_main", "R.layout.activity_main").toString()
 
         assertThat(analyzed.children[0].supportLevel).isEqualTo(SupportLevel.FULL)
-        assertThat(generated).contains("val root_child0 = MainTabLayout(context).apply")
+        assertThat(generated).contains(
+            "val root_child0 = ViewFactoryCompat.createView(context, \"com.fixture.widget.MainTabLayout\", null) { " +
+                "MainTabLayout(context) }.apply"
+        )
         assertThat(generated).contains("setBackgroundColor(ResourceCompat.getColor(context, R.color.dependency_panel))")
         assertThat(generated).doesNotContain(
             "FallbackChildPlan(intArrayOf(0), \"com.fixture.widget.MainTabLayout\""
