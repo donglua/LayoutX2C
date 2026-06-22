@@ -13,7 +13,7 @@ buildscript {
     extra["targetSdk"] = 36
     extra["compileSdk"] = 36
     extra["groupId"] = "io.github.donglua.layoutx2c"
-    extra["versionName"] = "1.1.0"
+    extra["versionName"] = "1.2.0"
 }
 
 plugins {
