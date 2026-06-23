@@ -8,9 +8,8 @@ import com.github.donglua.layoutx2c.runtime.annotation.PublicApi
 /**
  * View creation hook for generated custom views.
  *
- * This is intentionally nullable-AttributeSet friendly: generated LayoutX2C
- * code does not replay the platform XML parser, so a custom factory must be
- * able to decline creation when it requires a real AttributeSet.
+ * attrs may be a LayoutX2C SyntheticAttributeSet when generated metadata is
+ * available, or null when the call site has no XML attributes to replay.
  */
 @PublicApi
 fun interface ViewFactory {

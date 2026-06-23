@@ -46,6 +46,36 @@ class XmlLayoutParserTest {
     }
 
     @Test
+    fun `preserves attribute namespace metadata for synthetic AttributeSet codegen`() {
+        val xml = """
+            <com.example.PriceView xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:id="@+id/price"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:priceColor="@color/red"
+                app:priceFormat="%.2f" />
+        """.trimIndent()
+
+        val node = parser.parse(xml, "price_view").root
+
+        assertThat(node.xmlAttributes.map { it.qualifiedName }).containsAtLeast(
+            "android:id",
+            "app:priceColor",
+            "app:priceFormat"
+        )
+        val androidId = node.xmlAttributes.first { it.qualifiedName == "android:id" }
+        assertThat(androidId.namespaceUri).isEqualTo("http://schemas.android.com/apk/res/android")
+        assertThat(androidId.name).isEqualTo("id")
+        assertThat(androidId.value).isEqualTo("@+id/price")
+
+        val priceColor = node.xmlAttributes.first { it.qualifiedName == "app:priceColor" }
+        assertThat(priceColor.namespaceUri).isEqualTo("http://schemas.android.com/apk/res-auto")
+        assertThat(priceColor.name).isEqualTo("priceColor")
+        assertThat(priceColor.value).isEqualTo("@color/red")
+    }
+
+    @Test
     fun `parses nested layout with multiple children`() {
         val xml = """
             <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"

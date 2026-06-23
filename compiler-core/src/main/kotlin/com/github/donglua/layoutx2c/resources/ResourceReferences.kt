@@ -133,6 +133,7 @@ class ResourceSymbolTable(
 
     companion object {
         private val valueResourceTypes = setOf(
+            "attr",
             "color",
             "dimen",
             "drawable",

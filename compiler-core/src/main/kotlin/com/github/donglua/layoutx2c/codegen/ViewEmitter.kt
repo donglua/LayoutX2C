@@ -7,33 +7,53 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 
 interface ViewEmitter {
-    fun emitCreate(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode, hasAttributes: Boolean)
+    fun emitCreate(
+        builder: CodeBlock.Builder,
+        varName: String,
+        node: AnalyzedNode,
+        hasAttributes: Boolean,
+        syntheticAttrsVarName: String? = null
+    )
 }
 
 class DefaultViewEmitter(
     private val viewRegistry: ViewEmitRegistry = DefaultViewRegistry
 ) : ViewEmitter {
 
-    override fun emitCreate(builder: CodeBlock.Builder, varName: String, node: AnalyzedNode, hasAttributes: Boolean) {
+    override fun emitCreate(
+        builder: CodeBlock.Builder,
+        varName: String,
+        node: AnalyzedNode,
+        hasAttributes: Boolean,
+        syntheticAttrsVarName: String?
+    ) {
         val tagName = node.node.tagName
         val viewClass = resolveViewClass(tagName)
         if (shouldUseViewFactoryHook(tagName)) {
             val viewFactoryCompat = ClassName("com.github.donglua.layoutx2c.runtime", "ViewFactoryCompat")
+            val attrsExpression = syntheticAttrsVarName ?: "null"
+            val defaultCreator = if (syntheticAttrsVarName == null) {
+                CodeBlock.of("%T(context)", viewClass)
+            } else {
+                CodeBlock.of("%T(context, %L)", viewClass, syntheticAttrsVarName)
+            }
             if (hasAttributes) {
                 builder.addStatement(
-                    "val %L = %T.createView(context, %S, null) { %T(context) }.apply {",
+                    "val %L = %T.createView(context, %S, %L) { %L }.apply {",
                     varName,
                     viewFactoryCompat,
                     tagName,
-                    viewClass
+                    attrsExpression,
+                    defaultCreator
                 )
             } else {
                 builder.addStatement(
-                    "val %L = %T.createView(context, %S, null) { %T(context) }",
+                    "val %L = %T.createView(context, %S, %L) { %L }",
                     varName,
                     viewFactoryCompat,
                     tagName,
-                    viewClass
+                    attrsExpression,
+                    defaultCreator
                 )
             }
             return

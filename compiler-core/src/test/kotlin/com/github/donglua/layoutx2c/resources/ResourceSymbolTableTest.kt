@@ -21,6 +21,7 @@ class ResourceSymbolTableTest {
             """
             <resources>
                 <color name="divider">@color/black</color>
+                <attr name="priceColor" format="color" />
                 <dimen name="gap">8dp</dimen>
                 <string name="title">Title</string>
                 <style name="AppTheme" />
@@ -37,6 +38,7 @@ class ResourceSymbolTableTest {
 
         assertThat(table.references).containsAtLeast(
             ResourceReference("color", "divider"),
+            ResourceReference("attr", "priceColor"),
             ResourceReference("dimen", "gap"),
             ResourceReference("string", "title"),
             ResourceReference("style", "AppTheme"),

@@ -16,7 +16,7 @@ class ViewFactoryCompatTest {
         assertWithMessage("Factory should receive XML tag name for JZViewInflater style adapters")
             .that(source)
             .contains("name: String")
-        assertWithMessage("Generated code may not have an AttributeSet yet, so attrs must be nullable")
+        assertWithMessage("Generated code may pass synthetic attrs or null when no XML attrs are available")
             .that(source)
             .contains("attrs: AttributeSet?")
         assertWithMessage("Registry should allow tests and theme switches to restore default behavior")

@@ -2,9 +2,12 @@ package com.github.donglua.layoutx2c.codegen
 
 import com.github.donglua.layoutx2c.analyzer.AnalyzedNode
 import com.github.donglua.layoutx2c.analyzer.SupportLevel
+import com.github.donglua.layoutx2c.parser.XmlAttribute
 import com.github.donglua.layoutx2c.parser.isButton
 import com.github.donglua.layoutx2c.registry.DefaultViewRegistry
 import com.github.donglua.layoutx2c.registry.ViewEmitRegistry
+import com.github.donglua.layoutx2c.resources.ResourceReferenceResolver
+import com.github.donglua.layoutx2c.resources.referenceCode
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 
@@ -18,7 +21,9 @@ class LayoutCodeGenerator(
     viewEmitter: ViewEmitter? = null,
     attrEmitter: AttrEmitter? = null,
     private val layoutParamsEmitter: LayoutParamsEmitter = DefaultLayoutParamsEmitter(),
-    private val viewRegistry: ViewEmitRegistry = DefaultViewRegistry
+    private val viewRegistry: ViewEmitRegistry = DefaultViewRegistry,
+    private val resourceResolver: ResourceReferenceResolver? = null,
+    private val enableSyntheticAttributeSet: Boolean = true
 ) {
     private val viewEmitter: ViewEmitter = viewEmitter ?: DefaultViewEmitter(viewRegistry)
     private val attrEmitter: AttrEmitter = attrEmitter ?: DefaultAttrEmitter(viewRegistry)
@@ -231,7 +236,8 @@ class LayoutCodeGenerator(
         }
 
         val hasAttributes = hasEmittedAttributes(node)
-        viewEmitter.emitCreate(builder, varName, node, hasAttributes)
+        val syntheticAttrsVarName = emitSyntheticAttributeSetIfNeeded(builder, varName, node)
+        viewEmitter.emitCreate(builder, varName, node, hasAttributes, syntheticAttrsVarName)
         if (hasAttributes) {
             builder.indent()
             attrEmitter.emit(builder, node)
@@ -325,6 +331,12 @@ class LayoutCodeGenerator(
 
     private companion object {
         val fallbackChildPlan = ClassName("com.github.donglua.layoutx2c.runtime", "FallbackChildPlan")
+        val syntheticAttributeSet = ClassName("com.github.donglua.layoutx2c.runtime", "SyntheticAttributeSet")
+        val syntheticAttribute = syntheticAttributeSet.nestedClass("Attribute")
+
+        const val androidNamespace = "http://schemas.android.com/apk/res/android"
+        const val xmlNsNamespace = "http://www.w3.org/2000/xmlns/"
+        const val resAutoNamespace = "http://schemas.android.com/apk/res-auto"
 
         val fallbackChildLayoutParamAttributes = setOf(
             "android:layout_width",
@@ -337,6 +349,126 @@ class LayoutCodeGenerator(
             "android:layout_marginEnd",
             "android:layout_marginBottom"
         )
+    }
+
+    private fun emitSyntheticAttributeSetIfNeeded(
+        builder: CodeBlock.Builder,
+        varName: String,
+        node: AnalyzedNode
+    ): String? {
+        if (!enableSyntheticAttributeSet || !shouldUseSyntheticAttributeSet(node.node.tagName)) {
+            return null
+        }
+        val attributes = node.node.xmlAttributes
+            .filterNot(::isSyntheticAttributeSetIgnored)
+        if (attributes.isEmpty()) {
+            return null
+        }
+
+        val attrsVarName = "${varName}_attrs"
+        val attrsCode = CodeBlock.builder()
+        attributes.forEachIndexed { index, attribute ->
+            if (index > 0) {
+                attrsCode.add(",·\n")
+            }
+            attrsCode.add(
+                "%T(namespace = %L, name = %S, value = %S, nameResourceId = %L, valueResourceId = %L)",
+                syntheticAttribute,
+                attribute.namespaceUri?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
+                attribute.name,
+                attribute.value,
+                attributeNameResourceCode(attribute),
+                attributeValueResourceCode(attribute.value)
+            )
+        }
+
+        builder.addStatement("val %L = %T.of(%L)", attrsVarName, syntheticAttributeSet, attrsCode.build())
+        return attrsVarName
+    }
+
+    private fun isSyntheticAttributeSetIgnored(attribute: XmlAttribute): Boolean {
+        return attribute.qualifiedName == "xmlns" ||
+            attribute.qualifiedName.startsWith("xmlns:") ||
+            attribute.namespaceUri == xmlNsNamespace ||
+            attribute.qualifiedName.startsWith("tools:")
+    }
+
+    private fun shouldUseSyntheticAttributeSet(tagName: String): Boolean {
+        if (!tagName.contains('.')) return false
+        val frameworkPrefixes = listOf(
+            "android.",
+            "androidx.",
+            "com.google.android.material."
+        )
+        return frameworkPrefixes.none { prefix -> tagName.startsWith(prefix) }
+    }
+
+    private fun attributeNameResourceCode(attribute: XmlAttribute): String {
+        if (!attribute.name.isValidResourceFieldName()) return "0"
+        return when {
+            attribute.namespaceUri == androidNamespace || attribute.qualifiedName.startsWith("android:") ->
+                "android.R.attr.${attribute.name}"
+            attribute.namespaceUri == resAutoNamespace || attribute.qualifiedName.startsWith("app:") ->
+                resourceResolver?.referenceCode("attr", attribute.name, rPackageName) ?: "0"
+            attribute.namespaceUri?.startsWith("http://schemas.android.com/apk/res/") == true -> {
+                val packageName = attribute.namespaceUri.removePrefix("http://schemas.android.com/apk/res/")
+                if (packageName == rPackageName) {
+                    resourceResolver?.referenceCode("attr", attribute.name, rPackageName) ?: "R.attr.${attribute.name}"
+                } else {
+                    "$packageName.R.attr.${attribute.name}"
+                }
+            }
+            attribute.namespaceUri == null && attribute.qualifiedName == "style" -> 0.toString()
+            else -> "0"
+        }
+    }
+
+    private fun attributeValueResourceCode(value: String): String {
+        if (value == "@null") return "0"
+        androidResourceReference(value)?.let { return it }
+        localResourceReference(value)?.let { (type, name) ->
+            if (!type.isValidResourceFieldName() || !name.isValidResourceFieldName()) return "0"
+            if (type == "id") return "R.id.$name"
+            return resourceResolver?.referenceCode(type, name, rPackageName) ?: "0"
+        }
+        themeAttributeReference(value)?.let { return it }
+        return "0"
+    }
+
+    private fun androidResourceReference(value: String): String? {
+        val prefix = when {
+            value.startsWith("@android:") -> "@android:"
+            value.startsWith("?android:attr/") -> "?android:attr/"
+            else -> return null
+        }
+        val body = value.removePrefix(prefix)
+        val parts = body.split('/', limit = 2)
+        return if (parts.size == 2 && parts[0].isValidResourceFieldName() && parts[1].isValidResourceFieldName()) {
+            "android.R.${parts[0]}.${parts[1]}"
+        } else if (prefix == "?android:attr/" && body.isValidResourceFieldName()) {
+            "android.R.attr.$body"
+        } else {
+            null
+        }
+    }
+
+    private fun localResourceReference(value: String): Pair<String, String>? {
+        if (!value.startsWith("@") || value.startsWith("@android:")) return null
+        val body = value.removePrefix("@").removePrefix("+")
+        val parts = body.split('/', limit = 2)
+        if (parts.size != 2) return null
+        return parts[0] to parts[1]
+    }
+
+    private fun themeAttributeReference(value: String): String? {
+        if (!value.startsWith("?") || value.startsWith("?android:")) return null
+        val name = value.removePrefix("?attr/").removePrefix("?")
+        if (!name.isValidResourceFieldName()) return null
+        return resourceResolver?.referenceCode("attr", name, rPackageName)
+    }
+
+    private fun String.isValidResourceFieldName(): Boolean {
+        return matches(Regex("[A-Za-z_][A-Za-z0-9_]*"))
     }
 
     private fun usesDensity(node: AnalyzedNode, isRoot: Boolean): Boolean {

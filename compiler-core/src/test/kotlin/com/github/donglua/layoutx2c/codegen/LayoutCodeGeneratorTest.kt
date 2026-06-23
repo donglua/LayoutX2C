@@ -7,8 +7,13 @@ import com.github.donglua.layoutx2c.parser.IncludeResolver
 import com.github.donglua.layoutx2c.parser.XmlLayoutParser
 import com.github.donglua.layoutx2c.parser.LayoutNode
 import com.github.donglua.layoutx2c.parser.LayoutNodeType
+import com.github.donglua.layoutx2c.registry.CustomViewAttribute
+import com.github.donglua.layoutx2c.registry.CustomViewAttributeKind
 import com.github.donglua.layoutx2c.registry.CustomViewDescriptor
 import com.github.donglua.layoutx2c.registry.ResourceAwareViewRegistry
+import com.github.donglua.layoutx2c.resources.ResourceReference
+import com.github.donglua.layoutx2c.resources.ResourceSymbolTable
+import com.github.donglua.layoutx2c.resources.StaticResourceReferenceResolver
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
@@ -1006,11 +1011,67 @@ class LayoutCodeGeneratorTest {
         ).generate(analyzed, "custom_frame_gravity", "R.layout.custom_frame_gravity").toString()
 
         assertThat(analyzed.unsupportedAttributes).doesNotContain("android:gravity")
+        assertThat(generated).contains("val root_attrs = SyntheticAttributeSet.of(")
         assertThat(generated).contains(
-            "val root = ViewFactoryCompat.createView(context, \"com.example.widget.BadgeFrameLayout\", null) { " +
-                "BadgeFrameLayout(context) }"
+            "val root = ViewFactoryCompat.createView(context, \"com.example.widget.BadgeFrameLayout\", root_attrs) { " +
+                "BadgeFrameLayout(context, root_attrs) }"
         )
         assertThat(generated).doesNotContain("gravity = android.view.Gravity.CENTER")
+    }
+
+    @Test
+    fun `custom view receives synthetic AttributeSet with namespace and resource ids`() {
+        val resourceResolver = StaticResourceReferenceResolver.currentModule(
+            currentPackageName = "com.example",
+            symbols = ResourceSymbolTable(
+                setOf(
+                    ResourceReference("attr", "priceColor"),
+                    ResourceReference("attr", "priceFormat"),
+                    ResourceReference("color", "red")
+                )
+            )
+        )
+        val customRegistry = ResourceAwareViewRegistry(
+            rPackageName = "com.example",
+            resourceResolver = resourceResolver,
+            customViews = listOf(
+                CustomViewDescriptor(
+                    viewClassName = "com.example.widget.PriceView",
+                    attributes = listOf(
+                        CustomViewAttribute("app:priceColor", CustomViewAttributeKind.COLOR),
+                        CustomViewAttribute("app:priceFormat", CustomViewAttributeKind.STRING)
+                    )
+                )
+            )
+        )
+        val xml = """
+            <com.example.widget.PriceView xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:id="@+id/price"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:priceColor="@color/red"
+                app:priceFormat="%.2f" />
+        """.trimIndent()
+
+        val analyzed = LayoutAnalyzer(customRegistry).analyze(parser.parse(xml, "price_view").root)
+        val generated = LayoutCodeGenerator(
+            packageName = "com.example.generated",
+            rPackageName = "com.example",
+            viewRegistry = customRegistry,
+            resourceResolver = resourceResolver
+        ).generate(analyzed, "price_view", "R.layout.price_view").toString()
+
+        assertThat(generated).contains("val root_attrs = SyntheticAttributeSet.of(")
+        assertThat(generated).contains("name = \"priceColor\"")
+        assertThat(generated).contains("value = \"@color/red\"")
+        assertThat(generated).contains("nameResourceId = R.attr.priceColor")
+        assertThat(generated).contains("valueResourceId = R.color.red")
+        assertThat(generated).contains(
+            "ViewFactoryCompat.createView(context, \"com.example.widget.PriceView\", root_attrs) { " +
+                "PriceView(context, root_attrs) }"
+        )
+        assertThat(generated).doesNotContain("ViewFactoryCompat.createView(context, \"com.example.widget.PriceView\", null)")
     }
 
     @Test

@@ -18,6 +18,7 @@ class LayoutX2CPluginTest {
         assertThat(extension.packageName.get()).isEqualTo("com.github.donglua.layoutx2c.generated")
         assertThat(extension.maxFallbackLayouts.get()).isEqualTo(Int.MAX_VALUE)
         assertThat(extension.failOnFallbackReasons.get()).isEmpty()
+        assertThat(extension.enableSyntheticAttributeSet.get()).isTrue()
     }
 
     @Test

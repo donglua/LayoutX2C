@@ -39,6 +39,7 @@ class LayoutX2CPlugin : Plugin<Project> {
         extension.packageName.convention("com.github.donglua.layoutx2c.generated")
         extension.maxFallbackLayouts.convention(Int.MAX_VALUE)
         extension.failOnFallbackReasons.convention(emptyList())
+        extension.enableSyntheticAttributeSet.convention(true)
 
         // 2. 等 Android plugin 就位
         project.plugins.withId("com.android.application") {
@@ -81,6 +82,10 @@ class LayoutX2CPlugin : Plugin<Project> {
             project.extensions.configure(KspExtension::class.java) { ksp ->
                 ksp.addArg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
                 ksp.addArg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
+                ksp.addArg(
+                    LayoutX2CProcessorOptions.ENABLE_SYNTHETIC_ATTRIBUTE_SET,
+                    extension.enableSyntheticAttributeSet.get().toString()
+                )
                 ksp.arg(
                     LayoutX2CResourceArgumentProvider(
                         trackedResources = project.files(
@@ -124,6 +129,7 @@ private object LayoutX2CProcessorOptions {
     const val PACKAGE_NAME = "layoutx2c.packageName"
     const val R_PACKAGE_NAME = "layoutx2c.rPackageName"
     const val CACHE_DIR = "layoutx2c.cacheDir"
+    const val ENABLE_SYNTHETIC_ATTRIBUTE_SET = "layoutx2c.enableSyntheticAttributeSet"
 }
 
 private class LayoutX2CResourceArgumentProvider(

@@ -19,6 +19,9 @@ import org.gradle.api.provider.Property
  *
  *     // CI 中不允许出现的 fallback 原因
  *     failOnFallbackReasons.add("DATA_BINDING_WRAPPER")
+ *
+ *     // 是否为自定义 View / ViewFactory 生成 synthetic AttributeSet
+ *     enableSyntheticAttributeSet.set(true)
  * }
  * ```
  */
@@ -31,4 +34,6 @@ abstract class LayoutX2CExtension {
     abstract val maxFallbackLayouts: Property<Int>
 
     abstract val failOnFallbackReasons: ListProperty<String>
+
+    abstract val enableSyntheticAttributeSet: Property<Boolean>
 }

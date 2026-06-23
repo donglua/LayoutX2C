@@ -42,6 +42,7 @@ class LayoutX2CProcessor(
         const val OPTION_R_PACKAGE = "layoutx2c.rPackageName"
         const val OPTION_CACHE_DIR = "layoutx2c.cacheDir"
         const val OPTION_SYMBOL_FILES = "layoutx2c.symbolFiles"
+        const val OPTION_ENABLE_SYNTHETIC_ATTRIBUTE_SET = "layoutx2c.enableSyntheticAttributeSet"
 
         const val ANNOTATION_FAST_LAYOUT_CONFIG = "com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig"
         const val ANNOTATION_FAST_LAYOUTS = "com.github.donglua.layoutx2c.runtime.annotation.FastLayouts"
@@ -192,7 +193,9 @@ class LayoutX2CProcessor(
                 rPackageName = config.rPackageName,
                 resourceResolver = resourceResolver
             ),
-            viewRegistry = viewRegistry
+            viewRegistry = viewRegistry,
+            resourceResolver = resourceResolver,
+            enableSyntheticAttributeSet = config.enableSyntheticAttributeSet
         )
         val bindingFacadeGen = BindingFacadeGeneratorV2(
             packageName = config.packageName,
@@ -392,6 +395,9 @@ class LayoutX2CProcessor(
             ?.mapNotNull { path -> path.trim().takeIf { it.isNotEmpty() } }
             ?.map(::File)
             ?: emptyList()
+        val enableSyntheticAttributeSet = options[OPTION_ENABLE_SYNTHETIC_ATTRIBUTE_SET]
+            ?.toBooleanStrictOrNull()
+            ?: true
 
         return LayoutX2CProcessorConfig(
             resDir = resDir,
@@ -400,7 +406,8 @@ class LayoutX2CProcessor(
             manifestFile = manifestFile,
             symbolFiles = symbolFiles,
             customViews = configSources.flatMap { it.customViews },
-            bindingAdapters = configSources.flatMap { it.bindingAdapters }
+            bindingAdapters = configSources.flatMap { it.bindingAdapters },
+            enableSyntheticAttributeSet = enableSyntheticAttributeSet
         )
     }
 
@@ -581,7 +588,8 @@ private data class LayoutX2CProcessorConfig(
     val manifestFile: File?,
     val symbolFiles: List<File>,
     val customViews: List<CustomViewDescriptor>,
-    val bindingAdapters: List<BindingAdapterDescriptor>
+    val bindingAdapters: List<BindingAdapterDescriptor>,
+    val enableSyntheticAttributeSet: Boolean
 )
 
 private fun LayoutX2CProcessorConfig.registryConfigKey(): String {
@@ -599,7 +607,8 @@ private fun LayoutX2CProcessorConfig.registryConfigKey(): String {
         .joinToString(separator = "|") { descriptor ->
             "adapter=${descriptor.methodClassName}.${descriptor.methodName};attrs=${descriptor.attrs.joinToString(",")};requireAll=${descriptor.requireAll}"
         }
-    return "customViews=$customViewKey\nbindingAdapters=$bindingAdapterKey"
+    return "customViews=$customViewKey\nbindingAdapters=$bindingAdapterKey\n" +
+        "enableSyntheticAttributeSet=$enableSyntheticAttributeSet"
 }
 
 /**
