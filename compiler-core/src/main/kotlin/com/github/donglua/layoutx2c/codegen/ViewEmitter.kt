@@ -32,11 +32,7 @@ class DefaultViewEmitter(
         if (shouldUseViewFactoryHook(tagName)) {
             val viewFactoryCompat = ClassName("com.github.donglua.layoutx2c.runtime", "ViewFactoryCompat")
             val attrsExpression = syntheticAttrsVarName ?: "null"
-            val defaultCreator = if (syntheticAttrsVarName == null) {
-                CodeBlock.of("%T(context)", viewClass)
-            } else {
-                CodeBlock.of("%T(context, %L)", viewClass, syntheticAttrsVarName)
-            }
+            val defaultCreator = CodeBlock.of("%T(context)", viewClass)
             if (hasAttributes) {
                 builder.addStatement(
                     "val %L = %T.createView(context, %S, %L) { %L }.apply {",

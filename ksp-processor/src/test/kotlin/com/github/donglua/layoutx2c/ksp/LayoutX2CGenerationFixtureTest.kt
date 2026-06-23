@@ -258,7 +258,7 @@ class LayoutX2CGenerationFixtureTest {
         assertThat(generated).contains("val root_child0_attrs = SyntheticAttributeSet.of(")
         assertThat(generated).contains(
             "val root_child0 = ViewFactoryCompat.createView(context, \"com.fixture.widget.MainTabLayout\", root_child0_attrs) { " +
-                "MainTabLayout(context, root_child0_attrs) }.apply"
+                "MainTabLayout(context) }.apply"
         )
         assertThat(generated).contains("setBackgroundColor(ResourceCompat.getColor(context, R.color.dependency_panel))")
         assertThat(generated).doesNotContain(

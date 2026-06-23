@@ -10,6 +10,8 @@ import com.github.donglua.layoutx2c.runtime.annotation.PublicApi
  *
  * attrs may be a LayoutX2C SyntheticAttributeSet when generated metadata is
  * available, or null when the call site has no XML attributes to replay.
+ * Synthetic attrs are intended for factory-level inspection; Android View
+ * constructors and obtainStyledAttributes still require the platform parser.
  */
 @PublicApi
 fun interface ViewFactory {

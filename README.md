@@ -116,13 +116,16 @@ val attrs = SyntheticAttributeSet.of(
 )
 
 val view = ViewFactoryCompat.createView(context, "com.example.PriceView", attrs) {
-    PriceView(context, attrs)
+    PriceView(context)
 }
 ```
 
-这让依赖 `context.obtainStyledAttributes(attrs, R.styleable.PriceView)` 的自定义
-View、换肤 inflater 或第三方 `ViewFactory` 可以继续读取 XML 自定义属性。需要完全
-关闭这一路兼容行为时，可以在 Gradle DSL 中配置：
+这让换肤 inflater 或第三方 `ViewFactory` 可以通过 `AttributeSet` 原始查询方法读取
+XML 自定义属性。注意：Android 框架在 `View(context, attrs)` 和
+`context.obtainStyledAttributes(attrs, ...)` 中依赖平台内部 `XmlBlock.Parser`，普通
+Java/Kotlin `AttributeSet` 无法替代它；因此 LayoutX2C 只把 synthetic attrs 传给
+`ViewFactory` hook，默认生成的 View 构造器仍使用 `View(context)`，并继续通过已声明
+的 typed setter 重放安全属性。需要完全关闭这一路兼容行为时，可以在 Gradle DSL 中配置：
 
 ```kotlin
 layoutX2C {

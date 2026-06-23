@@ -2,6 +2,7 @@ package com.github.donglua.layoutx2c.demo
 
 import android.content.Context
 import android.os.Looper
+import android.util.AttributeSet
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.View
@@ -30,6 +31,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.github.donglua.layoutx2c.demo.generated.DemoDataBindingEnhancedX2CBinding
 import com.github.donglua.layoutx2c.demo.generated.DemoPartialFallbackParserCrashX2C
 import com.github.donglua.layoutx2c.runtime.LayoutX2CRegistry
+import com.github.donglua.layoutx2c.runtime.ViewFactoryRegistry
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlin.math.abs
@@ -384,25 +386,67 @@ class GeneratedInflateEquivalenceTest {
     }
 
     @Test
-    fun generatedCustomViewReceivesSyntheticAttributeSetInConstructor() {
+    fun generatedCustomViewPassesSyntheticAttributeSetToViewFactory() {
         runOnMainThread {
             val entry = entry("demo_synthetic_attrs")
             val platformInflated = inflatePlatform(entry) as SyntheticAttrsPriceView
-            val generated = inflateGenerated(entry) as SyntheticAttrsPriceView
             val expectedColor = context.getColor(R.color.demo_primary)
+            val appNamespace = "http://schemas.android.com/apk/res-auto"
 
-            requireTrue(
-                "platform control should read custom color from XML attrs",
-                platformInflated.constructorPriceColor == expectedColor
-            )
-            requireTrue(
-                "generated custom view constructor should read custom color from synthetic attrs",
-                generated.constructorPriceColor == expectedColor
-            )
-            requireTrue(
-                "generated custom view constructor should read custom string from synthetic attrs",
-                generated.constructorPriceFormat == "%.3f"
-            )
+            var capturedAttrs: AttributeSet? = null
+            ViewFactoryRegistry.setViewFactory { _, name, attrs ->
+                if (name == SyntheticAttrsPriceView::class.java.name) {
+                    capturedAttrs = attrs
+                }
+                null
+            }
+
+            try {
+                val generated = inflateGenerated(entry) as SyntheticAttrsPriceView
+                val attrs = capturedAttrs
+
+                requireTrue(
+                    "platform control should read custom color from XML attrs",
+                    platformInflated.constructorPriceColor == expectedColor
+                )
+                requireTrue(
+                    "generated default constructor should still inflate without platform parser attrs",
+                    generated.constructorPriceColor == android.graphics.Color.BLACK
+                )
+                requireTrue(
+                    "generated setter replay should apply custom color",
+                    generated.appliedPriceColor == expectedColor
+                )
+                requireTrue(
+                    "generated setter replay should apply custom string",
+                    generated.appliedPriceFormat == "%.3f"
+                )
+                requireTrue(
+                    "generated ViewFactory should receive synthetic attrs",
+                    attrs != null
+                )
+                requireTrue(
+                    "synthetic attrs should expose raw custom color value",
+                    attrs!!.getAttributeValue(appNamespace, "priceColor") == "@color/demo_primary"
+                )
+                requireTrue(
+                    "synthetic attrs should expose custom color resource id",
+                    attrs.getAttributeResourceValue(appNamespace, "priceColor", -1) == R.color.demo_primary
+                )
+                requireTrue(
+                    "synthetic attrs should expose raw custom string value",
+                    attrs.getAttributeValue(appNamespace, "priceFormat") == "%.3f"
+                )
+                val priceColorIndex = (0 until attrs.attributeCount)
+                    .firstOrNull { attrs.getAttributeName(it) == "priceColor" } ?: -1
+                requireTrue("synthetic attrs should contain priceColor", priceColorIndex >= 0)
+                requireTrue(
+                    "synthetic attrs should expose priceColor name resource id",
+                    attrs.getAttributeNameResource(priceColorIndex) == R.attr.priceColor
+                )
+            } finally {
+                ViewFactoryRegistry.reset()
+            }
         }
     }
 

@@ -1014,7 +1014,7 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("val root_attrs = SyntheticAttributeSet.of(")
         assertThat(generated).contains(
             "val root = ViewFactoryCompat.createView(context, \"com.example.widget.BadgeFrameLayout\", root_attrs) { " +
-                "BadgeFrameLayout(context, root_attrs) }"
+                "BadgeFrameLayout(context) }"
         )
         assertThat(generated).doesNotContain("gravity = android.view.Gravity.CENTER")
     }
@@ -1069,7 +1069,7 @@ class LayoutCodeGeneratorTest {
         assertThat(generated).contains("valueResourceId = R.color.red")
         assertThat(generated).contains(
             "ViewFactoryCompat.createView(context, \"com.example.widget.PriceView\", root_attrs) { " +
-                "PriceView(context, root_attrs) }"
+                "PriceView(context) }"
         )
         assertThat(generated).doesNotContain("ViewFactoryCompat.createView(context, \"com.example.widget.PriceView\", null)")
     }
