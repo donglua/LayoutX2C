@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="SyntheticAttrsPriceView">
+        <attr name="priceColor" format="color" />
+        <attr name="priceFormat" format="string" />
+    </declare-styleable>
+</resources>

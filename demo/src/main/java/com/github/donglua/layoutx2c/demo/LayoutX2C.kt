@@ -1,8 +1,21 @@
 package com.github.donglua.layoutx2c.demo
 
 import com.github.donglua.layoutx2c.runtime.annotation.FastLayoutConfig
+import com.github.donglua.layoutx2c.runtime.annotation.FastCustomView
+import com.github.donglua.layoutx2c.runtime.annotation.FastCustomViewAttr
+import com.github.donglua.layoutx2c.runtime.annotation.FastCustomViewAttrKind
+import com.github.donglua.layoutx2c.runtime.annotation.FastCustomViews
 
 @FastLayoutConfig
+@FastCustomViews(
+    FastCustomView(
+        viewClass = com.github.donglua.layoutx2c.demo.SyntheticAttrsPriceView::class,
+        attrs = [
+            FastCustomViewAttr(name = "app:priceColor", kind = FastCustomViewAttrKind.COLOR),
+            FastCustomViewAttr(name = "app:priceFormat", kind = FastCustomViewAttrKind.STRING)
+        ]
+    )
+)
 object LayoutX2CConfig {
     val layouts = intArrayOf(
         R.layout.demo_simple,
@@ -22,5 +35,6 @@ object LayoutX2CConfig {
         R.layout.demo_two_way_binding,
         R.layout.demo_compat_widgets,
         R.layout.demo_partial_fallback_parser_crash,
+        R.layout.demo_synthetic_attrs,
     )
 }

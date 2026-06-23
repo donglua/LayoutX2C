@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.github.donglua.layoutx2c.demo.SyntheticAttrsPriceView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/synthetic_price"
+    android:layout_width="match_parent"
+    android:layout_height="24dp"
+    app:priceColor="@color/demo_primary"
+    app:priceFormat="%.3f" />

@@ -25,5 +25,6 @@ object CodeViewerSelector {
         Entry(R.id.btn_demo_two_way_binding, "demo_two_way_binding"),
         Entry(R.id.btn_demo_compat_widgets, "demo_compat_widgets"),
         Entry(R.id.btn_demo_partial_fallback, "demo_partial_fallback_parser_crash"),
+        Entry(R.id.btn_demo_synthetic_attrs, "demo_synthetic_attrs"),
     )
 }

@@ -100,6 +100,35 @@ object LayoutX2CConfig {
 
 例如 `app:priceColor="@color/red"` 会生成类似
 `setPriceColor(ResourceCompat.getColor(context, R.color.red))` 的 setter 调用。
+同时，LayoutX2C 默认会为自定义 View / `ViewFactory` 构造 synthetic
+`AttributeSet`，把 XML 中的 namespace、属性名、原始值、可静态解析的
+`R.attr.*` / `R.color.*` 等资源 id 一并传入构造器：
+
+```kotlin
+val attrs = SyntheticAttributeSet.of(
+    SyntheticAttributeSet.Attribute(
+        namespace = "http://schemas.android.com/apk/res-auto",
+        name = "priceColor",
+        value = "@color/red",
+        nameResourceId = R.attr.priceColor,
+        valueResourceId = R.color.red
+    )
+)
+
+val view = ViewFactoryCompat.createView(context, "com.example.PriceView", attrs) {
+    PriceView(context, attrs)
+}
+```
+
+这让依赖 `context.obtainStyledAttributes(attrs, R.styleable.PriceView)` 的自定义
+View、换肤 inflater 或第三方 `ViewFactory` 可以继续读取 XML 自定义属性。需要完全
+关闭这一路兼容行为时，可以在 Gradle DSL 中配置：
+
+```kotlin
+layoutX2C {
+    enableSyntheticAttributeSet.set(false)
+}
+```
 
 `FastCustomView` 还会在 KSP 阶段解析 `viewClass` 的父类链。自定义 View 如果继承了
 LayoutX2C 已支持的 Android / AndroidX View，分析器会复用安全的父类属性语义；例如

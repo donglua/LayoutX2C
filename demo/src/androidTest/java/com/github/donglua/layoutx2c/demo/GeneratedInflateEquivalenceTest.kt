@@ -384,6 +384,29 @@ class GeneratedInflateEquivalenceTest {
     }
 
     @Test
+    fun generatedCustomViewReceivesSyntheticAttributeSetInConstructor() {
+        runOnMainThread {
+            val entry = entry("demo_synthetic_attrs")
+            val platformInflated = inflatePlatform(entry) as SyntheticAttrsPriceView
+            val generated = inflateGenerated(entry) as SyntheticAttrsPriceView
+            val expectedColor = context.getColor(R.color.demo_primary)
+
+            requireTrue(
+                "platform control should read custom color from XML attrs",
+                platformInflated.constructorPriceColor == expectedColor
+            )
+            requireTrue(
+                "generated custom view constructor should read custom color from synthetic attrs",
+                generated.constructorPriceColor == expectedColor
+            )
+            requireTrue(
+                "generated custom view constructor should read custom string from synthetic attrs",
+                generated.constructorPriceFormat == "%.3f"
+            )
+        }
+    }
+
+    @Test
     fun generatedDataBindingEnhancedFieldsAndSimpleExpressionsStayUsable() {
         runOnMainThread {
             val binding = DemoDataBindingEnhancedX2CBinding.inflate(

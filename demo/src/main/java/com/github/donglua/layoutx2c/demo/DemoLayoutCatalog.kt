@@ -22,6 +22,7 @@ import com.github.donglua.layoutx2c.demo.generated.DemoRecyclerX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoRelativeX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoScrollImageX2C
 import com.github.donglua.layoutx2c.demo.generated.DemoSimpleX2C
+import com.github.donglua.layoutx2c.demo.generated.DemoSyntheticAttrsX2C
 
 object DemoLayoutCatalog {
 
@@ -239,6 +240,16 @@ object DemoLayoutCatalog {
             codeViewerClassName = "DemoPartialFallbackParserCrashX2CBinding"
         ) { context, parent ->
             DemoPartialFallbackParserCrashX2CBinding.inflate(LayoutInflater.from(context), parent, false).root
+        },
+        Entry(
+            "Synthetic Attrs",
+            "demo_synthetic_attrs",
+            R.layout.demo_synthetic_attrs,
+            "Layout_DemoSyntheticAttrs",
+            summary = "Custom View constructor receives a generated AttributeSet",
+            status = Status.Generated
+        ) { context, parent ->
+            DemoSyntheticAttrsX2C.inflate(context, parent)
         },
     )
 
