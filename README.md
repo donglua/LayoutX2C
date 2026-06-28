@@ -3,7 +3,14 @@
 ![Maven Central Version](https://img.shields.io/maven-central/v/io.github.donglua.layoutx2c/runtime)
 [![codecov](https://codecov.io/gh/donglua/LayoutX2C/branch/main/graph/badge.svg)](https://codecov.io/gh/donglua/LayoutX2C)
 
-编译期 XML Layout 到代码生成工具，采用渐进式策略：能生成的生成，不能的 fallback，永远不让编译失败。
+LayoutX2C 是面向 Android XML Layout 的编译期 Kotlin 代码生成工具，用来降低运行时 XML inflate
+成本。它在 KSP 阶段分析被声明的 layout，把可以静态等价生成的 View tree 转成直接创建 View 的
+Kotlin 代码；遇到无法证明语义一致的节点、属性、DataBinding 表达式或运行时主题语义时，自动回到
+原生 `LayoutInflater`。
+
+它的目标不是替代 Android 视图系统，也不是要求项目迁移到新的 UI 写法，而是在保留 XML Layout、
+ViewBinding / DataBinding 和现有业务代码的前提下，把高频、可验证的 inflate 路径从运行时 XML
+解析移到编译期生成，减少运行时 XML 解析、标签分发和反射式 View 创建开销。采用渐进式策略：能生成 的生成，不能的 fallback，永远不让编译失败。
 
 ## 模块
 
