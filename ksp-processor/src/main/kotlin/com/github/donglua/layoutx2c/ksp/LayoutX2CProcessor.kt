@@ -20,6 +20,7 @@ import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.TypeSpec
 import java.io.File
 
@@ -518,6 +519,7 @@ class LayoutX2CProcessor(
                 }
                 digestStore.record(REGISTRY_DIGEST_KEY, registryDigest)
                 logger.info("Restored unchanged registry from cache: ${fileSpec.name}")
+                generateRegistryProvider(packageName, sourceFiles)
                 return
             }
         }
@@ -532,6 +534,47 @@ class LayoutX2CProcessor(
         }
         digestStore?.cacheGeneratedOutput(REGISTRY_DIGEST_KEY, registryDigest, fileSpec.name, "kt", content)
         digestStore?.record(REGISTRY_DIGEST_KEY, registryDigest)
+        generateRegistryProvider(packageName, sourceFiles)
+    }
+
+    private fun generateRegistryProvider(
+        packageName: String,
+        sourceFiles: List<KSFile>
+    ) {
+        val dependencies = LayoutX2CDependencyFactory.registry(sourceFiles)
+        val providerFileSpec = FileSpec.builder(packageName, "LayoutX2CRegistryProvider")
+            .addType(
+                TypeSpec.classBuilder("LayoutX2CRegistryProvider")
+                    .addSuperinterface(
+                        ClassName(
+                            "com.github.donglua.layoutx2c.runtime",
+                            "GeneratedLayoutRegistry"
+                        )
+                    )
+                    .addFunction(
+                        FunSpec.builder("register")
+                            .addModifiers(KModifier.OVERRIDE)
+                            .addStatement("LayoutX2CGenerated.register()")
+                            .build()
+                    )
+                    .build()
+            )
+            .build()
+        val providerFile = codeGenerator.createNewFile(
+            dependencies,
+            packageName,
+            providerFileSpec.name
+        )
+        providerFile.writer().use(providerFileSpec::writeTo)
+
+        val serviceDescriptor = codeGenerator.createNewFileByPath(
+            dependencies,
+            "META-INF/services/com.github.donglua.layoutx2c.runtime.GeneratedLayoutRegistry",
+            extensionName = ""
+        )
+        serviceDescriptor.writer().use { writer ->
+            writer.appendLine("$packageName.LayoutX2CRegistryProvider")
+        }
     }
 
     private fun LayoutX2CDigestStore.cacheGeneratedOutput(

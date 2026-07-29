@@ -65,6 +65,7 @@ class PackagePathConsistencyTest {
             .contains("@Retention(AnnotationRetention.BINARY)")
 
         val publicApiFiles = listOf(
+            "com/github/donglua/layoutx2c/runtime/GeneratedLayoutRegistry.kt",
             "com/github/donglua/layoutx2c/runtime/LayoutFactory.kt",
             "com/github/donglua/layoutx2c/runtime/LayoutX2CRegistry.kt",
             "com/github/donglua/layoutx2c/runtime/LayoutX2CFactory2.kt",

@@ -36,6 +36,15 @@ class LayoutX2CRegistryTest {
             .contains("knownMissingLayouts.add(layoutId)")
     }
 
+    @Test
+    fun `register invalidates a cached missing layout ID`() {
+        val source = runtimeSource("LayoutX2CRegistry.kt")
+
+        assertWithMessage("register should make a previously missing layout visible")
+            .that(source)
+            .contains("knownMissingLayouts.remove(layoutId)")
+    }
+
     private fun runtimeSource(fileName: String): String {
         val moduleDir = listOf(File("."), File("runtime"))
             .map { it.canonicalFile }

@@ -14,7 +14,8 @@
 - 支持度分析器按 FULL / PARTIAL / FALLBACK 三级给出节点级结果。
 - KotlinPoet 代码生成已拆分为 `ViewEmitter` / `AttrEmitter` / `LayoutParamsEmitter`。
 - View / 属性支持面已迁移到 `DefaultViewRegistry` 和注册式 `ViewHandler` / `AttributeHandler`。
-- Runtime 提供 `LayoutFactory`、`FallbackInflater` 和 Registry 自动注册。
+- Runtime 提供 `LayoutFactory`、`FallbackInflater` 和 Registry 自动注册；多模块 registry 通过
+  `ServiceLoader` 自动发现，并保留 application-package 反射回退兼容旧生成代码。
 - 生成代码提供 direct X2C inflate facade，demo 可直接走生成入口做 benchmark。
 
 **已支持的布局和 View**
@@ -82,7 +83,8 @@
 - 最新版本已包含安全属性支持面扩展、DataBinding / BindingAdapter 修复、精确资源依赖追踪、
   runtime 资源 / ViewFactory 扩展点和 synthetic `AttributeSet` 支持。
 - Runtime-facing API 已使用 `@PublicApi` / `@ExperimentalApi` 标注；breaking change 必须有迁移说明。
-- `runtime` consumer ProGuard / R8 rules 已覆盖 generated factory 和 app-package generated registry。
+- `runtime` consumer ProGuard / R8 rules 已覆盖 generated factory、ServiceLoader provider 和
+  app-package generated registry。
 - benchmark 方法、release 步骤和本地验证命令分别记录在 `docs/BENCHMARKS.md` 和 `docs/RELEASE.md`。
 
 **当前限制**
@@ -99,15 +101,11 @@
 
 下一阶段继续优先处理会造成“生成成功但运行时行为不完整”的契约缺口：
 
-1. **多模块注册表发现**
-   - 明确 library module 生成注册表的加载方式。
-   - 避免 runtime 只按 application package 查找时遗漏 library namespace 下的注册表。
-
-2. **DataBinding 语义边界**
+1. **DataBinding 语义边界**
    - 为新增的表达式和 BindingAdapter 能力补齐正向、反向和 fallback 三条路径的等价性测试。
    - 无法证明完整语义时，在分析阶段明确降级，不允许静默省略监听器或属性写回。
 
-3. **报告与 CI 策略精度**
+2. **报告与 CI 策略精度**
    - 保持 layout 级 FULL / PARTIAL / FALLBACK 与根节点分析结果一致。
    - 继续细化 fallback reason，使 CI policy 能区分整布局回退与局部子树回退。
 

@@ -9,7 +9,7 @@ import com.github.donglua.layoutx2c.runtime.annotation.PublicApi
 
 /**
  * 注册表：layoutResId -> LayoutFactory 的映射。
- * 编译期生成的代码会在 App 启动时自动注册。
+ * 编译期生成的代码会在首次查询时自动注册。
  */
 @PublicApi
 object LayoutX2CRegistry {
@@ -17,6 +17,10 @@ object LayoutX2CRegistry {
     private val factories = mutableMapOf<Int, LayoutFactory>()
     private val initializedPackages = mutableSetOf<String>()
     private val failedPackages = mutableSetOf<String>()
+    private val generatedProviderCount by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        val classLoader = GeneratedLayoutRegistry::class.java.classLoader ?: return@lazy 0
+        GeneratedLayoutRegistryLoader.load(classLoader)
+    }
 
     /**
      * 负缓存：记录已知没有 generated factory 的 layoutId。
@@ -29,6 +33,7 @@ object LayoutX2CRegistry {
      */
     fun register(@LayoutRes layoutId: Int, factory: LayoutFactory) {
         factories[layoutId] = factory
+        knownMissingLayouts.remove(layoutId)
     }
 
     /**
@@ -75,7 +80,11 @@ object LayoutX2CRegistry {
     }
 
     private fun ensureGeneratedLayoutsRegistered(context: Context): Boolean {
-        val packageName = context.packageName
+        val providersLoaded = generatedProviderCount > 0
+        return ensureApplicationRegistryLoaded(context.packageName) || providersLoaded
+    }
+
+    private fun ensureApplicationRegistryLoaded(packageName: String): Boolean {
         if (packageName in initializedPackages) {
             return true
         }

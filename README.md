@@ -48,6 +48,11 @@ dependencies {
 }
 ```
 
+多模块项目可以在 app 和各 Android library module 分别启用插件或 processor。每个模块都会生成
+独立的 registry provider，runtime 在首次调用 `create()`、`has(context, layoutId)` 或
+`initialize(context)` 时自动发现并注册所有模块；旧版本生成的 application-package
+`LayoutX2CGenerated` 仍可通过反射回退加载。
+
 推荐使用 `@FastLayoutConfig`，直接写 `R.layout.*`，processor 会从源码中提取 layout 名：
 
 ```kotlin

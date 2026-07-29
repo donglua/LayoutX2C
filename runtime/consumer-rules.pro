@@ -6,3 +6,8 @@
 
 # Keep app-package generated registries loaded reflectively by LayoutX2CRegistry
 -keep class **.generated.LayoutX2CGenerated { *; }
+
+# Keep generated ServiceLoader providers and their public no-arg constructors
+-keep class * implements com.github.donglua.layoutx2c.runtime.GeneratedLayoutRegistry {
+    public <init>();
+}
