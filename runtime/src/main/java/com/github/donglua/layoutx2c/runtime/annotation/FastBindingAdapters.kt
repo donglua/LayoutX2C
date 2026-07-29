@@ -1,7 +1,7 @@
 package com.github.donglua.layoutx2c.runtime.annotation
 
 /**
- * Declares DataBinding BindingAdapter methods that LayoutX2C may call directly.
+ * Declares one-way DataBinding BindingAdapter methods that LayoutX2C may call directly.
  */
 @PublicApi
 @MustBeDocumented

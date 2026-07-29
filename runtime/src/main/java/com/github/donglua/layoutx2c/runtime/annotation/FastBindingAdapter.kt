@@ -3,7 +3,8 @@ package com.github.donglua.layoutx2c.runtime.annotation
 import kotlin.reflect.KClass
 
 /**
- * Declares one DataBinding BindingAdapter method that LayoutX2C may call directly.
+ * Declares one one-way DataBinding BindingAdapter method that LayoutX2C may call directly.
+ * Two-way expressions require an inverse adapter contract and are not generated.
  */
 @PublicApi
 @MustBeDocumented

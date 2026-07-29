@@ -185,9 +185,8 @@ class LayoutAnalyzerV2(
                 isXmlnsAttribute(attrName) -> { /* 忽略 */ }
                 isToolsAttribute(attrName) -> supported.add(attrName)
                 (isOneWay || isTwoWay) && isDeclaredBindingAdapterAttribute(attrName) -> {
-                    if (isSupportedBindingAdapterExpression(attrValue)) {
+                    if (!isTwoWay && isSupportedBindingAdapterExpression(attrValue)) {
                         dataBinding.add(attrName)
-                        if (isTwoWay) twoWayBinding.add(attrName)
                     } else {
                         unsupported.add(attrName)
                     }

@@ -236,6 +236,8 @@ object LayoutX2CConfig {
 
 例如 `app:stateColorRes="@{R.color.sample_state}"` 和 `app:stateSizeDp="@{3F}"`
 会生成类似 `SampleBindingAdapters.setViewState(view, R.color.sample_state, 3f)`。
+当前白名单只描述正向 `BindingAdapter`。`@={}` 双向表达式还需要 inverse adapter
+和反向监听器契约，因此会标记为 unsupported 并继续 fallback。
 `attrs` 推荐写 XML 完整属性名；自定义 `app:` 属性也兼容无前缀写法，
 例如 `"stateColorRes"` 会按 `app:stateColorRes` 匹配。
 
