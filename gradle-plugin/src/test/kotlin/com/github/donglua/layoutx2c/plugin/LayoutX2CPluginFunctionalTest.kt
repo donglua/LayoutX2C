@@ -219,7 +219,6 @@ class LayoutX2CPluginFunctionalTest {
             }
 
             layoutX2C {
-                packageName.set("com.example.generated")
                 $layoutX2CConfiguration
             }
             """.trimIndent()

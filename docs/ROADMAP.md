@@ -78,9 +78,9 @@
 
 **发布状态**
 
-- `1.0.0` 已发布到 Maven Central、Gradle Plugin Portal 和 GitHub Release。
-- `1.1.0` 已准备发布，主要包含安全属性支持面扩展、DataBinding / BindingAdapter 修复、
-  qualified resource tracking、fallback 性能文档和 CI 覆盖率增强。
+- `1.4.0` 已发布到 Maven Central 和 GitHub Release，`1.0.0` 至 `1.4.0` 的稳定版本均已有公开发布记录。
+- 最新版本已包含安全属性支持面扩展、DataBinding / BindingAdapter 修复、精确资源依赖追踪、
+  runtime 资源 / ViewFactory 扩展点和 synthetic `AttributeSet` 支持。
 - Runtime-facing API 已使用 `@PublicApi` / `@ExperimentalApi` 标注；breaking change 必须有迁移说明。
 - `runtime` consumer ProGuard / R8 rules 已覆盖 generated factory 和 app-package generated registry。
 - benchmark 方法、release 步骤和本地验证命令分别记录在 `docs/BENCHMARKS.md` 和 `docs/RELEASE.md`。
@@ -97,55 +97,19 @@
 
 ## Next
 
-**仓库侧 1.1.0 工作已进入发布准备**。下一步是执行 release gate、打 tag，并验证外部仓库同步。
+下一阶段继续优先处理会造成“生成成功但运行时行为不完整”的契约缺口：
 
-### ✅ 已完成的 1.1.0 准备工作
+1. **多模块注册表发现**
+   - 明确 library module 生成注册表的加载方式。
+   - 避免 runtime 只按 application package 查找时遗漏 library namespace 下的注册表。
 
-以下任务已在仓库中完成：
+2. **DataBinding 语义边界**
+   - 为新增的表达式和 BindingAdapter 能力补齐正向、反向和 fallback 三条路径的等价性测试。
+   - 无法证明完整语义时，在分析阶段明确降级，不允许静默省略监听器或属性写回。
 
-1. **安全属性支持面扩展** ✅
-   - 已补齐 transform、EditText、view state、supported theme drawable attrs
-   - Unsupported values 继续保守 fallback
-
-2. **DataBinding / BindingAdapter 修复** ✅
-   - 已处理 malformed binding include
-   - 已覆盖 BindingAdapter config generation 和 unsupported expression 路径
-   - include/root 字段绑定行为继续保持原生语义边界
-
-3. **增量和资源追踪增强** ✅
-   - 已追踪 qualified layout resources
-   - values qualifier 变体和 layout resource dirs 进入 digest/cache 决策
-
-4. **验证和发布材料** ✅
-   - 已新增 `docs/RELEASE_NOTES_1_1.md`
-   - 已补充 fallback 性能约束文档
-   - 已新增 Kover / Codecov 覆盖率上报
-
-### 🚀 待执行：1.1.0 外部发布
-
-**唯一剩余任务**：执行真实外部发布（需要维护者权限）
-
-按照 `docs/RELEASE.md` 流程：
-
-1. **配置 GitHub Secrets**（一次性配置）
-   - `MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD`
-   - `SIGNING_IN_MEMORY_KEY` / `SIGNING_IN_MEMORY_KEY_PASSWORD`
-   - `GRADLE_PUBLISH_KEY` / `GRADLE_PUBLISH_SECRET`（可选）
-
-2. **打 tag 触发发布**
-   ```bash
-   VERSION=1.1.0
-   git tag -a "$VERSION" -m "Release $VERSION"
-   git push origin "$VERSION"
-   ```
-
-3. **验证发布结果**
-   - Maven Central: `io.github.donglua.layoutx2c:runtime:1.1.0`
-   - Gradle Plugin Portal: `io.github.donglua.layoutx2c`（如已配置）
-
-4. **发布 GitHub Release**
-   - 附上 changelog 和 migration guide 链接
-   - 说明性能基准和兼容性矩阵
+3. **报告与 CI 策略精度**
+   - 保持 layout 级 FULL / PARTIAL / FALLBACK 与根节点分析结果一致。
+   - 继续细化 fallback reason，使 CI policy 能区分整布局回退与局部子树回退。
 
 ---
 

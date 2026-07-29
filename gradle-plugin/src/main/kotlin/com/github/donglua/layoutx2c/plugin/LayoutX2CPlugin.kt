@@ -36,7 +36,6 @@ class LayoutX2CPlugin : Plugin<Project> {
             LayoutX2CExtension::class.java
         )
         extension.warnOnFallback.convention(true)
-        extension.packageName.convention("com.github.donglua.layoutx2c.generated")
         extension.maxFallbackLayouts.convention(Int.MAX_VALUE)
         extension.failOnFallbackReasons.convention(emptyList())
         extension.enableSyntheticAttributeSet.convention(true)
@@ -80,7 +79,9 @@ class LayoutX2CPlugin : Plugin<Project> {
 
         androidComponents.onVariants { variant ->
             project.extensions.configure(KspExtension::class.java) { ksp ->
-                ksp.addArg(LayoutX2CProcessorOptions.PACKAGE_NAME, extension.packageName.get())
+                extension.packageName.orNull?.let { packageName ->
+                    ksp.addArg(LayoutX2CProcessorOptions.PACKAGE_NAME, packageName)
+                }
                 ksp.addArg(LayoutX2CProcessorOptions.R_PACKAGE_NAME, project.androidNamespace())
                 ksp.addArg(
                     LayoutX2CProcessorOptions.ENABLE_SYNTHETIC_ATTRIBUTE_SET,

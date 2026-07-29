@@ -1,6 +1,7 @@
 package com.github.donglua.layoutx2c.plugin
 
 import com.google.common.truth.Truth.assertThat
+import groovy.json.JsonSlurper
 import org.gradle.api.GradleException
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Rule
@@ -56,10 +57,18 @@ class LayoutX2CReportTaskTest {
         task.generate()
 
         val json = outputDir.resolve("index.json").readText()
+        val parsed = JsonSlurper().parseText(json) as Map<*, *>
+        val summary = parsed["summary"] as Map<*, *>
+        val layoutCounts = summary["layouts"] as Map<*, *>
+        val layouts = parsed["layouts"] as List<*>
+        val home = layouts
+            .map { it as Map<*, *> }
+            .single { it["layout"] == "home" }
         assertThat(json).contains("\"totalLayouts\": 2")
-        assertThat(json).contains("\"FULL\": 1")
-        assertThat(json).contains("\"PARTIAL\": 1")
-        assertThat(json).contains("\"FALLBACK\": 1")
+        assertThat(layoutCounts["FULL"]).isEqualTo(1)
+        assertThat(layoutCounts["PARTIAL"]).isEqualTo(1)
+        assertThat(layoutCounts["FALLBACK"]).isEqualTo(0)
+        assertThat(home["support"]).isEqualTo("PARTIAL")
         assertThat(json).contains("\"reason\": \"DATA_BINDING_WRAPPER\"")
         assertThat(json).contains("\"layout\": \"home\"")
         assertThat(json).contains("\"layout\": \"settings\"")

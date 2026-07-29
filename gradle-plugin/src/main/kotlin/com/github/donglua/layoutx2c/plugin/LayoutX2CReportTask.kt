@@ -203,11 +203,7 @@ abstract class LayoutX2CReportTask : DefaultTask() {
 
         val fallbackReasons: List<String> = fallbackNodes.mapNotNull { it.reason }
 
-        val support: String = when {
-            nodeSupports.any { it == "FALLBACK" } -> "FALLBACK"
-            nodeSupports.any { it == "PARTIAL" } -> "PARTIAL"
-            else -> "FULL"
-        }
+        val support: String = nodes.firstOrNull()?.support ?: "FULL"
 
         val nodeCounts: Map<String, Int> = nodeSupports.groupingBy { it }.eachCount()
 

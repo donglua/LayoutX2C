@@ -15,7 +15,7 @@ class LayoutX2CPluginTest {
         val extension = project.extensions.getByType(LayoutX2CExtension::class.java)
         assertThat(project.extensions.findByName(LayoutX2CPlugin.EXTENSION_NAME)).isSameInstanceAs(extension)
         assertThat(extension.warnOnFallback.get()).isTrue()
-        assertThat(extension.packageName.get()).isEqualTo("com.github.donglua.layoutx2c.generated")
+        assertThat(extension.packageName.isPresent).isFalse()
         assertThat(extension.maxFallbackLayouts.get()).isEqualTo(Int.MAX_VALUE)
         assertThat(extension.failOnFallbackReasons.get()).isEmpty()
         assertThat(extension.enableSyntheticAttributeSet.get()).isTrue()

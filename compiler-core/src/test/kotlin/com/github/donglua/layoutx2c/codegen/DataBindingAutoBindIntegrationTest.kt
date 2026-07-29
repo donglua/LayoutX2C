@@ -288,7 +288,7 @@ class DataBindingAutoBindIntegrationTest {
     }
 
     @Test
-    fun `two-way binding with property access is recognized`() {
+    fun `two-way binding with property access generates reverse listener`() {
         val xml = """
             <layout xmlns:android="http://schemas.android.com/apk/res/android">
                 <data>
@@ -308,6 +308,13 @@ class DataBindingAutoBindIntegrationTest {
 
         val tree = parser.parse(xml, "item_two_way_prop")
         val analyzed = analyzer.analyze(tree.root)
+        val generated = generator.generate(
+            analyzedRoot = analyzed,
+            layoutName = "item_two_way_prop",
+            layoutResId = "R.layout.item_two_way_prop",
+            useFastPath = true,
+            dataBindingVariables = tree.rootMetadata.dataBindingVariables
+        ).toString()
 
         fun findById(node: com.github.donglua.layoutx2c.analyzer.AnalyzedNode, id: String):
             com.github.donglua.layoutx2c.analyzer.AnalyzedNode? {
@@ -318,6 +325,8 @@ class DataBindingAutoBindIntegrationTest {
         val editText = findById(analyzed, "@+id/name_input")!!
 
         assertThat(editText.twoWayBindingAttributes).contains("android:text")
+        assertThat(generated).contains("nameInput.addTextChangedListener")
+        assertThat(generated).contains("vm?.name = newValue")
     }
 
     @Test

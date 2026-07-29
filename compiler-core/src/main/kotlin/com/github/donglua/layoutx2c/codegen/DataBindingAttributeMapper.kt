@@ -202,9 +202,7 @@ object DataBindingAttributeMapper {
         propertyPath: String? = null
     ): String? {
         if (!isTwoWayBindingSupported(viewTagName, attrName)) return null
-        if (propertyPath != null) return null
-
-        val targetRef = variableName
+        val targetRef = propertyPath?.let { "$variableName?.$it" } ?: variableName
 
         return when (attrName) {
             "android:text" -> buildTextWatcherCode(viewFieldName, targetRef)
