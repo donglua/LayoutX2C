@@ -6,7 +6,7 @@ import org.gradle.plugins.signing.SigningExtension
 
 buildscript {
     extra["kotlinVersion"] = "2.2.21"
-    extra["agpVersion"] = "9.2.1"
+    extra["agpVersion"] = "9.3.1"
     extra["kspVersion"] = "2.3.8"
     extra["kotlinPoetVersion"] = "2.3.0"
     extra["minSdk"] = 23
