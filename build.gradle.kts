@@ -1,6 +1,8 @@
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.api.tasks.Delete
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.bundling.Zip
 import org.gradle.plugins.signing.SigningExtension
 
@@ -43,8 +45,37 @@ val useGpgSigning = providers.gradleProperty("layoutx2c.useGpgSigning")
     .orElse(false)
 val centralPortalBundleRepositoryName = "centralPortalBundle"
 val centralPortalStagingDir = layout.buildDirectory.dir("central-portal/staging")
+val consumerSmokeRepositoryName = "consumerSmoke"
+val consumerSmokeRepository = layout.buildDirectory.dir("consumer-smoke/repository")
 
 version = publishingVersion.get()
+
+val cleanConsumerSmokeRepository = tasks.register<Delete>("cleanConsumerSmokeRepository") {
+    group = "verification"
+    description = "Deletes the isolated consumer smoke Maven repository."
+    delete(consumerSmokeRepository)
+}
+
+val publishToConsumerSmokeRepository = tasks.register("publishToConsumerSmokeRepository") {
+    group = "verification"
+    description = "Publishes all LayoutX2C Maven publications to the consumer smoke repository."
+}
+
+tasks.register<Exec>("consumerSmoke") {
+    group = "verification"
+    description = "Verifies a standalone Android project can consume the published LayoutX2C coordinates."
+    dependsOn(publishToConsumerSmokeRepository)
+    workingDir(layout.projectDirectory.dir("integration-tests/consumer-smoke"))
+    commandLine(
+        rootProject.file("gradlew").absolutePath,
+        ":app:verifyLayoutX2CSmoke",
+        "--refresh-dependencies",
+        "-Playoutx2c.consumerRepo=${consumerSmokeRepository.get().asFile.absolutePath}",
+        "-Playoutx2c.version=${publishingVersion.get()}",
+        "--no-configuration-cache",
+        "--stacktrace"
+    )
+}
 
 val validateCentralPortalBundleInputs = tasks.register("validateCentralPortalBundleInputs") {
     group = "publishing"
@@ -83,6 +114,17 @@ tasks.register<Zip>("buildCentralPortalBundle") {
 subprojects {
     group = publishingGroup.get()
     version = publishingVersion.get()
+
+    plugins.withId("maven-publish") {
+        extensions.configure<PublishingExtension>("publishing") {
+            repositories {
+                maven {
+                    name = consumerSmokeRepositoryName
+                    url = consumerSmokeRepository.get().asFile.toURI()
+                }
+            }
+        }
+    }
 
     if (enableMavenCentralPublishing) {
         pluginManager.apply("com.vanniktech.maven.publish")
@@ -159,6 +201,18 @@ subprojects {
 }
 
 gradle.projectsEvaluated {
+    val consumerSmokePublishTasks = subprojects.flatMap { subproject ->
+        subproject.tasks.withType(PublishToMavenRepository::class.java)
+            .matching { it.repository.name == consumerSmokeRepositoryName }
+            .toList()
+    }
+    consumerSmokePublishTasks.forEach {
+        it.dependsOn(cleanConsumerSmokeRepository)
+    }
+    publishToConsumerSmokeRepository.configure {
+        dependsOn(consumerSmokePublishTasks)
+    }
+
     val bundlePublishTasks = subprojects.flatMap { subproject ->
         subproject.tasks.withType(PublishToMavenRepository::class.java)
             .matching { it.repository.name == centralPortalBundleRepositoryName }
