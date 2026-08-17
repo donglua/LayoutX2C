@@ -10,7 +10,7 @@ Kotlin 代码；遇到无法证明语义一致的节点、属性、DataBinding �
 
 它的目标不是替代 Android 视图系统，也不是要求项目迁移到新的 UI 写法，而是在保留 XML Layout、
 ViewBinding / DataBinding 和现有业务代码的前提下，把高频、可验证的 inflate 路径从运行时 XML
-解析移到编译期生成，减少运行时 XML 解析、标签分发和反射式 View 创建开销。采用渐进式策略：能生成 的生成，不能的 fallback，永远不让编译失败。
+解析移到编译期生成，减少运行时 XML 解析、标签分发和反射式 View 创建开销。采用渐进式策略：能生成的生成，不能的 fallback，永远不让编译失败。
 
 ## 模块
 
@@ -27,9 +27,27 @@ ViewBinding / DataBinding 和现有业务代码的前提下，把高频、可验
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("io.github.donglua.layoutx2c")
+    id("io.github.donglua.layoutx2c") version "1.4.0"
 }
 ```
+
+生成后可以直接汇总 layout 支持度和 fallback 原因：
+
+```bash
+./gradlew :app:layoutX2CReport
+```
+
+以下是当前仓库和 CI 使用的验证基线，不代表每个中间 AGP 或 Android API 组合都经过单独验证：
+
+| Item | Current repository verification |
+| --- | --- |
+| Gradle / JDK | Gradle 9.5.1 / JDK 21 |
+| Android toolchain | AGP 9.3.1, compileSdk 36, minSdk 23 |
+| Kotlin / KSP | Kotlin 2.2.21 / KSP 2.3.8 |
+| Runtime API | Android API 23+ is the configured minimum |
+
+版本历史和采用边界见 [CHANGELOG](CHANGELOG.md)、[1.0 迁移指南](docs/migrations/1.0.md)、
+[benchmark 方法](docs/BENCHMARKS.md)、[编译报告](#编译报告)和[发布流程](docs/RELEASE.md)。
 
 也可以只接入 KSP processor，不写额外参数。processor 会从配置类所在源码路径推导 `src/main/res`，
 优先从配置类里的 `R` import / 全限定 `R.layout.*` 推导 `R` 包，其次读取 Android Gradle
@@ -43,8 +61,8 @@ plugins {
 }
 
 dependencies {
-    implementation("io.github.donglua.layoutx2c:runtime:<version>")
-    ksp("io.github.donglua.layoutx2c:ksp-processor:<version>")
+    implementation("io.github.donglua.layoutx2c:runtime:1.4.0")
+    ksp("io.github.donglua.layoutx2c:ksp-processor:1.4.0")
 }
 ```
 
@@ -188,9 +206,11 @@ ViewFactoryRegistry.setViewFactory { context, name, attrs ->
 }
 ```
 
-`attrs` 的类型是 `AttributeSet?`。当前生成路径不会重放平台 XML parser，因此
-`attrs` 可能为 `null`。如果现有 inflater 强依赖非空 `AttributeSet`，adapter
-应在 `attrs == null` 时返回 `null`，避免破坏默认创建路径：
+`attrs` 的类型是 `AttributeSet?`。默认情况下，已声明的自定义 View 会收到
+`SyntheticAttributeSet`，其中包含 XML 原始属性和可静态解析的资源 ID；关闭
+`enableSyntheticAttributeSet` 或没有可传递属性时仍可能为 `null`。如果现有 inflater
+强依赖平台内部 XML parser，adapter 应在无法处理 synthetic attrs 时返回 `null`，避免破坏
+默认创建路径：
 
 ```kotlin
 val inflater = JZViewInflater()
@@ -200,8 +220,8 @@ ViewFactoryRegistry.setViewFactory { context, name, attrs ->
 }
 ```
 
-需要完全等价复用这类 inflater 时，还需要额外的 synthetic `AttributeSet` 支持；
-在没有真实 XML `AttributeSet` 的情况下，不建议直接伪造平台 inflate 语义。
+`SyntheticAttributeSet` 不等同于平台内部 `XmlBlock.Parser`。需要后者才能保持完整语义的
+inflater 应继续走原生 fallback，不建议把普通 `AttributeSet` 当作真实 XML parser 使用。
 
 恢复默认行为：
 

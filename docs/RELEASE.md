@@ -1,7 +1,8 @@
 # LayoutX2C Release Guide
 
-LayoutX2C artifacts are released from a SemVer tag such as `1.1.0-rc.1` or
-`1.1.0`.
+LayoutX2C artifacts are released from an explicit SemVer tag such as
+`1.4.1-rc.1` or `1.4.1`. The effective artifact version, git tag, release notes,
+and published coordinates must agree.
 
 ## Required Secrets
 
@@ -22,31 +23,53 @@ Gradle Plugin Portal publishing additionally requires:
 - `GRADLE_PUBLISH_SECRET`
 
 If the Gradle Plugin Portal secrets are missing, the release workflow publishes
-Maven artifacts and skips plugin portal publishing with an explicit message.
-Maven Central and signing secrets are required for the release workflow.
+the required Maven artifacts and explicitly skips Plugin Portal publication.
+Maven Central and signing secrets remain required.
 
-## Local Verification
+## Local Release Gate
 
-Run the local gates before tagging:
+Run the deterministic repository gate before tagging. `VERSION=1.4.1` is the
+next candidate example; replace it with the intended tag:
 
 ```bash
-./gradlew test
-./gradlew :demo:assembleDebug
-./gradlew :runtime:assembleRelease
-./gradlew :gradle-plugin:test
-./gradlew :demo:assembleRelease :demo:assembleDebugAndroidTest
+VERSION=1.4.1
+./gradlew releaseCheck \
+  -Playoutx2c.version="$VERSION" \
+  --no-configuration-cache \
+  --no-daemon
 ```
+
+The gate verifies version and documentation inputs before running JVM and
+Android tests, coverage reports, Android assembly, local Maven publication,
+published POM coordinates, and the standalone consumer smoke project. It does
+not publish remotely or require release credentials.
+
+When a device or emulator is available, also run connected Android equivalence
+tests:
+
+```bash
+./gradlew :demo:connectedDebugAndroidTest
+```
+
+Capture benchmark results with the [benchmark template](BENCHMARKS.md) when a
+release changes generated inflation or fallback performance.
+
+## Optional Publication Checks
 
 Verify local publication metadata without remote credentials:
 
 ```bash
-./gradlew publishToMavenLocal -Playoutx2c.enablePublishing=true --no-configuration-cache
+./gradlew publishToMavenLocal \
+  -Playoutx2c.version="$VERSION" \
+  -Playoutx2c.enablePublishing=true \
+  --no-configuration-cache
 ```
 
-Build a Central Portal manual upload bundle for the `Publish Component` flow:
+To build a Central Portal manual-upload bundle for the `Publish Component`
+flow:
 
 ```bash
-VERSION=1.1.0
+VERSION="$VERSION" \
 ORG_GRADLE_PROJECT_signingInMemoryKey="$SIGNING_IN_MEMORY_KEY" \
 ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="$SIGNING_IN_MEMORY_KEY_PASSWORD" \
 ./gradlew buildCentralPortalBundle \
@@ -55,15 +78,13 @@ ORG_GRADLE_PROJECT_signingInMemoryKeyPassword="$SIGNING_IN_MEMORY_KEY_PASSWORD" 
 ```
 
 Upload `build/central-portal/layoutx2c-${VERSION}-central-bundle.zip` in Central
-Portal's `Publish Component` page. The bundle is a Maven Repository Layout zip
-and does not require `MAVEN_CENTRAL_USERNAME` or `MAVEN_CENTRAL_PASSWORD` until
-it is uploaded through Central Portal or published by CI.
+Portal. The bundle is a Maven Repository Layout zip.
 
-GitHub Actions imports `GPG_PRIVATE_KEY` and publishes with Gradle's GPG command
-signing path:
+GitHub Actions imports `GPG_PRIVATE_KEY` and uses Gradle's GPG command signing
+path:
 
 ```bash
-./gradlew publishAndReleaseToMavenCentral \
+VERSION="$VERSION" ./gradlew publishAndReleaseToMavenCentral \
   -Playoutx2c.enablePublishing=true \
   -Playoutx2c.useGpgSigning=true \
   -Psigning.gnupg.keyName="$GPG_KEY_ID" \
@@ -72,59 +93,52 @@ signing path:
   --no-configuration-cache
 ```
 
-When a device or emulator is available, run connected Android equivalence tests:
-
-```bash
-./gradlew :demo:connectedDebugAndroidTest
-```
-
-Capture benchmark results with the template in `BENCHMARKS.md` before publishing
-release notes.
-
 ## Tag Release
 
-After local verification passes:
+Confirm that the stable base-version notes exist before creating the tag:
 
 ```bash
-VERSION=1.1.0
+VERSION=1.4.1
+NOTES_VERSION="${VERSION%%-*}"
+NOTES_FILE="docs/releases/${NOTES_VERSION}.md"
+test -f "$NOTES_FILE"
+
 git tag -a "$VERSION" -m "Release $VERSION"
 git push origin "$VERSION"
 ```
 
-The GitHub Actions release workflow then runs:
+The release workflow is responsible for:
 
-1. JVM tests and Android assemble tasks.
-2. Android test APK assembly.
-3. Maven Central publish for `runtime`, `compiler-core`, `ksp-processor`, and
-   `gradle-plugin`.
-4. Gradle Plugin Portal publish when plugin portal secrets are configured.
+1. Checking out the requested tag and rerunning `releaseCheck`.
+2. Validating signing and publishing credentials only after the repository gate.
+3. Publishing `runtime`, `compiler-core`, `ksp-processor`, and `gradle-plugin`
+   to Maven Central.
+4. Publishing to the Gradle Plugin Portal when its credentials are configured.
+5. Verifying public Maven coordinates and creating the GitHub Release from
+   `docs/releases/${NOTES_VERSION}.md`.
 
-## Publish GitHub Release
+## Post-Publication Verification
 
-Pushing the git tag triggers the workflow, but it does not by itself guarantee a
-public GitHub Release page. After the workflow succeeds:
+Maven Central synchronization is part of release completion, not an assumed
+side effect. Verify all four artifacts and the Gradle plugin marker:
 
 ```bash
-VERSION=1.1.0
-NOTES_FILE=docs/RELEASE_NOTES_1_1.md
-gh release create "$VERSION" --title "LayoutX2C $VERSION" --notes-file "$NOTES_FILE"
+./scripts/verify-maven-release.sh "$VERSION"
+```
+
+Then confirm the GitHub Release state:
+
+```bash
 gh release view "$VERSION" --json isDraft,isPrerelease,url
 ```
 
-If the release page already exists, update it instead:
-
-```bash
-VERSION=1.1.0
-NOTES_FILE=docs/RELEASE_NOTES_1_1.md
-gh release edit "$VERSION" --title "LayoutX2C $VERSION" --notes-file "$NOTES_FILE"
-gh release view "$VERSION" --json isDraft,isPrerelease,url
-```
-
-The stable release should report `isDraft=false` and `isPrerelease=false`.
+A stable release must report `isDraft=false` and `isPrerelease=false`. A version
+with a pre-release suffix must be marked as a prerelease.
 
 ## Failure Boundaries
 
 Repository readiness can be verified locally. Final release can still fail for
 external reasons such as invalid Maven Central credentials, expired signing
 keys, Gradle Plugin Portal account configuration, or temporary repository
-availability. Fix those in the release environment and rerun the workflow.
+availability. Fix the release environment and rerun the workflow; do not delete
+or recreate a valid published tag as rollback logic.

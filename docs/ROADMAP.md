@@ -99,13 +99,19 @@
 
 ## Next
 
-下一阶段继续优先处理会造成“生成成功但运行时行为不完整”的契约缺口：
+下一阶段先闭合发布后的可采用性验证，再继续处理会造成“生成成功但运行时行为不完整”的契约缺口：
 
-1. **DataBinding 语义边界**
+1. **发布采用闭环**
+   - 保持 artifact、Gradle plugin 和自动注入依赖只有一个版本来源。
+   - 在 CI 中发布到隔离 Maven 仓库，并由独立 consumer 工程按真实坐标解析。
+   - 使用 `releaseCheck` 在凭据和远端发布之前校验版本、文档、测试、构建和 POM。
+   - Maven Central 发布后验证四个组件和 Gradle plugin marker 可公开解析，再创建 GitHub Release。
+
+2. **DataBinding 语义边界**
    - 为新增的表达式和 BindingAdapter 能力补齐正向、反向和 fallback 三条路径的等价性测试。
    - 无法证明完整语义时，在分析阶段明确降级，不允许静默省略监听器或属性写回。
 
-2. **报告与 CI 策略精度**
+3. **报告与 CI 策略精度**
    - 保持 layout 级 FULL / PARTIAL / FALLBACK 与根节点分析结果一致。
    - 继续细化 fallback reason，使 CI policy 能区分整布局回退与局部子树回退。
 
@@ -146,35 +152,14 @@
 
 ---
 
-## 1.0
+## Shipped Baseline
 
-v1.0 的目标是稳定 API，发布到 Maven Central，并能被生产项目保守接入。
-
-**API 稳定**
-
-- `LayoutFactory`、Registry 和注解接口冻结。
-- Public API 使用 `@PublicApi` / `@ExperimentalApi` 标注。
-- breaking change 必须有迁移指南。
-
-**兼容性矩阵**
-
-- 覆盖 AGP 8.4+ / 9.x。
-- 覆盖 KSP 2.x。
-- 覆盖 Android API 21-35。
-- 与 ViewBinding / DataBinding 共存，不干扰原生生成流程。
-
-**发布工程**
-
-- Maven Central 发布 runtime、compiler-core、ksp-processor、gradle-plugin 的配置已就绪。
-- Gradle Plugin Portal 发布插件的配置已就绪，缺少 portal secrets 时 workflow 会显式跳过。
-- CI 自动化 staging -> release 已通过 tag workflow 表达。
-- ProGuard / R8 consumer rules 已覆盖 generated factory 和 generated registry。
-
-**性能和文档**
-
-- benchmark 方法论已公开，真实数据应随 release notes 或文档站点按设备记录补充。
-- README 和 docs 说明测试设备、方法论和限制。
-- 示例项目覆盖 generated inflate、fallback、DataBinding binding 子类和报告输出。
+- `1.0.0` 已建立 `@PublicApi` / `@ExperimentalApi` 稳定边界和保守 fallback 契约；后续
+  breaking change 必须提供版本化迁移说明。详见 [1.0 迁移指南](migrations/1.0.md)。
+- Maven Central、Gradle Plugin Portal 和 GitHub Release 已有公开稳定版本，当前最新稳定版为
+  `1.4.0`。
+- benchmark 方法、本地发布门禁和当前工具链基线分别维护在
+  [BENCHMARKS](BENCHMARKS.md)、[发布指南](RELEASE.md)和 [README](../README.md)。
 
 ---
 
