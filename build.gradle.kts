@@ -1,3 +1,5 @@
+import com.github.donglua.layoutx2c.build.findBrokenLocalLinks
+import com.github.donglua.layoutx2c.build.validateReleaseVersion
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
@@ -75,6 +77,107 @@ tasks.register<Exec>("consumerSmoke") {
         "--no-configuration-cache",
         "--stacktrace"
     )
+}
+
+fun validatePomCoordinates(pom: File, artifact: String, version: String) {
+    check(pom.isFile) { "Missing published POM: $pom" }
+    val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply {
+        setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+        isExpandEntityReferences = false
+    }
+    val root = factory.newDocumentBuilder().parse(pom).documentElement
+    fun directChildText(name: String): String? = (0 until root.childNodes.length)
+        .asSequence()
+        .map { root.childNodes.item(it) }
+        .filterIsInstance<org.w3c.dom.Element>()
+        .firstOrNull { it.tagName == name }
+        ?.textContent
+        ?.trim()
+
+    check(directChildText("groupId") == "io.github.donglua.layoutx2c") {
+        "Unexpected groupId in published POM: $pom"
+    }
+    check(directChildText("artifactId") == artifact) {
+        "Unexpected artifactId in published POM: $pom"
+    }
+    check(directChildText("version") == version) {
+        "Unexpected version in published POM: $pom"
+    }
+}
+
+fun validateRepositoryPomFiles(version: String) {
+    val repositoryDir = consumerSmokeRepository.get().asFile
+    listOf("runtime", "compiler-core", "ksp-processor", "gradle-plugin").forEach { artifact ->
+        val pom = repositoryDir.resolve(
+            "io/github/donglua/layoutx2c/$artifact/$version/$artifact-$version.pom"
+        )
+        validatePomCoordinates(pom, artifact, version)
+    }
+
+    val markerArtifact = "io.github.donglua.layoutx2c.gradle.plugin"
+    val markerPom = repositoryDir.resolve(
+        "io/github/donglua/layoutx2c/$markerArtifact/$version/$markerArtifact-$version.pom"
+    )
+    validatePomCoordinates(markerPom, markerArtifact, version)
+}
+
+fun validateDocumentationLinks() {
+    val readme = file("README.md")
+    check(readme.isFile) { "Missing documentation entry: README.md" }
+    val entryDocuments = sequenceOf(readme) + sequenceOf(file("CHANGELOG.md")).filter { it.isFile }
+    val internalPlanningDirectory = file("docs/superpowers")
+    val documentation = file("docs").walkTopDown()
+        .onEnter { directory -> directory != internalPlanningDirectory }
+        .filter { it.isFile && it.extension == "md" }
+
+    (entryDocuments + documentation).forEach { document ->
+        val broken = findBrokenLocalLinks(document.readText(), document, rootDir)
+        check(broken.isEmpty()) {
+            "Broken links in ${document.relativeTo(rootDir)}: ${broken.joinToString()}"
+        }
+    }
+}
+
+val validateReleaseCandidate = tasks.register("validateReleaseCandidate") {
+    group = "verification"
+    description = "Validates release version, tag, and documentation inputs before expensive checks."
+    doLast {
+        val version = publishingVersion.get()
+        check(validateReleaseVersion(version) == null) {
+            "releaseCheck requires stable SemVer, received $version"
+        }
+        val explicitVersion = versionProperty ?: versionEnvironment
+        check(explicitVersion != null && version == explicitVersion) {
+            "releaseCheck requires an explicit candidate version"
+        }
+
+        val githubEvent = providers.environmentVariable("GITHUB_EVENT_NAME").orNull
+        val githubRefType = providers.environmentVariable("GITHUB_REF_TYPE").orNull
+        if (githubEvent == "push" && githubRefType == "tag") {
+            val refName = providers.environmentVariable("GITHUB_REF_NAME").orNull
+            check(refName == version) {
+                "Release tag $refName does not match candidate version $version"
+            }
+        }
+        validateDocumentationLinks()
+    }
+}
+
+val releaseCheck = tasks.register("releaseCheck") {
+    group = "verification"
+    description = "Validates a LayoutX2C release candidate without remote publication."
+    dependsOn(validateReleaseCandidate)
+    doLast {
+        validateRepositoryPomFiles(publishingVersion.get())
+    }
+}
+
+allprojects {
+    tasks.configureEach {
+        if (path != validateReleaseCandidate.get().path) {
+            mustRunAfter(validateReleaseCandidate)
+        }
+    }
 }
 
 val validateCentralPortalBundleInputs = tasks.register("validateCentralPortalBundleInputs") {
@@ -225,5 +328,26 @@ gradle.projectsEvaluated {
 
     publishCentralPortalBundleComponents.configure {
         dependsOn(bundlePublishTasks)
+    }
+
+    val releasePrerequisites = listOf(
+        project(":runtime").tasks.named("test").get(),
+        project(":compiler-core").tasks.named("test").get(),
+        project(":ksp-processor").tasks.named("test").get(),
+        project(":gradle-plugin").tasks.named("test").get(),
+        project(":demo").tasks.named("test").get(),
+        tasks.named("koverXmlReport").get(),
+        tasks.named("koverHtmlReport").get(),
+        project(":demo").tasks.named("assembleDebug").get(),
+        project(":runtime").tasks.named("assembleRelease").get(),
+        project(":demo").tasks.named("assembleRelease").get(),
+        project(":demo").tasks.named("assembleDebugAndroidTest").get(),
+        tasks.named("consumerSmoke").get()
+    )
+    releasePrerequisites.forEach { prerequisite ->
+        prerequisite.dependsOn(validateReleaseCandidate)
+    }
+    releaseCheck.configure {
+        dependsOn(releasePrerequisites)
     }
 }

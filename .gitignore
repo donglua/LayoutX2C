@@ -11,6 +11,10 @@ local.properties
 
 # Generated
 **/build/
+!buildSrc/src/main/kotlin/com/github/donglua/layoutx2c/build/
+!buildSrc/src/main/kotlin/com/github/donglua/layoutx2c/build/**
+!buildSrc/src/test/kotlin/com/github/donglua/layoutx2c/build/
+!buildSrc/src/test/kotlin/com/github/donglua/layoutx2c/build/**
 
 # Tooling metadata
 .omx/
