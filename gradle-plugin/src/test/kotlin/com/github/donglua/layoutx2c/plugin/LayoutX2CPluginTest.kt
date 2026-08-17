@@ -7,6 +7,12 @@ import org.junit.Test
 class LayoutX2CPluginTest {
 
     @Test
+    fun `plugin version comes from generated metadata`() {
+        assertThat(layoutX2CPluginVersion())
+            .isEqualTo(System.getProperty("layoutx2c.test.expectedVersion"))
+    }
+
+    @Test
     fun `apply registers layoutX2C extension with defaults`() {
         val project = ProjectBuilder.builder().build()
 

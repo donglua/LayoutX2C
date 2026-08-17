@@ -7,8 +7,6 @@ plugins {
 
 val compileSdk: Int by rootProject.extra
 val minSdk: Int by rootProject.extra
-val groupId: String by rootProject.extra
-val versionName: String by rootProject.extra
 val enableMavenCentralPublishing = providers.gradleProperty("layoutx2c.enablePublishing").isPresent
 
 android {

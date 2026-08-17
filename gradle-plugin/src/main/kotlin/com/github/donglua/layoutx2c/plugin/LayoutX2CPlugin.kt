@@ -2,6 +2,7 @@ package com.github.donglua.layoutx2c.plugin
 
 import com.android.build.api.variant.AndroidComponentsExtension
 import com.google.devtools.ksp.gradle.KspExtension
+import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.ConfigurableFileCollection
@@ -9,6 +10,19 @@ import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.process.CommandLineArgumentProvider
+import java.util.Properties
+
+private const val VERSION_RESOURCE =
+    "/com/github/donglua/layoutx2c/plugin/layoutx2c-version.properties"
+
+internal fun layoutX2CPluginVersion(): String {
+    val properties = LayoutX2CPlugin::class.java.getResourceAsStream(VERSION_RESOURCE)
+        ?.use { Properties().also { loaded -> loaded.load(it) } }
+        ?: throw GradleException("LayoutX2C plugin version metadata is missing: $VERSION_RESOURCE")
+    return properties.getProperty("version")
+        ?.takeIf { it.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?")) }
+        ?: throw GradleException("Invalid LayoutX2C plugin version metadata in $VERSION_RESOURCE")
+}
 
 /**
  * LayoutX2C Gradle Plugin。
@@ -26,7 +40,6 @@ class LayoutX2CPlugin : Plugin<Project> {
     companion object {
         const val EXTENSION_NAME = "layoutX2C"
         const val GROUP = "io.github.donglua.layoutx2c"
-        const val VERSION = "1.4.0"
     }
 
     override fun apply(project: Project) {
@@ -54,10 +67,11 @@ class LayoutX2CPlugin : Plugin<Project> {
         project.pluginManager.apply("com.google.devtools.ksp")
 
         // 自动添加 processor 依赖
-        project.dependencies.add("ksp", "$GROUP:ksp-processor:$VERSION")
+        val pluginVersion = layoutX2CPluginVersion()
+        project.dependencies.add("ksp", "$GROUP:ksp-processor:$pluginVersion")
 
         // 自动添加 runtime 依赖
-        project.dependencies.add("implementation", "$GROUP:runtime:$VERSION")
+        project.dependencies.add("implementation", "$GROUP:runtime:$pluginVersion")
 
         // resDir 由 processor 基于注解源码路径推断，保留 flavor/source-set 语义。
         val androidComponents = project.extensions

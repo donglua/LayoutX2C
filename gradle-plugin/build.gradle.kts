@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.testing.Test
+import org.gradle.language.jvm.tasks.ProcessResources
+
 plugins {
     id("org.jetbrains.kotlin.jvm")
     `java-gradle-plugin`
@@ -31,4 +34,15 @@ gradlePlugin {
 
 if (providers.gradleProperty("layoutx2c.enablePublishing").isPresent) {
     pluginManager.apply("com.gradle.plugin-publish")
+}
+
+tasks.named<ProcessResources>("processResources") {
+    inputs.property("layoutx2cVersion", project.version.toString())
+    filesMatching("com/github/donglua/layoutx2c/plugin/layoutx2c-version.properties") {
+        expand("layoutx2cVersion" to project.version.toString())
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    systemProperty("layoutx2c.test.expectedVersion", project.version.toString())
 }

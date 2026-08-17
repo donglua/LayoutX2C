@@ -15,6 +15,13 @@ class LayoutX2CPluginFunctionalTest {
     val tempDir = TemporaryFolder()
 
     @Test
+    fun `plugin injects dependencies using its published version`() {
+        val fixture = createAndroidFixture()
+
+        fixture.assertDependencyVersion(System.getProperty("layoutx2c.test.expectedVersion"))
+    }
+
+    @Test
     fun `digest cache restores deleted outputs and invalidates referenced resources`() {
         val fixture = createAndroidFixture()
 
@@ -221,6 +228,23 @@ class LayoutX2CPluginFunctionalTest {
             layoutX2C {
                 $layoutX2CConfiguration
             }
+
+            tasks.register("assertLayoutX2CDependencyVersion") {
+                doLast {
+                    val expected = providers.gradleProperty("expectedLayoutX2CVersion").get()
+                    val coordinates = configurations.getByName("implementation").dependencies
+                        .filter { it.group == "io.github.donglua.layoutx2c" }
+                        .associate { it.name to it.version }
+                    check(coordinates["runtime"] == expected) {
+                        "runtime version ${'$'}{coordinates["runtime"]} != ${'$'}expected"
+                    }
+                    val processor = configurations.getByName("ksp").dependencies
+                        .single { it.name == "ksp-processor" }
+                    check(processor.version == expected) {
+                        "processor version ${'$'}{processor.version} != ${'$'}expected"
+                    }
+                }
+            }
             """.trimIndent()
         )
 
@@ -354,6 +378,21 @@ class LayoutX2CPluginFunctionalTest {
             .withArguments(":app:layoutX2CReport", "--stacktrace")
             .withPluginClasspath()
             .buildAndFail()
+
+        fun assertDependencyVersion(expected: String) {
+            val result = GradleRunner.create()
+                .withProjectDir(projectDir)
+                .withArguments(
+                    ":app:assertLayoutX2CDependencyVersion",
+                    "-PexpectedLayoutX2CVersion=$expected",
+                    "--stacktrace"
+                )
+                .withPluginClasspath()
+                .build()
+
+            assertThat(result.task(":app:assertLayoutX2CDependencyVersion")?.outcome)
+                .isEqualTo(TaskOutcome.SUCCESS)
+        }
 
         fun generatedSnapshot(): Map<String, String> {
             return generatedKspDir.walkTopDown()

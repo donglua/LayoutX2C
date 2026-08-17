@@ -13,7 +13,6 @@ buildscript {
     extra["targetSdk"] = 36
     extra["compileSdk"] = 36
     extra["groupId"] = "io.github.donglua.layoutx2c"
-    extra["versionName"] = "1.4.0"
 }
 
 plugins {
@@ -28,14 +27,24 @@ plugins {
 
 val publishingGroup = providers.environmentVariable("GROUP")
     .orElse(rootProject.extra["groupId"] as String)
-val publishingVersion = providers.environmentVariable("VERSION")
-    .orElse(rootProject.extra["versionName"] as String)
+val versionProperty = providers.gradleProperty("layoutx2c.version").orNull
+val versionEnvironment = providers.environmentVariable("VERSION").orNull
+if (versionProperty != null && versionEnvironment != null && versionProperty != versionEnvironment) {
+    throw GradleException(
+        "Conflicting LayoutX2C versions: layoutx2c.version=$versionProperty, VERSION=$versionEnvironment"
+    )
+}
+val publishingVersion = providers.gradleProperty("layoutx2c.version")
+    .orElse(providers.environmentVariable("VERSION"))
+    .orElse("1.4.1-SNAPSHOT")
 val enableMavenCentralPublishing = providers.gradleProperty("layoutx2c.enablePublishing").isPresent
 val useGpgSigning = providers.gradleProperty("layoutx2c.useGpgSigning")
     .map(String::toBoolean)
     .orElse(false)
 val centralPortalBundleRepositoryName = "centralPortalBundle"
 val centralPortalStagingDir = layout.buildDirectory.dir("central-portal/staging")
+
+version = publishingVersion.get()
 
 val validateCentralPortalBundleInputs = tasks.register("validateCentralPortalBundleInputs") {
     group = "publishing"
