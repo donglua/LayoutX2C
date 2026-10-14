@@ -48,7 +48,7 @@ class XmlLayoutParser(
     }
 
     private fun parseLayoutRoot(rootElement: Element): ParsedLayoutRoot {
-        if (rootElement.tagName != "layout") {
+        if (rootElement.tagName != LayoutConstants.LAYOUT_ROOT_TAG) {
             return ParsedLayoutRoot(
                 node = parseElement(rootElement, 0),
                 metadata = LayoutRootMetadata(originalRootTagName = rootElement.tagName)
@@ -57,11 +57,11 @@ class XmlLayoutParser(
 
         val elementChildren = rootElement.elementChildren()
         val dataElement = elementChildren
-            .firstOrNull { it.element.tagName == "data" }
+            .firstOrNull { it.element.tagName == LayoutConstants.DATA_TAG }
             ?.element
         val variables = dataElement?.dataBindingVariables().orEmpty()
         val imports = dataElement?.dataBindingImports().orEmpty()
-        val viewRoot = elementChildren.singleOrNull { it.element.tagName != "data" }
+        val viewRoot = elementChildren.singleOrNull { it.element.tagName != LayoutConstants.DATA_TAG }
         val isMalformed = viewRoot == null
         return ParsedLayoutRoot(
             node = if (viewRoot == null) parseElement(rootElement, 0) else parseElement(viewRoot.element, 0),
@@ -115,15 +115,13 @@ class XmlLayoutParser(
                         isMalformedDataBindingLayout = resolved.tree.rootMetadata.isMalformedDataBindingLayout
                     )
 
-                    // If the included root is a <merge> tag, native Android ignores
-                    // the layout_* and id attributes on the <include> tag.
                     if (includedRoot.tagName == "merge") {
                         return LayoutNode(
-                        tagName = "merge",
-                        attributes = includedRoot.attributes,
-                        xmlAttributes = includedRoot.xmlAttributes,
-                        children = includedRoot.children,
-                        indexInParent = indexInParent,
+                            tagName = "merge",
+                            attributes = includedRoot.attributes,
+                            xmlAttributes = includedRoot.xmlAttributes,
+                            children = includedRoot.children,
+                            indexInParent = indexInParent,
                             nodeType = resolvedNodeType
                         )
                     }
@@ -132,27 +130,33 @@ class XmlLayoutParser(
                     val mergedAttrs = includedRoot.attributes.toMutableMap()
                     val mergedXmlAttrs = includedRoot.xmlAttributes.toMutableList()
                     attributes.forEach { (key, value) ->
-                        if (key.startsWith("android:layout_")) {
+                        if (key.startsWith(LayoutConstants.ANDROID_LAYOUT_)) {
                             mergedAttrs[key] = value
-                            mergedXmlAttrs.replaceOrAdd(xmlAttributes.first { it.qualifiedName == key })
+                            mergedXmlAttrs.mergeAttribute(
+                                xmlAttributes.first { it.qualifiedName == key }
+                            )
                         }
                     }
                     // Carry over android:id from include tag if present
-                    attributes["android:id"]?.let {
-                        mergedAttrs["android:id"] = it
-                        mergedXmlAttrs.replaceOrAdd(xmlAttributes.first { attr -> attr.qualifiedName == "android:id" })
+                    attributes[LayoutConstants.ANDROID_ID]?.let {
+                        mergedAttrs[LayoutConstants.ANDROID_ID] = it
+                        mergedXmlAttrs.mergeAttribute(
+                            xmlAttributes.first { it.qualifiedName == LayoutConstants.ANDROID_ID }
+                        )
                     }
                     // Carry over android:visibility from include tag if present
                     attributes["android:visibility"]?.let {
                         mergedAttrs["android:visibility"] = it
-                        mergedXmlAttrs.replaceOrAdd(xmlAttributes.first { attr -> attr.qualifiedName == "android:visibility" })
+                        mergedXmlAttrs.mergeAttribute(
+                            xmlAttributes.first { it.qualifiedName == "android:visibility" }
+                        )
                     }
 
                     return LayoutNode(
                         tagName = includedRoot.tagName,
-                        attributes = mergedAttrs,
-                        xmlAttributes = mergedXmlAttrs,
-                        children = includedRoot.children,
+                        attributes = mergedAttrs.toMap(),
+                        xmlAttributes = mergedXmlAttrs.toList(),
+                        children = includedRoot.children.toList(),
                         indexInParent = indexInParent,
                         nodeType = resolvedNodeType
                     )
@@ -160,9 +164,9 @@ class XmlLayoutParser(
                 is IncludeResult.NotFound -> {
                     return LayoutNode(
                         tagName = tagName,
-                        attributes = attributes,
-                        xmlAttributes = xmlAttributes,
-                        children = children,
+                        attributes = attributes.toMap(),
+                        xmlAttributes = xmlAttributes.toList(),
+                        children = children.toList(),
                         indexInParent = indexInParent,
                         nodeType = LayoutNodeType.Include(nodeType.layoutRef, "INCLUDE_NOT_FOUND")
                     )
@@ -170,9 +174,9 @@ class XmlLayoutParser(
                 is IncludeResult.CircularReference -> {
                     return LayoutNode(
                         tagName = tagName,
-                        attributes = attributes,
-                        xmlAttributes = xmlAttributes,
-                        children = children,
+                        attributes = attributes.toMap(),
+                        xmlAttributes = xmlAttributes.toList(),
+                        children = children.toList(),
                         indexInParent = indexInParent,
                         nodeType = LayoutNodeType.Include(nodeType.layoutRef, "CIRCULAR_INCLUDE")
                     )
@@ -180,9 +184,9 @@ class XmlLayoutParser(
                 is IncludeResult.DepthExceeded -> {
                     return LayoutNode(
                         tagName = tagName,
-                        attributes = attributes,
-                        xmlAttributes = xmlAttributes,
-                        children = children,
+                        attributes = attributes.toMap(),
+                        xmlAttributes = xmlAttributes.toList(),
+                        children = children.toList(),
                         indexInParent = indexInParent,
                         nodeType = LayoutNodeType.Include(nodeType.layoutRef, "INCLUDE_DEPTH_EXCEEDED")
                     )
@@ -190,9 +194,9 @@ class XmlLayoutParser(
                 is IncludeResult.ParseError -> {
                     return LayoutNode(
                         tagName = tagName,
-                        attributes = attributes,
-                        xmlAttributes = xmlAttributes,
-                        children = children,
+                        attributes = attributes.toMap(),
+                        xmlAttributes = xmlAttributes.toList(),
+                        children = children.toList(),
                         indexInParent = indexInParent,
                         nodeType = LayoutNodeType.Include(nodeType.layoutRef, "INCLUDE_PARSE_ERROR")
                     )
@@ -202,15 +206,15 @@ class XmlLayoutParser(
 
         return LayoutNode(
             tagName = tagName,
-            attributes = attributes,
-            xmlAttributes = xmlAttributes,
-            children = children,
+            attributes = attributes.toMap(),
+            xmlAttributes = xmlAttributes.toList(),
+            children = children.toList(),
             indexInParent = indexInParent,
             nodeType = nodeType
         )
     }
 
-    private fun MutableList<XmlAttribute>.replaceOrAdd(attribute: XmlAttribute) {
+    private fun MutableList<XmlAttribute>.mergeAttribute(attribute: XmlAttribute) {
         val index = indexOfFirst { it.qualifiedName == attribute.qualifiedName }
         if (index >= 0) {
             this[index] = attribute
@@ -225,7 +229,7 @@ class XmlLayoutParser(
     private fun resolveNodeType(tagName: String, attributes: Map<String, String>): LayoutNodeType {
         return when (tagName) {
             "include" -> {
-                val layoutRef = extractLayoutRef(attributes["layout"])
+                val layoutRef = extractLayoutRef(attributes[LayoutConstants.ANDROID_ID]) // layout attr is "layout"
                 if (layoutRef != null) {
                     LayoutNodeType.Include(layoutRef, includeAttributes = attributes.toMap())
                 } else {
@@ -269,7 +273,7 @@ class XmlLayoutParser(
         return elementChildren()
             .asSequence()
             .map { it.element }
-            .filter { it.tagName == "variable" }
+            .filter { it.tagName == LayoutConstants.DATA_TAG }
             .mapNotNull { element ->
                 val name = element.getAttribute("name").trim()
                 val type = element.getAttribute("type").trim()
@@ -286,7 +290,7 @@ class XmlLayoutParser(
         return elementChildren()
             .asSequence()
             .map { it.element }
-            .filter { it.tagName == "import" }
+            .filter { it.tagName == LayoutConstants.DATA_TAG }
             .mapNotNull { element ->
                 val type = element.getAttribute("type").trim()
                 val alias = element.getAttribute("alias").trim().takeIf { it.isNotEmpty() }

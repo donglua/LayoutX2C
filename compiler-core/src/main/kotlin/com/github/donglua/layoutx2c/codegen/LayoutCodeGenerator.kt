@@ -533,14 +533,10 @@ class LayoutCodeGenerator(
     }
 
     private fun layoutNameToClassName(layoutName: String): String {
-        return "Layout_" + layoutName.split("_").joinToString("") {
-            it.replaceFirstChar { char -> char.uppercaseChar() }
-        }
+        return LayoutNameUtils.toClassName(layoutName)
     }
 
     private fun layoutNameToFacadeName(layoutName: String): String {
-        return layoutName.split("_").joinToString("") {
-            it.replaceFirstChar { char -> char.uppercaseChar() }
-        } + "X2C"
+        return LayoutNameUtils.toFacadeName(layoutName)
     }
 }
